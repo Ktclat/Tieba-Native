@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">贴吧 Lite</string>
+    <string name="app_name">贴吧 Native</string>
     <string name="title_notifications">消息</string>
     <string name="title_explore">动态</string>
     <string name="title_user">我</string>
@@ -44,7 +44,7 @@
     <string name="title_main">首页</string>
     <string name="title_jump_page">跳页</string>
     <string name="tip_jump_page">当前 %1$d/%2$d 页</string>
-    <string name="title_default">贴吧 Lite</string>
+    <string name="title_default">贴吧 Native</string>
     <string name="title_my_collect">我的收藏</string>
     <string name="title_at_me">提到我的</string>
     <string name="text_message_list_item_reply_my_thread">回复我的主题：%1$s</string>

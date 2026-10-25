@@ -32,3 +32,12 @@ Android Studio 打开根目录，配置 JDK 17 和 Android SDK 35。
 - 开源协议：GNU GPL-3.0，见 [LICENSE](LICENSE)，修改部分继续以 GPL-3.0 开源
 - [上游原始 README 完整副本](UPSTREAM_README.md)，保留上游非商业用途声明
 - 本仓库与百度官方无关联，不得冒充官方产品
+
+## 下载调试 APK
+
+在 [Actions](https://github.com/Ktclat/Tieba-Native/actions/workflows/android-ci.yml)
+中打开成功的 Android CI 运行，下载 Tieba-Native-Debug 构建产物。
+此产物使用调试签名，不代表可上架的正式版本。
+
+当前 applicationId 仍沿用原项目，安装时可能与原版发生包名/签名冲突。
+请在模拟器或测试设备上验证，不要直接覆盖有重要数据的正式安装。

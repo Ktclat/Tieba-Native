@@ -39,7 +39,6 @@ android {
     defaultConfig {
         applicationId = "com.huanchengfly.tieba.post"
         minSdk = 26
-        //noinspection OldTargetApi
         targetSdk = 35
         versionCode = applicationVersionCode
         versionName = applicationVersionName
@@ -82,7 +81,6 @@ android {
             )
             isDebuggable = false
             isJniDebuggable = false
-            multiDexEnabled = true
         }
     }
     composeOptions {
