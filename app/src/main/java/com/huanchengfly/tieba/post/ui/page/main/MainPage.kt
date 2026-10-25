@@ -2,11 +2,15 @@ package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -21,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -280,6 +285,21 @@ fun MainPage(
         navHideFraction.floatValue = 0f
     }
 
+    // A very small page-scale overshoot accompanies the jelly indicator.
+    // graphicsLayer changes only presentation; list measurements stay stable.
+    val pageScale = remember { Animatable(1f) }
+    var lastAnimatedTab by remember { mutableIntStateOf(pagerState.currentPage) }
+    LaunchedEffect(pagerState.currentPage) {
+        if (lastAnimatedTab != pagerState.currentPage) {
+            lastAnimatedTab = pagerState.currentPage
+            pageScale.snapTo(0.974f)
+            pageScale.animateTo(
+                1f,
+                spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium)
+            )
+        }
+    }
+
     val onReselected: (Int) -> Unit = {
         coroutineScope.emitGlobalEvent(
             GlobalEvent.Refresh(navigationItems[it].id)
@@ -300,28 +320,30 @@ fun MainPage(
                 bottomBar = {
                     if (navigationType == MainNavigationType.BOTTOM_NAVIGATION) {
                         val visibleFraction = 1f - navHideFraction.floatValue
-                        // Reserve bottom space above the Android gesture inset.
-                        // As the capsule collapses, content gets the space back.
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .navigationBarsPadding()
-                                .height(82.dp * visibleFraction)
-                                .clipToBounds()
-                        ) {
-                            FloatingBottomNavigation(
-                                currentPosition = pagerState.currentPage,
-                                onChangePosition = {
-                                    coroutineScope.launch { pagerState.scrollToPage(it) }
-                                },
-                                onReselected = onReselected,
-                                navigationItems = navigationItems,
-                                themeColors = themeColors,
+                        // Bottom bar owns the reserved height instead of covering
+                        // page content. Android's gesture inset stays clear at 0%.
+                        Column {
+                            Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(horizontal = 18.dp, vertical = 6.dp)
-                                    .graphicsLayer { alpha = visibleFraction },
-                            )
+                                    .fillMaxWidth()
+                                    .height(74.dp * visibleFraction)
+                                    .clipToBounds()
+                            ) {
+                                FloatingBottomNavigation(
+                                    currentPosition = pagerState.currentPage,
+                                    onChangePosition = {
+                                        coroutineScope.launch { pagerState.scrollToPage(it) }
+                                    },
+                                    onReselected = onReselected,
+                                    navigationItems = navigationItems,
+                                    themeColors = themeColors,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(horizontal = 20.dp, vertical = 5.dp)
+                                        .graphicsLayer { alpha = visibleFraction }
+                                )
+                            }
+                            Spacer(Modifier.navigationBarsPadding())
                         }
                     }
                 }
@@ -330,7 +352,10 @@ fun MainPage(
                     contentPadding = paddingValues,
                     state = pagerState,
                     key = { navigationItems[it].id },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                        scaleX = pageScale.value
+                        scaleY = pageScale.value
+                    },
                     verticalAlignment = Alignment.Top,
                     userScrollEnabled = false
                 ) {
