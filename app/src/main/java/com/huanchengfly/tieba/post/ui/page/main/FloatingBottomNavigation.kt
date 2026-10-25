@@ -10,7 +10,9 @@ import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -40,12 +42,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedColors
@@ -55,7 +59,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
  * Compact, theme-aware floating navigation. The selection is one elastic pill:
@@ -113,23 +116,28 @@ fun FloatingBottomNavigation(
         color = themeColors.bottomBar,
         shape = RoundedCornerShape(32.dp),
         border = BorderStroke(0.75.dp, themeColors.textSecondary.copy(alpha = 0.16f)),
-        elevation = 3.dp,
+        elevation = 0.dp,
     ) {
         BoxWithConstraints(Modifier.padding(5.dp).clip(RoundedCornerShape(26.dp))) {
             val tabWidth = maxWidth / navigationItems.size
             val widthPx = with(LocalDensity.current) { tabWidth.toPx() }
             val inset = with(LocalDensity.current) { 2.dp.toPx() }
 
-            val start = min(leadingEdge.value, trailingEdge.value) * widthPx + draggedPx + inset
-            val end = max(leadingEdge.value, trailingEdge.value) * widthPx + draggedPx - inset
-            val pillWidthDp = with(LocalDensity.current) {
-                (end - start).coerceAtLeast(widthPx * 0.45f).toDp()
-            }
+            // Read animated edges in the graphics layer rather than composition.
+            // This avoids recomposing the complete navigation row on every frame.
             Box(
                 Modifier
-                    .offset { IntOffset(start.roundToInt(), 0) }
-                    .width(pillWidthDp)
+                    .width(tabWidth - 4.dp)
                     .fillMaxHeight()
+                    .graphicsLayer {
+                        val leading = min(leadingEdge.value, trailingEdge.value)
+                        val trailing = max(leadingEdge.value, trailingEdge.value)
+                        val targetWidth = ((trailing - leading) * widthPx - 2f * inset)
+                            .coerceAtLeast(widthPx * 0.45f)
+                        translationX = leading * widthPx + draggedPx + inset
+                        scaleX = targetWidth / (widthPx - 2f * inset)
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
                     .clip(indicatorShape)
                     .background(fill)
                     .border(1.dp, stroke, indicatorShape),
@@ -138,6 +146,13 @@ fun FloatingBottomNavigation(
             Row(Modifier.fillMaxSize()) {
                 navigationItems.forEachIndexed { index, item ->
                     val selected = index == selectedIndex
+                    val interaction = remember(item.id) { MutableInteractionSource() }
+                    val isPressed by interaction.collectIsPressedAsState()
+                    val pressedColor by animateColorAsState(
+                        targetValue = if (isPressed) accent.copy(alpha = 0.09f)
+                        else Color.Transparent,
+                        label = "nav-pressed",
+                    )
                     val iconScale by animateFloatAsState(
                         targetValue = if (selected) 1.08f else 1f,
                         animationSpec = spring(
@@ -180,9 +195,21 @@ fun FloatingBottomNavigation(
                     } else Modifier
 
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxHeight()
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            // The previous clickable emitted a rectangular indication.
+                            // Both the hit surface and pressed overlay are now rounded.
+                            .padding(horizontal = 1.dp, vertical = 1.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(pressedColor)
                             .then(dragGesture)
-                            .clickable {
+                            .selectable(
+                                selected = selected,
+                                role = Role.Tab,
+                                interactionSource = interaction,
+                                indication = null,
+                            ) {
                                 if (selected) onReselected(index)
                                 else onChangePosition(index)
                                 item.onClick?.invoke()
