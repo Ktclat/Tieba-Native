@@ -16,7 +16,7 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 @Composable
 fun GroupHeader(
     title: String,
-    color: Color = ExtendedTheme.colors.primary
+    color: Color = ExtendedTheme.colors.accent
 ) {
     Box(
         modifier = Modifier

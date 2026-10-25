@@ -74,7 +74,7 @@ fun FloatingBottomNavigation(
 ) {
     if (navigationItems.isEmpty()) return
     val selectedIndex = currentPosition.coerceIn(0, navigationItems.lastIndex)
-    val accent = themeColors.primary
+    val accent = themeColors.accent
     val indicatorShape = RoundedCornerShape(22.dp)
 
     // Both edges are fractional tab indices, so changing density does not

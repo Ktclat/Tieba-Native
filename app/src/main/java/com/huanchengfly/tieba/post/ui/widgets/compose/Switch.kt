@@ -191,8 +191,8 @@ object SwitchDefaults {
      */
     @Composable
     fun colors(
-        checkedThumbColor: Color = MaterialTheme.colors.onSecondary,
-        checkedTrackColor: Color = MaterialTheme.colors.secondary,
+        checkedThumbColor: Color = MaterialTheme.colors.onPrimary,
+        checkedTrackColor: Color = MaterialTheme.colors.primary,
         checkedTrackAlpha: Float = 1f,
         uncheckedThumbColor: Color = MaterialTheme.colors.onBackground,
         uncheckedTrackColor: Color = MaterialTheme.colors.onBackground,

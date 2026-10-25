@@ -54,7 +54,7 @@ internal fun LeadingIcon(content: @Composable () -> Unit) {
         contentAlignment = Alignment.CenterStart,
     ) {
         CompositionLocalProvider(
-            LocalContentColor provides ExtendedTheme.colors.primary,
+            LocalContentColor provides ExtendedTheme.colors.accent,
             content = content,
         )
     }
