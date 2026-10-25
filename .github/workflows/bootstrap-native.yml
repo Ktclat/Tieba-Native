@@ -50,7 +50,9 @@ jobs:
                     java-version: '17'
                 - uses: gradle/actions/setup-gradle@v4
                 - uses: android-actions/setup-android@v3
+                  continue-on-error: true
                 - name: SDK platform 35
+                  continue-on-error: true
                   run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
                 - name: Assemble and run unit tests
                   run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --no-daemon
@@ -70,11 +72,18 @@ jobs:
 
       - name: Android SDK
         if: steps.import.outcome == 'success'
+        continue-on-error: true
         uses: android-actions/setup-android@v3
 
       - name: Install Android 35
         if: steps.import.outcome == 'success'
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+        continue-on-error: true
+        run: |
+          if command -v sdkmanager >/dev/null 2>&1; then
+            sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          else
+            echo "sdkmanager unavailable; preserving source and letting CI report the issue"
+          fi
 
       - name: Compile and unit tests
         id: verify
