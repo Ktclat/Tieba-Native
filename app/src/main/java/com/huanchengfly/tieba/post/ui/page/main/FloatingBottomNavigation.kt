@@ -1,8 +1,10 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.foundation.BorderStroke
@@ -22,10 +24,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -49,14 +51,16 @@ import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedColors
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Floating, gesture-aware bottom navigation.
- *
- * The outlined selection becomes a filled surface while dragged ("line to plane").
- * A horizontal drag beginning on the selected segment may select another tab.
- * The parent Scaffold reserves the bar's measured height so it cannot overlap content.
+ * Compact, theme-aware floating navigation. The selection is one elastic pill:
+ * its two ends chase the destination at different speeds, stretching like jelly
+ * before springing back. Dragging the active item directly moves the outline.
  */
 @OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
@@ -69,96 +73,117 @@ fun FloatingBottomNavigation(
     themeColors: ExtendedColors = ExtendedTheme.colors,
 ) {
     if (navigationItems.isEmpty()) return
+    val selectedIndex = currentPosition.coerceIn(0, navigationItems.lastIndex)
+    val accent = themeColors.primary
+    val indicatorShape = RoundedCornerShape(22.dp)
 
-    val active = currentPosition.coerceIn(0, navigationItems.lastIndex)
-    val accent = MaterialTheme.colors.secondary
-    val capsule = RoundedCornerShape(24.dp)
-    var dragDistance by remember { mutableFloatStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    val indicatorFill by animateColorAsState(
-        targetValue = accent.copy(alpha = if (isDragging) 0.28f else 0.12f),
-        label = "navigation-indicator-fill",
-    )
-    LaunchedEffect(active, navigationItems.size) {
-        if (!isDragging) dragDistance = 0f
+    // Both edges are fractional tab indices, so changing density does not
+    // invalidate their positions. Slower trailing edge gives a jelly response.
+    val leadingEdge = remember { Animatable(selectedIndex.toFloat()) }
+    val trailingEdge = remember { Animatable(selectedIndex + 1f) }
+    var draggedPx by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedIndex, navigationItems.size) {
+        val forward = selectedIndex > leadingEdge.value
+        coroutineScope {
+            launch {
+                leadingEdge.animateTo(
+                    selectedIndex.toFloat(),
+                    spring(dampingRatio = 0.62f, stiffness = if (forward) 180f else 335f),
+                )
+            }
+            launch {
+                trailingEdge.animateTo(
+                    selectedIndex + 1f,
+                    spring(dampingRatio = 0.56f, stiffness = if (forward) 335f else 180f),
+                )
+            }
+        }
     }
-
+    val fill by animateColorAsState(
+        targetValue = accent.copy(alpha = if (dragging) 0.19f else 0.11f),
+        label = "navigation-jelly-fill",
+    )
+    val stroke by animateColorAsState(
+        targetValue = accent.copy(alpha = if (dragging) 0.65f else 0.35f),
+        label = "navigation-jelly-outline",
+    )
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(66.dp),
+        modifier = modifier.widthIn(max = 380.dp).fillMaxWidth().height(64.dp),
         color = themeColors.bottomBar,
         shape = RoundedCornerShape(32.dp),
-        elevation = 8.dp,
-        border = BorderStroke(1.dp, themeColors.divider.copy(alpha = 0.65f)),
+        border = BorderStroke(0.75.dp, themeColors.textSecondary.copy(alpha = 0.16f)),
+        elevation = 3.dp,
     ) {
-        BoxWithConstraints(Modifier.padding(5.dp)) {
-            val itemWidth = maxWidth / navigationItems.size
-            val itemWidthPx = with(LocalDensity.current) { itemWidth.toPx() }
-            val indicatorBase by animateFloatAsState(
-                targetValue = active * itemWidthPx,
-                animationSpec = tween(durationMillis = 220),
-                label = "navigation-selected-position",
-            )
+        BoxWithConstraints(Modifier.padding(5.dp).clip(RoundedCornerShape(26.dp))) {
+            val tabWidth = maxWidth / navigationItems.size
+            val widthPx = with(LocalDensity.current) { tabWidth.toPx() }
+            val inset = with(LocalDensity.current) { 2.dp.toPx() }
 
+            val start = min(leadingEdge.value, trailingEdge.value) * widthPx + draggedPx + inset
+            val end = max(leadingEdge.value, trailingEdge.value) * widthPx + draggedPx - inset
+            val pillWidthDp = with(LocalDensity.current) {
+                (end - start).coerceAtLeast(widthPx * 0.45f).toDp()
+            }
             Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset((indicatorBase + dragDistance).roundToInt(), 0)
-                    }
-                    .width(itemWidth)
+                Modifier
+                    .offset { IntOffset(start.roundToInt(), 0) }
+                    .width(pillWidthDp)
                     .fillMaxHeight()
-                    .clip(capsule)
-                    .background(indicatorFill)
-                    .border(1.5.dp, accent, capsule),
+                    .clip(indicatorShape)
+                    .background(fill)
+                    .border(1.dp, stroke, indicatorShape),
             )
 
             Row(Modifier.fillMaxSize()) {
                 navigationItems.forEachIndexed { index, item ->
-                    val isSelected = index == active
-                    val dragModifier = if (isSelected) {
-                        Modifier.pointerInput(active, itemWidthPx, navigationItems.size) {
+                    val selected = index == selectedIndex
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.08f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium,
+                        ),
+                        label = "navigation-icon-scale",
+                    )
+                    val dragGesture = if (selected) {
+                        Modifier.pointerInput(selectedIndex, widthPx, navigationItems.size) {
                             detectHorizontalDragGestures(
                                 onDragStart = {
-                                    dragDistance = 0f
-                                    isDragging = true
-                                },
-                                onDragEnd = {
-                                    val destination = resolveNavigationDragTarget(
-                                        active,
-                                        dragDistance,
-                                        itemWidthPx,
-                                        navigationItems.size,
-                                    )
-                                    isDragging = false
-                                    dragDistance = 0f
-                                    if (destination != active) {
-                                        onChangePosition(destination)
-                                        navigationItems[destination].onClick?.invoke()
-                                    }
+                                    draggedPx = 0f
+                                    dragging = true
                                 },
                                 onDragCancel = {
-                                    isDragging = false
-                                    dragDistance = 0f
+                                    dragging = false
+                                    draggedPx = 0f
+                                },
+                                onDragEnd = {
+                                    val target = resolveNavigationDragTarget(
+                                        selectedIndex, draggedPx, widthPx, navigationItems.size
+                                    )
+                                    dragging = false
+                                    draggedPx = 0f
+                                    if (target != selectedIndex) {
+                                        onChangePosition(target)
+                                        navigationItems[target].onClick?.invoke()
+                                    }
                                 },
                                 onHorizontalDrag = { change, delta ->
                                     change.consume()
-                                    dragDistance = (dragDistance + delta).coerceIn(
-                                        -active * itemWidthPx,
-                                        (navigationItems.lastIndex - active) * itemWidthPx,
+                                    draggedPx = (draggedPx + delta).coerceIn(
+                                        -selectedIndex * widthPx,
+                                        (navigationItems.lastIndex - selectedIndex) * widthPx
                                     )
-                                },
+                                }
                             )
                         }
                     } else Modifier
 
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .then(dragModifier)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                            .then(dragGesture)
                             .clickable {
-                                if (isSelected) onReselected(index)
+                                if (selected) onReselected(index)
                                 else onChangePosition(index)
                                 item.onClick?.invoke()
                             },
@@ -169,30 +194,33 @@ fun FloatingBottomNavigation(
                                 Icon(
                                     painter = rememberAnimatedVectorPainter(
                                         animatedImageVector = item.icon(),
-                                        atEnd = isSelected,
+                                        atEnd = selected
                                     ),
-                                    contentDescription = item.title(isSelected),
-                                    tint = if (isSelected) accent else themeColors.unselected,
-                                    modifier = Modifier.size(23.dp),
+                                    tint = if (selected) accent else themeColors.textSecondary,
+                                    contentDescription = item.title(selected),
+                                    modifier = Modifier.size(22.dp)
+                                        .graphicsLayer {
+                                            scaleX = iconScale
+                                            scaleY = iconScale
+                                        },
                                 )
                                 if (item.badge) {
                                     Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
+                                        Modifier.align(Alignment.TopEnd)
                                             .offset(x = 6.dp, y = (-4).dp)
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colors.error),
+                                            .size(8.dp).clip(CircleShape)
+                                            .background(accent)
                                     )
                                 }
                             }
                             Text(
-                                text = item.title(isSelected),
+                                text = item.title(selected),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                fontSize = 10.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) accent else themeColors.unselected,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (selected) themeColors.text else themeColors.textSecondary,
                             )
                         }
                     }
