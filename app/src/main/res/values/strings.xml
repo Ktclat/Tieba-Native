@@ -21,6 +21,8 @@
     <string name="title_about">关于</string>
     <string name="my_info_settings">设置</string>
     <string name="title_settings">设置</string>
+    <string name="title_predictive_tab_back">预测性返回预览</string>
+    <string name="summary_predictive_tab_back">从其他主标签返回首页时，跟随侧滑手势预览并平滑返回</string>
     <string name="settings_section_account">账户与安全</string>
     <string name="settings_section_appearance">外观与阅读</string>
     <string name="settings_section_tools">功能与工具</string>

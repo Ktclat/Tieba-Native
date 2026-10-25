@@ -74,6 +74,14 @@ fun HabitSettingsPage(
                 .fillMaxSize(),
         ) {
             prefsItem {
+                SwitchPref(
+                    key = "enablePredictiveTabBack",
+                    title = stringResource(R.string.title_predictive_tab_back),
+                    summary = stringResource(R.string.summary_predictive_tab_back),
+                    defaultChecked = true,
+                )
+            }
+            prefsItem {
                 ListPref(
                     key = "image_load_type",
                     title = stringResource(id = R.string.title_settings_image_load_type),

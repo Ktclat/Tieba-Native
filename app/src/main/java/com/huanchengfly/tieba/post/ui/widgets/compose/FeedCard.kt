@@ -212,14 +212,21 @@ fun Card(
     onClick: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    val cardModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    val cardShape = RoundedCornerShape(20.dp)
+    val cardModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else Modifier
 
-    val paddingModifier = if (action != null) Modifier.padding(top = 16.dp)
-    else Modifier.padding(vertical = 16.dp)
+    val paddingModifier = if (action != null) Modifier.padding(top = 14.dp)
+    else Modifier.padding(vertical = 14.dp)
 
     Column(
-        modifier = cardModifier
-            .then(modifier)
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(cardShape)
+            .background(ExtendedTheme.colors.card)
+            .then(cardModifier)
             .then(paddingModifier)
             .padding(contentPadding)
     ) {

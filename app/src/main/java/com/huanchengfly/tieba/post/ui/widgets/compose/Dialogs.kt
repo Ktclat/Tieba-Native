@@ -66,10 +66,10 @@ fun DialogScope.DialogPositiveButton(
         },
         modifier = Modifier
             .fillMaxWidth(),
-        shape = RoundedCornerShape(100),
+        shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.textButtonColors(
-            backgroundColor = MaterialTheme.colors.secondary,
-            contentColor = MaterialTheme.colors.onSecondary
+            backgroundColor = ExtendedTheme.colors.accent,
+            contentColor = ExtendedTheme.colors.onAccent
         ),
     ) {
         Text(
@@ -91,7 +91,7 @@ fun DialogScope.DialogNegativeButton(
             onClick?.invoke()
         },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(100),
+        shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.textButtonColors(
             backgroundColor = ExtendedTheme.colors.text.copy(
                 alpha = 0.1f
@@ -405,7 +405,7 @@ fun Dialog(
                 .padding(16.dp)
                 .background(
                     color = ExtendedTheme.colors.windowBackground,
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(28.dp)
                 )
                 .padding(vertical = 24.dp),
         ) {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
+import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -24,7 +25,8 @@ import androidx.datastore.preferences.core.Preferences
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 
-lateinit var LocalPrefsDataStore: ProvidableCompositionLocal<DataStore<Preferences>>
+val LocalPrefsDataStore: ProvidableCompositionLocal<DataStore<Preferences>> =
+    staticCompositionLocalOf { error("PrefsScreen must provide a DataStore") }
 
 /**
  * Shared card-based preference layout for every settings sub-page.
@@ -39,7 +41,6 @@ fun PrefsScreen(
     dividerIndent: Dp = 0.dp,
     content: PrefsScope.() -> Unit
 ) {
-    LocalPrefsDataStore = staticCompositionLocalOf { dataStore }
     val prefsScope = PrefsScopeImpl().apply(content)
     val colors = ExtendedTheme.colors
 
@@ -50,7 +51,7 @@ fun PrefsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(prefsScope.prefsItems.size) { index ->
+                items(prefsScope.prefsItems.size, key = { "setting-$it" }) { index ->
                     val groupHeader = prefsScope.headerIndexes.contains(index)
                     val groupSpacer = prefsScope.footerIndexes.contains(index) &&
                         prefsScope.footerIndexes.contains(index - 1)
@@ -60,11 +61,11 @@ fun PrefsScreen(
                         else -> Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp),
-                            color = if (colors.isNightMode) colors.card else colors.chip,
+                            color = Material3Theme.colorScheme.surfaceContainerLow,
                             elevation = 0.dp,
                             border = BorderStroke(
-                                0.7.dp,
-                                colors.textSecondary.copy(alpha = 0.10f)
+                                0.75.dp,
+                                Material3Theme.colorScheme.outlineVariant.copy(alpha = 0.7f)
                             ),
                         ) {
                             Column {

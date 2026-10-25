@@ -38,10 +38,10 @@ object FrsPageRepository {
         return TiebaApi.getInstance().frsPage(forumName, page, loadType, sortType, goodClassifyId)
             .map { response ->
                 if (response.data_ == null) throw TiebaUnknownException
-                val userList = response.data_.user_list
+                val userById = response.data_.user_list.associateBy { it.id }
                 val threadList = response.data_.thread_list
                     .map { threadInfo ->
-                        threadInfo.copy(author = userList.find { it.id == threadInfo.authorId })
+                        threadInfo.copy(author = userById[threadInfo.authorId])
                     }
                     .filter { !App.INSTANCE.appPreferences.blockVideo || it.videoInfo == null }
                     .filter { it.ala_info == null } // 去他妈的直播
@@ -63,10 +63,10 @@ object FrsPageRepository {
             .threadList(forumId, forumName, page, sortType, threadIds)
             .map { response ->
                 if (response.data_ == null) throw TiebaUnknownException
-                val userList = response.data_.user_list
+                val userById = response.data_.user_list.associateBy { it.id }
                 val threadList = response.data_.thread_list
                     .map { threadInfo ->
-                        threadInfo.copy(author = userList.find { it.id == threadInfo.authorId })
+                        threadInfo.copy(author = userById[threadInfo.authorId])
                     }
                     .filter { !App.INSTANCE.appPreferences.blockVideo || it.videoInfo == null }
                     .filter { it.ala_info == null } // 去他妈的直播
