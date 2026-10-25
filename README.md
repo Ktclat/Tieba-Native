@@ -41,3 +41,10 @@ Android Studio 打开根目录，配置 JDK 17 和 Android SDK 35。
 
 当前 applicationId 仍沿用原项目，安装时可能与原版发生包名/签名冲突。
 请在模拟器或测试设备上验证，不要直接覆盖有重要数据的正式安装。
+
+## 独立构建与隐私
+
+- CI 调试构建始终标记为自构建，不使用上游发行通道。
+- 已移除上游 App Center Analytics、Crashes 和 Distribute 的 SDK、初始化与页面事件上传代码。
+- App 内自动更新功能在引入新的自有服务前不可用；该调整不会改变贴吧接口协议。
+- CI APK 采用 Debug 签名，未经过真机全流程回归测试。

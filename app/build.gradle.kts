@@ -11,19 +11,14 @@ plugins {
     autowire(libs.plugins.com.squareup.wire)
 }
 
-val sha: String? = System.getenv("GITHUB_SHA")
-val isCI: String? = System.getenv("CI")
-val isSelfBuild = isCI.isNullOrEmpty() || !isCI.equals("true", ignoreCase = true)
+// Tieba Native is an independent fork: CI debug builds are not upstream releases.
+val isSelfBuild = true
 val applicationVersionCode = property.versionCode
 var applicationVersionName = property.versionName
 val isPerVersion = property.isPreRelease
 if (isPerVersion) {
     applicationVersionName += "-${property.preReleaseName}.${property.preReleaseVer}"
 }
-if (!isSelfBuild && !sha.isNullOrEmpty()) {
-    applicationVersionName += "+${sha.substring(0, 7)}"
-}
-
 wire {
     sourcePath {
         srcDir("src/main/protos")
@@ -132,7 +127,6 @@ dependencies {
     //Local Files
 //    implementation fileTree(include: ["*.jar"], dir: "libs")
 
-    implementation(net.swiftzer.semver.semver)
     implementation(godaddy.color.picker)
 
     implementation(airbnb.lottie)
@@ -253,7 +247,4 @@ dependencies {
     implementation(com.jakewharton.butterknife)
     kapt(com.jakewharton.butterknife.compiler)
 
-    implementation(appcenter.analytics)
-    implementation(appcenter.crashes)
-    implementation(appcenter.distribute)
 }

@@ -39,7 +39,7 @@
 ## 尚需逐步解决的问题
 
 - Google Play 在 2026 年发布所需的 targetSdk 继续升级（目前 35）
-- Microsoft App Center 停用后的更新、崩溃分析功能迁移
+- 上游 Microsoft App Center 已停用，现已移除 SDK 与上游统计/更新服务；如需软件内更新和崩溃诊断，须配置本项目自主维护的替代服务
 - 清理剩余旧式 Java View / IntentService、弃用 API 和全局状态
 - DataStore 的 runBlocking 调用、LitePal 数据迁移和页面性能基准
 - 认证协议安全性与模拟器/真机 UI、登录、签到、发帖的集成回归测试
