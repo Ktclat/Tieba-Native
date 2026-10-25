@@ -486,6 +486,7 @@ fun TiebaLiteTheme(
         androidx.compose.material3.MaterialTheme(
             colorScheme = expressiveScheme,
             shapes = ExpressiveShapes,
+            typography = ExpressiveTypography,
         ) {
             MaterialTheme(
                 colors = colors,
