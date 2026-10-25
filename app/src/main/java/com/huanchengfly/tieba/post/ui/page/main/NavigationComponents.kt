@@ -28,8 +28,12 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.NavigationRail
-import androidx.compose.material.NavigationRailItem
+import androidx.compose.material3.NavigationRail as M3NavigationRail
+import androidx.compose.material3.NavigationRailItem as M3NavigationRailItem
+import androidx.compose.material3.NavigationDrawerItem as M3NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults as M3NavigationDrawerItemDefaults
+import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -98,36 +102,24 @@ fun NavigationDrawerItem(
     selectedItemColor: Color = MaterialTheme.colors.primary,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
 ) {
-    Surface(
+    M3NavigationDrawerItem(
         selected = selected,
         onClick = onClick,
-        modifier = modifier
-            .height(ActiveIndicatorHeight)
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().height(ActiveIndicatorHeight),
+        label = label,
+        icon = icon,
+        badge = badge,
         shape = shape,
-        color = if (selected) selectedBackgroundColor else backgroundColor,
         interactionSource = interactionSource,
-    ) {
-        Row(
-            Modifier.padding(start = 16.dp, end = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                val iconColor = if (selected) selectedItemColor else itemColor
-                CompositionLocalProvider(LocalContentColor provides iconColor, content = icon)
-                Spacer(Modifier.width(12.dp))
-            }
-            Box(Modifier.weight(1f)) {
-                val labelColor = if (selected) selectedItemColor else itemColor
-                CompositionLocalProvider(LocalContentColor provides labelColor, content = label)
-            }
-            if (badge != null) {
-                Spacer(Modifier.width(12.dp))
-                val badgeColor = if (selected) selectedItemColor else itemColor
-                CompositionLocalProvider(LocalContentColor provides badgeColor, content = badge)
-            }
-        }
-    }
+        colors = M3NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = M3Theme.colorScheme.secondaryContainer,
+            unselectedContainerColor = Color.Transparent,
+            selectedIconColor = M3Theme.colorScheme.onSecondaryContainer,
+            selectedTextColor = M3Theme.colorScheme.onSecondaryContainer,
+            unselectedIconColor = M3Theme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = M3Theme.colorScheme.onSurface,
+        ),
+    )
 }
 
 @OptIn(ExperimentalAnimationGraphicsApi::class)
@@ -297,23 +289,19 @@ fun NavigationRail(
     navigationItems: ImmutableList<NavigationItem>,
     navigationContentPosition: MainNavigationContentPosition
 ) {
-    NavigationRail(
-        backgroundColor = ExtendedTheme.colors.bottomBar,
-        contentColor = ExtendedTheme.colors.unselected,
-        modifier = Modifier
-            .fillMaxHeight()
-            .statusBarsPadding(),
-        elevation = 0.dp,
-        header = {
-            AccountNavIcon(spacer = false)
-        }
+    M3NavigationRail(
+        containerColor = M3Theme.colorScheme.surfaceContainerLow,
+        contentColor = M3Theme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxHeight().statusBarsPadding(),
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        header = { AccountNavIcon(spacer = false) },
     ) {
         Column(
             modifier = Modifier.fillMaxHeight(),
             verticalArrangement = if (navigationContentPosition == MainNavigationContentPosition.TOP) Arrangement.Top else Arrangement.Center
         ) {
             navigationItems.forEachIndexed { index, navigationItem ->
-                NavigationRailItem(
+                M3NavigationRailItem(
                     selected = index == currentPosition,
                     onClick = {
                         if (index == currentPosition) {
@@ -330,7 +318,7 @@ fun NavigationRail(
                                     atEnd = index == currentPosition
                                 ),
                                 contentDescription = navigationItem.title(index == currentPosition),
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(22.dp),
                             )
                             if (navigationItem.badge) {
                                 Text(
