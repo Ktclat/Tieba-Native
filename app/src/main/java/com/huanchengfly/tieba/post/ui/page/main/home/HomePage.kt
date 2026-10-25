@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -764,14 +765,25 @@ fun EmptyScreen(
             }
         },
         image = {
-            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_astronaut))
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier
-                    .fillMaxWidth(0.72f)
-                    .aspectRatio(2f)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().height(156.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(124.dp)
+                        .clip(RoundedCornerShape(38.dp))
+                        .background(ExtendedTheme.colors.chip),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Forum,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = ExtendedTheme.colors.accent,
+                    )
+                }
+            }
         },
         message = {
             if (!loggedIn) {

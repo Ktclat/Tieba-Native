@@ -21,7 +21,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface as M3Surface
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
@@ -402,22 +403,22 @@ fun SearchBox(
     prependIcon: @Composable () -> Unit = {},
     appendIcon: @Composable () -> Unit = {},
     focusRequester: FocusRequester = remember { FocusRequester() },
-    shape: Shape = RectangleShape,
-    color: Color = ExtendedTheme.colors.topBarSurface,
-    contentColor: Color = ExtendedTheme.colors.onTopBarSurface,
+    shape: Shape = RoundedCornerShape(22.dp),
+    color: Color = M3Theme.colorScheme.surfaceContainerHigh,
+    contentColor: Color = M3Theme.colorScheme.onSurface,
     elevation: Dp = 0.dp,
 ) {
     val isKeywordNotEmpty = remember(keyword) { keyword.isNotEmpty() }
     var isFocused by remember { mutableStateOf(false) }
-    Surface(
+    M3Surface(
         modifier = modifier,
         shape = shape,
         color = color,
         contentColor = contentColor,
-        elevation = elevation
+        tonalElevation = elevation,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {

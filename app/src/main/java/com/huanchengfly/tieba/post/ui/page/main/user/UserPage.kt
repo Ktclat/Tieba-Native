@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.Icon
@@ -132,7 +133,10 @@ private fun InfoCard(
     isPlaceholder: Boolean = false
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(M3Theme.colorScheme.surfaceContainerLow)
+            .padding(18.dp),
     ) {
         Column(
             modifier = Modifier
@@ -198,7 +202,11 @@ private fun RowScope.StatCardItem(
 @Composable
 private fun LoginTipCard(modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(M3Theme.colorScheme.surfaceContainerLow)
+            .padding(18.dp),
     ) {
         Column(
             modifier = Modifier
@@ -222,7 +230,7 @@ private fun LoginTipCard(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .clip(CircleShape)
                 .size(Sizes.Large)
-                .background(color = ExtendedTheme.colors.chip)
+                .background(color = M3Theme.colorScheme.surfaceContainerLow)
                 .padding(16.dp),
         )
     }
@@ -286,10 +294,11 @@ fun UserPage(
                     InfoCard(
                         modifier = Modifier
                             .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(24.dp))
                             .clickable {
                                 navigator.navigate(UserProfilePageDestination(account!!.uid.toLong()))
                             }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         userName = account!!.nameShow ?: account!!.name,
                         userIntro = account!!.intro ?: stringResource(id = R.string.tip_no_intro),
                         avatar = StringUtil.getAvatarUrl(account!!.portrait),
@@ -298,8 +307,8 @@ fun UserPage(
                         account = account!!,
                         modifier = Modifier
                             .padding(16.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(color = ExtendedTheme.colors.chip)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(color = M3Theme.colorScheme.surfaceContainerLow)
                             .padding(vertical = 18.dp)
                     )
                 } else if (isLoading) {
@@ -312,8 +321,8 @@ fun UserPage(
                     StatCardPlaceholder(
                         modifier = Modifier
                             .padding(16.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(color = ExtendedTheme.colors.chip)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(color = M3Theme.colorScheme.surfaceContainerLow)
                             .padding(vertical = 18.dp)
                     )
                 } else {
