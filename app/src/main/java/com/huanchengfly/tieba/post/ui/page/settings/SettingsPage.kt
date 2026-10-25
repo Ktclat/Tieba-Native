@@ -25,6 +25,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
+import com.huanchengfly.tieba.post.ui.common.prefs.GroupHeader
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
@@ -131,7 +132,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                 dividerThickness = 0.dp,
                 modifier = Modifier.padding(padding).fillMaxSize(),
             ) {
-                prefsGroup(title = stringResource(R.string.settings_section_account)) {
+                prefsGroup(header = { GroupHeader(stringResource(R.string.settings_section_account)) }) {
                     prefsItem {
                         NowAccountItem(account = LocalAccount.current)
                     }
@@ -154,7 +155,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                     }
                 }
 
-                prefsGroup(title = stringResource(R.string.settings_section_appearance)) {
+                prefsGroup(header = { GroupHeader(stringResource(R.string.settings_section_appearance)) }) {
                     prefsItem {
                         TextPref(
                             title = stringResource(R.string.title_settings_custom),
@@ -191,7 +192,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                     }
                 }
 
-                prefsGroup(title = stringResource(R.string.settings_section_tools)) {
+                prefsGroup(header = { GroupHeader(stringResource(R.string.settings_section_tools)) }) {
                     prefsItem {
                         TextPref(
                             title = stringResource(R.string.title_oksign),
