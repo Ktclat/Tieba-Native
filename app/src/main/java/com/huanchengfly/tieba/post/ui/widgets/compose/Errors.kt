@@ -55,12 +55,12 @@ fun TipScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth(fraction = widthFraction)
-                .padding(16.dp)
+                .padding(horizontal = 14.dp, vertical = 18.dp)
                 .then(scrollableModifier),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.CenterVertically)
         ) {
-            Column(modifier = Modifier.requiredWidthIn(max = 400.dp)) {
+            Column(modifier = Modifier.requiredWidthIn(max = 300.dp)) {
                 image()
             }
             ProvideTextStyle(

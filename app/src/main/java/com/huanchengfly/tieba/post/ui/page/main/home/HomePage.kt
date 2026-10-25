@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -126,19 +127,23 @@ fun SearchBoxPreview() {
 @Composable
 fun SearchBox(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = ExtendedTheme.colors.topBarSurface,
-    contentColor: Color = ExtendedTheme.colors.onTopBarSurface,
+    backgroundColor: Color = ExtendedTheme.colors.chip,
+    contentColor: Color = ExtendedTheme.colors.textSecondary,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = modifier
             .background(ExtendedTheme.colors.topBar)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
     ) {
         Surface(
             color = backgroundColor,
             contentColor = contentColor,
-            shape = RoundedCornerShape(6.dp),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(
+                0.8.dp,
+                ExtendedTheme.colors.textSecondary.copy(alpha = 0.10f),
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
@@ -146,16 +151,16 @@ fun SearchBox(
             Row(
                 verticalAlignment = CenterVertically,
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     modifier = Modifier
                         .align(CenterVertically)
-                        .size(24.dp),
+                        .size(21.dp),
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = stringResource(id = R.string.hint_search),
                     modifier = Modifier.align(CenterVertically),
@@ -764,7 +769,7 @@ fun EmptyScreen(
                 composition = composition,
                 iterations = LottieConstants.IterateForever,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.72f)
                     .aspectRatio(2f)
             )
         },
@@ -786,6 +791,8 @@ fun EmptyScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Text(text = stringResource(id = R.string.button_login))
                 }
@@ -795,6 +802,8 @@ fun EmptyScreen(
                     onClick = onOpenExplore,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(46.dp),
+                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Text(text = stringResource(id = R.string.button_go_to_explore))
                 }
