@@ -1,35 +1,22 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.animation.core.TweenSpec
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.interaction.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.ContentAlpha
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.material3.Switch as M3Switch
+import androidx.compose.material3.SwitchDefaults as M3SwitchDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterialApi::class)
+/** Native Material 3 switch used by all existing preference pages. */
 @Composable
 fun Switch(
     checked: Boolean,
@@ -39,125 +26,34 @@ fun Switch(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     colors: SwitchColors = SwitchDefaults.colors(),
 ) {
-    val strokeWidth = with(LocalDensity.current) { TrackStrokeWidth.toPx() }
-    val gap = with(LocalDensity.current) { Gap.toPx() }
-    val minBound = strokeWidth + gap
-    val maxBound = minBound + with(LocalDensity.current) { ThumbPathLength.toPx() }
-    val swipeableState = rememberSwipeableStateFor(checked, onCheckedChange ?: {}, AnimationSpec)
-    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val toggleableModifier =
-        if (onCheckedChange != null) {
-            Modifier.toggleable(
-                value = checked,
-                onValueChange = onCheckedChange,
-                enabled = enabled,
-                role = Role.Switch,
-                interactionSource = interactionSource,
-                indication = null
-            )
-        } else {
-            Modifier
-        }
-
-    Box(
-        modifier
-            .then(toggleableModifier)
-            .swipeable(
-                state = swipeableState,
-                anchors = mapOf(minBound to false, maxBound to true),
-                thresholds = { _, _ -> FractionalThreshold(0.5f) },
-                orientation = Orientation.Horizontal,
-                enabled = enabled && onCheckedChange != null,
-                reverseDirection = isRtl,
-                interactionSource = interactionSource,
-                resistance = null
-            )
-            .wrapContentSize(Alignment.Center)
-            .requiredSize(SwitchWidth, SwitchHeight)
-    ) {
-        SwitchImpl(
-            checked = checked,
-            enabled = enabled,
-            colors = colors,
-            thumbValue = swipeableState.offset,
-            interactionSource = interactionSource
-        )
-    }
-}
-
-@Composable
-private fun BoxScope.SwitchImpl(
-    checked: Boolean,
-    enabled: Boolean,
-    colors: SwitchColors,
-    thumbValue: State<Float>,
-    interactionSource: InteractionSource
-) {
-    val interactions = remember { mutableStateListOf<Interaction>() }
-
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> interactions.add(interaction)
-                is PressInteraction.Release -> interactions.remove(interaction.press)
-                is PressInteraction.Cancel -> interactions.remove(interaction.press)
-                is DragInteraction.Start -> interactions.add(interaction)
-                is DragInteraction.Stop -> interactions.remove(interaction.start)
-                is DragInteraction.Cancel -> interactions.remove(interaction.start)
-            }
-        }
-    }
-
-    val elevation = 0.dp
-    val trackColor by colors.trackColor(enabled, checked)
-    Canvas(Modifier.align(Alignment.Center).fillMaxSize()) {
-        drawTrack(trackColor, TrackWidth.toPx(), TrackStrokeWidth.toPx(), checked)
-    }
-    val thumbColor by colors.thumbColor(enabled, checked)
-    val elevationOverlay = LocalElevationOverlay.current
-    val absoluteElevation = LocalAbsoluteElevation.current + elevation
-    val resolvedThumbColor =
-        if (thumbColor == MaterialTheme.colors.surface && elevationOverlay != null) {
-            elevationOverlay.apply(thumbColor, absoluteElevation)
-        } else {
-            thumbColor
-        }
-    Spacer(
-        Modifier
-            .align(Alignment.CenterStart)
-            .offset { IntOffset(thumbValue.value.roundToInt(), 0) }
-//            .indication(
-//                interactionSource = interactionSource,
-//                indication = rememberRipple(bounded = false, radius = ThumbRippleRadius)
-//            )
-            .requiredSize(ThumbDiameter)
-//            .shadow(elevation, CircleShape, clip = false)
-            .background(resolvedThumbColor, CircleShape)
+    val onThumb = colors.thumbColor(enabled = true, checked = true).value
+    val offThumb = colors.thumbColor(enabled = true, checked = false).value
+    val onTrack = colors.trackColor(enabled = true, checked = true).value
+    val offTrack = colors.trackColor(enabled = true, checked = false).value
+    val disabledOnThumb = colors.thumbColor(enabled = false, checked = true).value
+    val disabledOffThumb = colors.thumbColor(enabled = false, checked = false).value
+    val disabledOnTrack = colors.trackColor(enabled = false, checked = true).value
+    val disabledOffTrack = colors.trackColor(enabled = false, checked = false).value
+    M3Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+        interactionSource = interactionSource,
+        colors = M3SwitchDefaults.colors(
+            checkedThumbColor = onThumb,
+            checkedTrackColor = onTrack,
+            checkedBorderColor = Color.Transparent,
+            uncheckedThumbColor = offThumb,
+            uncheckedTrackColor = offTrack,
+            uncheckedBorderColor = M3Theme.colorScheme.outline,
+            disabledCheckedThumbColor = disabledOnThumb,
+            disabledCheckedTrackColor = disabledOnTrack,
+            disabledUncheckedThumbColor = disabledOffThumb,
+            disabledUncheckedTrackColor = disabledOffTrack,
+        ),
     )
 }
-
-private fun DrawScope.drawTrack(trackColor: Color, trackWidth: Float, strokeWidth: Float, fill: Boolean = false) {
-    val strokeRadius = size.height / 2
-    val topY = center.y - size.height / 2 + strokeWidth / 2
-    drawRoundRect(
-        color = trackColor,
-        topLeft = Offset(strokeWidth / 2, topY),
-        size = Size(width = trackWidth - strokeWidth, height = size.height - strokeWidth),
-        cornerRadius = CornerRadius(strokeRadius),
-        style = if (fill) Fill else Stroke(width = strokeWidth, cap = StrokeCap.Round)
-    )
-}
-
-internal val TrackWidth = 35.dp
-internal val TrackStrokeWidth = 2.dp
-internal val ThumbDiameter = 9.dp
-
-private val SwitchWidth = TrackWidth
-private val SwitchHeight = 15.dp + TrackStrokeWidth
-private val Gap = (SwitchHeight - TrackStrokeWidth - ThumbDiameter) / 2
-private val ThumbPathLength = TrackWidth - ThumbDiameter - TrackStrokeWidth * 2 - Gap * 2
-
-private val AnimationSpec = TweenSpec<Float>(durationMillis = 100)
 
 @Stable
 interface SwitchColors {
@@ -191,24 +87,24 @@ object SwitchDefaults {
      */
     @Composable
     fun colors(
-        checkedThumbColor: Color = MaterialTheme.colors.onPrimary,
-        checkedTrackColor: Color = MaterialTheme.colors.primary,
+        checkedThumbColor: Color = M3Theme.colorScheme.onPrimary,
+        checkedTrackColor: Color = M3Theme.colorScheme.primary,
         checkedTrackAlpha: Float = 1f,
-        uncheckedThumbColor: Color = MaterialTheme.colors.onBackground,
-        uncheckedTrackColor: Color = MaterialTheme.colors.onBackground,
+        uncheckedThumbColor: Color = M3Theme.colorScheme.outline,
+        uncheckedTrackColor: Color = M3Theme.colorScheme.surfaceContainerHigh,
         uncheckedTrackAlpha: Float = 1f,
         disabledCheckedThumbColor: Color = checkedThumbColor
             .copy(alpha = ContentAlpha.disabled)
-            .compositeOver(MaterialTheme.colors.surface),
+            .compositeOver(M3Theme.colorScheme.surface),
         disabledCheckedTrackColor: Color = checkedTrackColor
             .copy(alpha = ContentAlpha.disabled)
-            .compositeOver(MaterialTheme.colors.surface),
+            .compositeOver(M3Theme.colorScheme.surface),
         disabledUncheckedThumbColor: Color = uncheckedThumbColor
             .copy(alpha = ContentAlpha.disabled)
-            .compositeOver(MaterialTheme.colors.surface),
+            .compositeOver(M3Theme.colorScheme.surface),
         disabledUncheckedTrackColor: Color = uncheckedTrackColor
             .copy(alpha = ContentAlpha.disabled)
-            .compositeOver(MaterialTheme.colors.surface)
+            .compositeOver(M3Theme.colorScheme.surface)
     ): SwitchColors = DefaultSwitchColors(
         checkedThumbColor = checkedThumbColor,
         checkedTrackColor = checkedTrackColor.copy(alpha = checkedTrackAlpha),

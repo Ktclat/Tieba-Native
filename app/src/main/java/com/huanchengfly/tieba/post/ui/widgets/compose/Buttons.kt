@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonColors
@@ -37,7 +38,7 @@ fun Button(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     elevation: ButtonElevation? = ButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-    shape: Shape = RoundedCornerShape(18.dp),
+    shape: Shape = RoundedCornerShape(20.dp),
     border: BorderStroke? = null,
     colors: ButtonColors = ButtonDefaults.buttonColors(
         backgroundColor = ExtendedTheme.colors.accent,
@@ -46,36 +47,28 @@ fun Button(
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit
 ) {
+    // Keep the old ButtonColors signature for screens while rendering a real
+    // Material 3 component with native ripple, semantics and minimum hit area.
+    val containerColor by colors.backgroundColor(enabled)
     val contentColor by colors.contentColor(enabled)
-    Surface(
-        modifier = Modifier
-            .clip(shape)
-            .clickable(
-                onClick = onClick,
-                enabled = enabled,
-                interactionSource = interactionSource,
-                indication = LocalIndication.current
-            )
-            .then(modifier),
+    val disabledBackground by colors.backgroundColor(false)
+    val disabledContent by colors.contentColor(false)
+    androidx.compose.material3.Button(
+        onClick = onClick,
+        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        enabled = enabled,
         shape = shape,
-        color = colors.backgroundColor(enabled).value,
-        contentColor = contentColor.copy(alpha = 1f),
         border = border,
-        elevation = elevation?.elevation(enabled, interactionSource)?.value ?: 0.dp,
-    ) {
-        CompositionLocalProvider(LocalContentAlpha provides contentColor.alpha) {
-            ProvideTextStyle(
-                value = MaterialTheme.typography.button
-            ) {
-                Row(
-                    Modifier.padding(contentPadding),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = content
-                )
-            }
-        }
-    }
+        interactionSource = interactionSource,
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = disabledBackground,
+            disabledContentColor = disabledContent,
+        ),
+        contentPadding = contentPadding,
+        content = content,
+    )
 }
 
 @Composable
@@ -84,7 +77,7 @@ fun TextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    shape: Shape = RoundedCornerShape(100),
+    shape: Shape = RoundedCornerShape(20.dp),
     border: BorderStroke? = null,
     color: Color = ExtendedTheme.colors.text,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,

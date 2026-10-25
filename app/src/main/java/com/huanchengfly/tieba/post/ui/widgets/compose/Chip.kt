@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
+import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,7 +33,7 @@ fun Chip(
     appendIcon: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     invertColor: Boolean = false,
-    shape: Shape = RoundedCornerShape(100),
+    shape: Shape = RoundedCornerShape(16.dp),
 ) {
     val color =
         if (invertColor) ExtendedTheme.colors.invertChipContent else ExtendedTheme.colors.onChip
@@ -44,32 +46,33 @@ fun Chip(
         label = "ChipBackgroundColor"
     )
 
-    ProvideContentColor(color = animatedColor) {
+    Material3Surface(
+        modifier = modifier
+            .clip(shape)
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick)
+                else Modifier
+            ),
+        shape = shape,
+        color = animatedBackgroundColor,
+        contentColor = animatedColor,
+        tonalElevation = 0.dp,
+    ) {
         Row(
-            modifier = modifier
-                .clip(shape)
-                .background(color = animatedBackgroundColor)
-                .clickable(enabled = onClick != null) {
-                    onClick?.invoke()
-                }
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             prefixIcon?.let {
-                Box(modifier = Modifier.size(16.dp)) {
-                    it()
-                }
+                Box(Modifier.size(17.dp)) { it() }
             }
             Text(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                text = text
+                text = text,
+                style = Material3Theme.typography.labelMedium,
+                color = animatedColor,
             )
             appendIcon?.let {
-                Box(modifier = Modifier.size(16.dp)) {
-                    it()
-                }
+                Box(Modifier.size(17.dp)) { it() }
             }
         }
     }
