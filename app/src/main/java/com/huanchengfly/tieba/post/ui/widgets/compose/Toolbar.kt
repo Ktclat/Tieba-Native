@@ -302,11 +302,13 @@ fun Toolbar(
                         actions()
                     }
                 },
-                navigationIcon = (@Composable {
-                    ProvideContentColor(color = contentColor) {
-                        navigationIcon?.invoke()
+                navigationIcon = {
+                    if (navigationIcon != null) {
+                        ProvideContentColor(color = contentColor) {
+                            navigationIcon()
+                        }
                     }
-                }).takeIf { navigationIcon != null },
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = backgroundColor,
                     titleContentColor = contentColor,
