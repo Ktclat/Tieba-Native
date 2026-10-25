@@ -21,6 +21,9 @@
     <string name="title_about">关于</string>
     <string name="my_info_settings">设置</string>
     <string name="title_settings">设置</string>
+    <string name="settings_section_account">账户与安全</string>
+    <string name="settings_section_appearance">外观与阅读</string>
+    <string name="settings_section_tools">功能与工具</string>
     <string name="title_settings_custom">个性化</string>
     <string name="tip_signed">已签</string>
     <string name="title_oksign">一键签到</string>
