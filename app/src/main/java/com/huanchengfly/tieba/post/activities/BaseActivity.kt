@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.addCallback
 import androidx.annotation.CallSuper
 import androidx.annotation.ColorInt
 import androidx.annotation.Keep
@@ -105,6 +106,21 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Native Compose screens delegate back to AndroidX, allowing Android's
+        // system and Navigation Compose to handle predictive back normally.
+        // Only legacy View/Fragment pages need the old fragment-back fallback.
+        if (this !is com.huanchengfly.tieba.post.arch.BaseComposeActivity) {
+            onBackPressedDispatcher.addCallback(this) {
+                if (!HandleBackUtil.handleBackPress(this@BaseActivity)) {
+                    isEnabled = false
+                    try {
+                        onBackPressedDispatcher.onBackPressed()
+                    } finally {
+                        isEnabled = true
+                    }
+                }
+            }
+        }
         if (isNeedFixBg) fixBackground()
         getDeviceDensity()
         INSTANCE.addActivity(this)
@@ -196,12 +212,6 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
         super.setSupportActionBar(toolbar)
         if (toolbar is TintToolbar) {
             mTintToolbar = toolbar
-        }
-    }
-
-    override fun onBackPressed() {
-        if (!HandleBackUtil.handleBackPress(this)) {
-            super.onBackPressed()
         }
     }
 
