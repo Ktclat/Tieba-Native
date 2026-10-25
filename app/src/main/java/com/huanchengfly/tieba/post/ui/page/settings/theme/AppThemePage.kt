@@ -30,9 +30,8 @@ import androidx.compose.material.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BorderColor
 import androidx.compose.material.icons.rounded.Check
@@ -206,11 +205,7 @@ fun AppThemePage(
                             maxLines = 1,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             modifier = Modifier.weight(1f),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                cursorColor = ExtendedTheme.colors.primary,
-                                focusedBorderColor = ExtendedTheme.colors.primary,
-                                focusedLabelColor = ExtendedTheme.colors.primary
-                            )
+                            shape = RoundedCornerShape(20.dp)
                         )
                         IconButton(
                             onClick = {
@@ -331,7 +326,7 @@ fun AppThemePage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(18.dp))
                                 .background(
                                     brush = Brush.sweepGradient(
                                         colors = listOf(
@@ -384,7 +379,7 @@ fun AppThemePage(
                                 horizontalArrangement = Arrangement.Center,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(18.dp))
                                     .background(
                                         color = customPrimaryColor,
                                     )
@@ -414,7 +409,7 @@ fun AppThemePage(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(18.dp))
                                     .clickable {
                                         context.goToActivity<TranslucentThemeActivity>()
                                     },

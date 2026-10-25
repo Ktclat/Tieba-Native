@@ -32,6 +32,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -181,6 +182,10 @@ private fun RowScope.StatCardItem(
     statNum: Int,
     statText: String
 ) {
+    val context = LocalContext.current
+    val statsFont = remember(context) {
+        FontFamily(Typeface.createFromAsset(context.assets, "bebas.ttf"))
+    }
     Column(
         modifier = Modifier.weight(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,7 +193,7 @@ private fun RowScope.StatCardItem(
         Text(
             text = "$statNum",
             fontSize = 20.sp,
-            fontFamily = FontFamily(Typeface.createFromAsset(LocalContext.current.assets, "bebas.ttf")),
+            fontFamily = statsFont,
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
