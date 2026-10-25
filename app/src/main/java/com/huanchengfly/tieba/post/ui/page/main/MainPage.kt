@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -44,6 +45,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collect
 import com.huanchengfly.tieba.post.LocalDevicePosture
 import com.huanchengfly.tieba.post.LocalNotificationCountFlow
 import com.huanchengfly.tieba.post.R
@@ -289,6 +294,11 @@ fun MainPage(
     // A very small page-scale overshoot accompanies the jelly indicator.
     // graphicsLayer changes only presentation; list measurements stay stable.
     val pageScale = remember { Animatable(1f) }
+    val predictiveProgress = remember { Animatable(0f) }
+    val predictTabBack by rememberPreferenceAsState(
+        key = booleanPreferencesKey("enablePredictiveTabBack"),
+        defaultValue = true,
+    )
     var lastAnimatedTab by remember { mutableIntStateOf(pagerState.currentPage) }
     LaunchedEffect(pagerState.currentPage) {
         if (lastAnimatedTab != pagerState.currentPage) {
@@ -354,8 +364,11 @@ fun MainPage(
                     state = pagerState,
                     key = { navigationItems[it].id },
                     modifier = Modifier.fillMaxSize().graphicsLayer {
-                        scaleX = pageScale.value
-                        scaleY = pageScale.value
+                        // Layer-only updates avoid recomposition of the full tab content.
+                        val preview = predictiveProgress.value
+                        scaleX = pageScale.value * (1f - preview * 0.055f)
+                        scaleY = pageScale.value * (1f - preview * 0.045f)
+                        translationX = preview * 12.dp.toPx()
                     },
                     verticalAlignment = Alignment.Top,
                     userScrollEnabled = false
@@ -365,10 +378,25 @@ fun MainPage(
             }
         }
     }
-    BackHandler(enabled = pagerState.currentPage != 0) {
-        coroutineScope.launch {
-            pagerState.scrollToPage(0)
+    // Only tabs intercept predictive back. Root activity can still use the
+    // system's native predictive back-to-home animation.
+    PredictiveBackHandler(enabled = pagerState.currentPage != 0 && predictTabBack) { progress ->
+        try {
+            progress.collect { event ->
+                predictiveProgress.snapTo(event.progress.coerceIn(0f, 1f))
+            }
+            pagerState.animateScrollToPage(0)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } finally {
+            // A cancelled swipe restores the original tab without navigating.
+            withContext(NonCancellable) {
+                predictiveProgress.animateTo(0f, spring(stiffness = Spring.StiffnessMedium))
+            }
         }
+    }
+    BackHandler(enabled = pagerState.currentPage != 0 && !predictTabBack) {
+        coroutineScope.launch { pagerState.scrollToPage(0) }
     }
 }
 

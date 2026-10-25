@@ -119,6 +119,7 @@
 
         <activity
             android:name=".MainActivityV2"
+            android:enableOnBackInvokedCallback="true"
             android:configChanges="screenSize|screenLayout|orientation|smallestScreenSize|keyboard|navigation|keyboardHidden"
             android:enabled="true"
             android:exported="true"
