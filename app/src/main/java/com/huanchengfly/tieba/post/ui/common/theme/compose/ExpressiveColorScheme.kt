@@ -155,7 +155,7 @@ fun ExtendedColors.applyExpressiveScheme(scheme: ColorScheme): ExtendedColors = 
     card = scheme.surfaceContainerLow,
     floorCard = scheme.surfaceContainer,
     divider = scheme.outlineVariant,
-    shadow = scheme.shadow,
+    shadow = scheme.onSurface.copy(alpha = 0.16f),
     indicator = scheme.secondaryContainer,
     windowBackground = scheme.background,
     placeholder = scheme.surfaceContainerHigh,
