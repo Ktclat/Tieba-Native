@@ -8,6 +8,10 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FabPosition
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
+import androidx.compose.material3.Scaffold as Material3Scaffold
+import androidx.compose.material3.FabPosition as Material3FabPosition
+import androidx.compose.material3.MaterialTheme as Material3Theme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.ScaffoldState
 import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
@@ -71,25 +75,45 @@ fun MyScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     CompositionLocalProvider(LocalSnackbarHostState provides scaffoldState.snackbarHostState) {
-        Scaffold(
-            modifier,
-            scaffoldState,
-            topBar,
-            bottomBar,
-            snackbarHost,
-            floatingActionButton,
-            floatingActionButtonPosition,
-            isFloatingActionButtonDocked,
-            drawerContent,
-            drawerGesturesEnabled,
-            drawerShape,
-            drawerElevation,
-            drawerBackgroundColor,
-            drawerContentColor,
-            drawerScrimColor,
-            backgroundColor,
-            contentColor,
-            content
-        )
+        if (drawerContent != null) {
+            // Preserve the legacy drawer contract for any remaining View screens.
+            Scaffold(
+                modifier,
+                scaffoldState,
+                topBar,
+                bottomBar,
+                snackbarHost,
+                floatingActionButton,
+                floatingActionButtonPosition,
+                isFloatingActionButtonDocked,
+                drawerContent,
+                drawerGesturesEnabled,
+                drawerShape,
+                drawerElevation,
+                drawerBackgroundColor,
+                drawerContentColor,
+                drawerScrimColor,
+                backgroundColor,
+                contentColor,
+                content,
+            )
+        } else {
+            Material3Scaffold(
+                modifier = modifier,
+                topBar = topBar,
+                bottomBar = bottomBar,
+                snackbarHost = { snackbarHost(scaffoldState.snackbarHostState) },
+                floatingActionButton = floatingActionButton,
+                floatingActionButtonPosition = if (floatingActionButtonPosition == FabPosition.Center)
+                    Material3FabPosition.Center else Material3FabPosition.End,
+                containerColor = if (backgroundColor == Color.Transparent)
+                    Material3Theme.colorScheme.background else backgroundColor,
+                contentColor = if (contentColor == Color.Unspecified)
+                    Material3Theme.colorScheme.onBackground else contentColor,
+                // Existing top/bottom bars already handle system insets themselves.
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                content = content,
+            )
+        }
     }
 }
