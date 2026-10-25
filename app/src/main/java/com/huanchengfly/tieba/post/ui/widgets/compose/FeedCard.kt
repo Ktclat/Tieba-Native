@@ -3,7 +3,10 @@ package com.huanchengfly.tieba.post.ui.widgets.compose
 import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.material3.MaterialTheme as Material3Theme
+import androidx.compose.material3.Surface as Material3Surface
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -220,24 +223,33 @@ fun Card(
     val paddingModifier = if (action != null) Modifier.padding(top = 14.dp)
     else Modifier.padding(vertical = 14.dp)
 
-    Column(
+    Material3Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clip(cardShape)
-            .background(ExtendedTheme.colors.card)
-            .then(cardModifier)
-            .then(paddingModifier)
-            .padding(contentPadding)
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        shape = cardShape,
+        color = Material3Theme.colorScheme.surfaceContainerLow,
+        contentColor = Material3Theme.colorScheme.onSurface,
+        tonalElevation = 1.dp,
+        border = BorderStroke(
+            0.8.dp,
+            Material3Theme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+        ),
     ) {
-        header()
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = cardModifier
+                .then(paddingModifier)
+                .padding(contentPadding),
         ) {
-            content()
+            header()
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                content()
+            }
+            action?.invoke(this)
         }
-        action?.invoke(this)
     }
 }
 

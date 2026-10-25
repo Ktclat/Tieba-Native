@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
-import androidx.compose.material.Scaffold
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
@@ -262,7 +262,7 @@ fun UserPage(
         Text(text = stringResource(id = R.string.message_dialog_follow_system_night))
     }
 
-    Scaffold(
+    MyScaffold(
         backgroundColor = Color.Transparent,
         modifier = Modifier
             .statusBarsPadding()

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -62,7 +62,7 @@ fun PrefsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp),
                             color = Material3Theme.colorScheme.surfaceContainerLow,
-                            elevation = 0.dp,
+                            tonalElevation = 0.dp,
                             border = BorderStroke(
                                 0.75.dp,
                                 Material3Theme.colorScheme.outlineVariant.copy(alpha = 0.7f)

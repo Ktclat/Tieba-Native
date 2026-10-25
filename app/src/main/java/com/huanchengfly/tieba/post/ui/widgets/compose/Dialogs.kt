@@ -15,11 +15,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
+import androidx.compose.material3.OutlinedTextField as M3OutlinedTextField
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.ProvideTextStyle
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -285,7 +285,7 @@ fun PromptDialog(
                     content()
                 }
             }
-            OutlinedTextField(
+            M3OutlinedTextField(
                 value = textVal,
                 onValueChange = {
                     if (onValueChange.invoke(it, textVal)) textVal = it
@@ -298,11 +298,7 @@ fun PromptDialog(
                 modifier = Modifier
                     .focusRequester(focusRequester)
                     .fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    cursorColor = ExtendedTheme.colors.primary,
-                    focusedBorderColor = ExtendedTheme.colors.primary,
-                    focusedLabelColor = ExtendedTheme.colors.primary
-                )
+                shape = RoundedCornerShape(20.dp)
             )
             LaunchedEffect(focusRequester) {
                 focusRequester.requestFocus()
@@ -404,8 +400,8 @@ fun Dialog(
                 )
                 .padding(16.dp)
                 .background(
-                    color = ExtendedTheme.colors.windowBackground,
-                    shape = RoundedCornerShape(28.dp)
+                    color = M3Theme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(32.dp)
                 )
                 .padding(vertical = 24.dp),
         ) {

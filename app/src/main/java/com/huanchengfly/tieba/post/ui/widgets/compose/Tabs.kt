@@ -8,6 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -399,32 +401,40 @@ fun PagerTabIndicator(
     tabPositions: List<TabPosition>,
 ) {
     if (tabPositions.isNotEmpty()) {
-        val tabWidth = 16.dp
         val currentPage = minOf(tabPositions.lastIndex, pagerState.currentPage)
         val currentTab = tabPositions[currentPage]
         val prevTab = tabPositions.getOrNull(currentPage - 1)
         val nextTab = tabPositions.getOrNull(currentPage + 1)
         val fraction = pagerState.currentPageOffsetFraction
-        val currentTabLeft = currentTab.left + (currentTab.width / 2 - tabWidth / 2)
+        val currentTabLeft = currentTab.left + 6.dp
         val indicatorOffset = if (fraction > 0 && nextTab != null) {
-            val nextTabLeft = nextTab.left + (nextTab.width / 2 - tabWidth / 2)
-            lerp(currentTabLeft, nextTabLeft, fraction)
+            lerp(currentTabLeft, nextTab.left + 6.dp, fraction)
         } else if (fraction < 0 && prevTab != null) {
-            val prevTabLeft = prevTab.left + (prevTab.width / 2 - tabWidth / 2)
-            lerp(currentTabLeft, prevTabLeft, -fraction)
-        } else {
-            currentTabLeft
-        }
-        val animatedIndicatorOffset by animateDpAsState(targetValue = indicatorOffset)
+            lerp(currentTabLeft, prevTab.left + 6.dp, -fraction)
+        } else currentTabLeft
+        val animatedIndicatorOffset by animateDpAsState(
+            targetValue = indicatorOffset,
+            label = "tab-indicator-offset",
+        )
+        val animatedWidth by animateDpAsState(
+            targetValue = (currentTab.width - 12.dp).coerceAtLeast(24.dp),
+            label = "tab-indicator-width",
+        )
+        val indicatorShape = RoundedCornerShape(18.dp)
         Box(
             Modifier
                 .fillMaxWidth()
-                .wrapContentSize(Alignment.BottomStart)
-                .offset(x = animatedIndicatorOffset, y = (-8).dp)
-                .width(16.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(100))
-                .background(color = LocalContentColor.current)
+                .wrapContentSize(Alignment.CenterStart)
+                .offset(x = animatedIndicatorOffset)
+                .width(animatedWidth)
+                .height(36.dp)
+                .clip(indicatorShape)
+                .background(M3Theme.colorScheme.secondaryContainer.copy(alpha = 0.32f))
+                .border(
+                    0.75.dp,
+                    M3Theme.colorScheme.primary.copy(alpha = 0.16f),
+                    indicatorShape,
+                )
         )
     }
 }
@@ -435,19 +445,26 @@ fun TabIndicator(
     tabPositions: List<TabPosition>
 ) {
     if (tabPositions.isNotEmpty()) {
-        val tabIndicatorWidth = 16.dp
-        val currentTab = tabPositions[selectedTabIndex]
-        val currentTabLeft = currentTab.left + (currentTab.width / 2 - tabIndicatorWidth / 2)
-        val animatedIndicatorOffset by animateDpAsState(targetValue = currentTabLeft)
+        val currentTab = tabPositions[selectedTabIndex.coerceIn(0, tabPositions.lastIndex)]
+        val animatedIndicatorOffset by animateDpAsState(
+            targetValue = currentTab.left + 6.dp,
+            label = "tab-active-offset",
+        )
+        val indicatorWidth by animateDpAsState(
+            targetValue = (currentTab.width - 12.dp).coerceAtLeast(24.dp),
+            label = "tab-active-width",
+        )
+        val indicatorShape = RoundedCornerShape(18.dp)
         Box(
             Modifier
                 .fillMaxWidth()
-                .wrapContentSize(Alignment.BottomStart)
-                .offset(x = animatedIndicatorOffset, y = (-8).dp)
-                .width(tabIndicatorWidth)
-                .height(3.dp)
-                .clip(RoundedCornerShape(100))
-                .background(color = LocalContentColor.current)
+                .wrapContentSize(Alignment.CenterStart)
+                .offset(x = animatedIndicatorOffset)
+                .width(indicatorWidth)
+                .height(36.dp)
+                .clip(indicatorShape)
+                .background(M3Theme.colorScheme.secondaryContainer.copy(alpha = 0.32f))
+                .border(0.75.dp, M3Theme.colorScheme.primary.copy(alpha = 0.16f), indicatorShape)
         )
     }
 }

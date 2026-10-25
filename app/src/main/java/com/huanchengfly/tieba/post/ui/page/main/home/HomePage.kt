@@ -33,7 +33,7 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface as Material3Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -136,7 +136,7 @@ fun SearchBox(
             .background(ExtendedTheme.colors.topBar)
             .padding(horizontal = 18.dp, vertical = 10.dp)
     ) {
-        Surface(
+        Material3Surface(
             color = backgroundColor,
             contentColor = contentColor,
             shape = RoundedCornerShape(18.dp),

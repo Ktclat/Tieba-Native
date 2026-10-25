@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
@@ -110,7 +110,7 @@ fun NowAccountItem(account: Account?, modifier: Modifier = Modifier) {
 @Composable
 fun SettingsPage(navigator: DestinationsNavigator) {
     ProvideNavigator(navigator = navigator) {
-        Scaffold(
+        MyScaffold(
             backgroundColor = ExtendedTheme.colors.background,
             topBar = {
                 TitleCentredToolbar(
