@@ -8,6 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -37,7 +39,11 @@ fun PrefsListItem(
     }
 
     val styledText = applyTextStyle(
-        typography.subtitle1,
+        typography.subtitle1.copy(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            lineHeight = 21.sp
+        ),
         textColor,
         when {
             enabled || !darkenOnDisable -> ContentAlpha.high
@@ -46,7 +52,10 @@ fun PrefsListItem(
         text
     )!!
     val styledSecondaryText = applyTextStyle(
-        typography.body2,
+        typography.body2.copy(
+            fontSize = 12.sp,
+            lineHeight = 18.sp
+        ),
         textColor,
         when {
             enabled || !darkenOnDisable -> ContentAlpha.medium
@@ -75,12 +84,12 @@ fun PrefsListItem(
 }
 
 private object AnyLine {
-    private val MinHeight = 48.dp
-    private val MinHeightSmaller = 32.dp
-    private val IconMinPaddedWidth = 40.dp
+    private val MinHeight = 58.dp
+    private val MinHeightSmaller = 38.dp
+    private val IconMinPaddedWidth = 46.dp
     private val ContentPadding = 16.dp
-    private val VerticalPadding = 16.dp
-    private val SingleLinePadding = 16.dp //used when no secondary text is supplied
+    private val VerticalPadding = 12.dp
+    private val SingleLinePadding = 13.dp //used when no secondary text is supplied
 
     @Composable
     fun CustomListItem(
@@ -128,7 +137,7 @@ private object AnyLine {
             }
 
             if (trailing != null) {
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 trailing.invoke()
             }
         }

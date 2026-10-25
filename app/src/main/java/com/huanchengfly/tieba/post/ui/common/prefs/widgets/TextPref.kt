@@ -2,10 +2,16 @@ package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import androidx.compose.foundation.clickable
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import androidx.compose.ui.graphics.Color
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsListItem
 import com.huanchengfly.tieba.post.ui.common.prefs.ifNotNullThen
@@ -42,6 +48,18 @@ fun TextPref(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null
 ) {
+    val defaultChevron: @Composable (() -> Unit)? =
+        if (trailingContent == null && enabled && onClick != null) {
+            @Composable {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = ExtendedTheme.colors.textSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        } else trailingContent
+
     PrefsListItem(
         text = { Text(title) },
         modifier = if (onClick != null && enabled) modifier.clickable { onClick() } else modifier,
@@ -51,6 +69,6 @@ fun TextPref(
         minimalHeight = minimalHeight,
         icon = leadingIcon,
         secondaryText = summary.ifNotNullThen { Text(summary!!) },
-        trailing = trailingContent
+        trailing = defaultChevron
     )
 }
