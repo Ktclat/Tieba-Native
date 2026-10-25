@@ -170,6 +170,9 @@ dependencies {
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     implementation(compose.material)
+    // Kotlin 1.9-compatible Material 3 ColorScheme bridge; M3 Expressive
+    // tonal roles are shared with existing Material 2 pages during migration.
+    implementation("androidx.compose.material3:material3:1.2.1")
     implementation(compose.material.icons.core)
     // Optional - Add full set of material icons
     implementation(compose.material.icons.extended)

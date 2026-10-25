@@ -467,21 +467,33 @@ fun TiebaLiteTheme(
 
     val useDynamicTheme = isDynamicTheme && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    val extendedColors = if (!useDynamicTheme || ThemeUtil.isTranslucentTheme(theme)) {
+    val upstreamColors = if (!useDynamicTheme || ThemeUtil.isTranslucentTheme(theme)) {
         getThemeColorForTheme(theme)
     } else {
         getDynamicColor(theme, dynamicTonalPalette(context))
     }
 
+    val expressiveScheme = expressiveColorScheme(
+        source = upstreamColors,
+        wallpaperColors = useDynamicTheme && !ThemeUtil.isTranslucentTheme(theme),
+    )
+    val extendedColors = remember(upstreamColors, expressiveScheme) {
+        upstreamColors.applyExpressiveScheme(expressiveScheme)
+    }
     val colors = getColorPalette(isDarkColorPalette, extendedColors)
 
     CompositionLocalProvider(LocalExtendedColors provides extendedColors) {
-        MaterialTheme(
-            colors = colors,
-            typography = Typography,
-            shapes = Shapes,
-            content = content
-        )
+        androidx.compose.material3.MaterialTheme(
+            colorScheme = expressiveScheme,
+            shapes = ExpressiveShapes,
+        ) {
+            MaterialTheme(
+                colors = colors,
+                typography = Typography,
+                shapes = Shapes,
+                content = content
+            )
+        }
     }
 }
 
