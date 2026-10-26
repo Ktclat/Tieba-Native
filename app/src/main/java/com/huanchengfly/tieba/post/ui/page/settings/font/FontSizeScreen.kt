@@ -153,7 +153,15 @@ internal fun FontSizeScreen(
                                     onClick = { onDraftChange(FontScaleSteps.DEFAULT_INDEX) },
                                     enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
                                     modifier = Modifier.weight(1f).semantics { testTag = "font-reset" },
-                                ) { Text(stringResource(R.string.native_font_reset)) }
+                                    // Leave room for four Chinese characters at 130% on a 320dp window.
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.native_font_reset),
+                                        maxLines = 1,
+                                        modifier = Modifier.semantics { testTag = "font-reset-label" },
+                                    )
+                                }
                                 FilledTonalIconButton(
                                     onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
                                     modifier = Modifier.semantics { testTag = "font-increase" },

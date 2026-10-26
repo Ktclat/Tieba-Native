@@ -26,11 +26,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -132,6 +134,13 @@ class FontSizeScreenTest {
         scrollToControls()
         compose.onNodeWithTag("font-increase").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("font-reset").assertIsDisplayed()
+        val textLayouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithTag("font-reset-label", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+                check(action(textLayouts))
+            }
+        assertEquals("Reset label must stay on one line on a compact window", 1, textLayouts.single().lineCount)
+        assertFalse("Reset label must not clip at 130% scale", textLayouts.single().hasVisualOverflow)
         capture("font-compact-dark-130.png")
     }
 
