@@ -35,18 +35,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import kotlin.math.roundToInt
 
-/** Stateless editor: preview changes never write preferences; only the Save callback does. */
+/** Stateless editor: preview changes never write preferences; only Save invokes persistence. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FontSizeScreen(
@@ -68,7 +68,8 @@ internal fun FontSizeScreen(
             CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.title_custom_font_size)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !saving, modifier = Modifier.testTag("font-back")) {
+                    IconButton(onClick = onBack, enabled = !saving,
+                        modifier = Modifier.semantics { testTag = "font-back" }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
                     }
                 },
@@ -81,7 +82,8 @@ internal fun FontSizeScreen(
                         onClick = onSave,
                         enabled = !saving && index != savedIndex,
                         modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 12.dp).testTag("font-save"),
+                            .padding(horizontal = 24.dp, vertical = 12.dp)
+                            .semantics { testTag = "font-save" },
                         contentPadding = PaddingValues(vertical = 14.dp, horizontal = 24.dp),
                     ) {
                         Text(stringResource(if (saving) R.string.native_font_saving else R.string.native_font_save))
@@ -95,7 +97,7 @@ internal fun FontSizeScreen(
             contentAlignment = Alignment.TopCenter,
         ) {
             LazyColumn(
-                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().testTag("font-content"),
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().semantics { testTag = "font-content" },
                 contentPadding = PaddingValues(20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
@@ -109,14 +111,14 @@ internal fun FontSizeScreen(
                     Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.surfaceContainerLow) {
                         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                             Text(stringResource(R.string.native_font_preview), style = MaterialTheme.typography.labelLarge, color = colors.primary)
-                            // Absolute scale: changing a draft must not rescale the controls or double-scale text.
                             val density = LocalDensity.current
+                            // Absolute draft scale, never multiplied by the saved scale a second time.
                             CompositionLocalProvider(
                                 LocalDensity provides Density(density.density, FontScaleSteps.scaleForIndex(index))
                             ) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(stringResource(R.string.native_font_sample_title), style = MaterialTheme.typography.titleLarge,
-                                        modifier = Modifier.testTag("font-preview-title"))
+                                        modifier = Modifier.semantics { testTag = "font-preview-title" })
                                     Text(stringResource(R.string.native_font_sample_body), style = MaterialTheme.typography.bodyLarge)
                                     Text(stringResource(R.string.native_font_sample_caption), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                                 }
@@ -127,15 +129,16 @@ internal fun FontSizeScreen(
                 item(key = "controls") {
                     Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.surfaceContainerLow) {
                         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Text(percentage, style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("font-percentage"))
+                            Text(percentage, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.semantics { testTag = "font-percentage" })
                             Slider(
                                 value = index.toFloat(),
                                 onValueChange = { onDraftChange(it.roundToInt().coerceIn(0, FontScaleSteps.LAST_INDEX)) },
                                 valueRange = 0f..FontScaleSteps.LAST_INDEX.toFloat(),
                                 steps = FontScaleSteps.LAST_INDEX - 1,
                                 enabled = !saving,
-                                modifier = Modifier.fillMaxWidth().testTag("font-slider").semantics {
+                                modifier = Modifier.fillMaxWidth().semantics {
+                                    testTag = "font-slider"
                                     contentDescription = sliderLabel
                                     stateDescription = percentage
                                 },
@@ -144,21 +147,17 @@ internal fun FontSizeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 FilledTonalIconButton(
                                     onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
-                                    modifier = Modifier.testTag("font-decrease"),
-                                ) {
-                                    Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease))
-                                }
+                                    modifier = Modifier.semantics { testTag = "font-decrease" },
+                                ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
                                 OutlinedButton(
                                     onClick = { onDraftChange(FontScaleSteps.DEFAULT_INDEX) },
                                     enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
-                                    modifier = Modifier.weight(1f).testTag("font-reset"),
+                                    modifier = Modifier.weight(1f).semantics { testTag = "font-reset" },
                                 ) { Text(stringResource(R.string.native_font_reset)) }
                                 FilledTonalIconButton(
                                     onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
-                                    modifier = Modifier.testTag("font-increase"),
-                                ) {
-                                    Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase))
-                                }
+                                    modifier = Modifier.semantics { testTag = "font-increase" },
+                                ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
                             }
                         }
                     }
@@ -166,7 +165,7 @@ internal fun FontSizeScreen(
                 if (saveError != null) {
                     item(key = "save-error") {
                         Text(saveError, color = colors.error, style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.testTag("font-save-error"))
+                            modifier = Modifier.semantics { testTag = "font-save-error" })
                     }
                 }
                 item(key = "hint") {
