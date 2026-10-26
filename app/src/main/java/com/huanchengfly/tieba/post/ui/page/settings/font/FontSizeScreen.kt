@@ -129,8 +129,25 @@ internal fun FontSizeScreen(
                 item(key = "controls") {
                     Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.surfaceContainerLow) {
                         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Text(percentage, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.semantics { testTag = "font-percentage" })
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    percentage, style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.SemiBold, maxLines = 1,
+                                    modifier = Modifier.weight(1f).semantics { testTag = "font-percentage" },
+                                )
+                                FilledTonalIconButton(
+                                    onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
+                                    modifier = Modifier.semantics { testTag = "font-decrease" },
+                                ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
+                                FilledTonalIconButton(
+                                    onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
+                                    modifier = Modifier.semantics { testTag = "font-increase" },
+                                ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
+                            }
                             Slider(
                                 value = index.toFloat(),
                                 onValueChange = { onDraftChange(it.roundToInt().coerceIn(0, FontScaleSteps.LAST_INDEX)) },
@@ -143,29 +160,18 @@ internal fun FontSizeScreen(
                                     stateDescription = percentage
                                 },
                             )
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                FilledTonalIconButton(
-                                    onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
-                                    modifier = Modifier.semantics { testTag = "font-decrease" },
-                                ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
-                                OutlinedButton(
-                                    onClick = { onDraftChange(FontScaleSteps.DEFAULT_INDEX) },
-                                    enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
-                                    modifier = Modifier.weight(1f).semantics { testTag = "font-reset" },
-                                    // Leave room for four Chinese characters at 130% on a 320dp window.
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                                ) {
-                                    Text(
-                                        stringResource(R.string.native_font_reset),
-                                        maxLines = 1,
-                                        modifier = Modifier.semantics { testTag = "font-reset-label" },
-                                    )
-                                }
-                                FilledTonalIconButton(
-                                    onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
-                                    modifier = Modifier.semantics { testTag = "font-increase" },
-                                ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
+                            // A dedicated full-width row stays legible in narrow windows and large fonts.
+                            OutlinedButton(
+                                onClick = { onDraftChange(FontScaleSteps.DEFAULT_INDEX) },
+                                enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
+                                modifier = Modifier.fillMaxWidth().semantics { testTag = "font-reset" },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                            ) {
+                                Text(
+                                    stringResource(R.string.native_font_reset),
+                                    maxLines = 1,
+                                    modifier = Modifier.semantics { testTag = "font-reset-label" },
+                                )
                             }
                         }
                     }

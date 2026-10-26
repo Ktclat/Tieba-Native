@@ -76,7 +76,6 @@ class FontSizeScreenTest {
     }
 
     private fun scrollToControls() {
-        // Off-screen LazyColumn items may not exist in the semantics tree yet.
         compose.onNodeWithTag("font-content").performScrollToIndex(2)
     }
 
@@ -133,21 +132,25 @@ class FontSizeScreenTest {
         compose.onNodeWithTag("font-save").assertIsDisplayed()
         scrollToControls()
         compose.onNodeWithTag("font-increase").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithTag("font-reset").assertIsDisplayed()
+        compose.onNodeWithTag("font-reset").performScrollTo().assertIsDisplayed()
+        // Preserve a review image even when a later layout assertion fails.
+        capture("font-compact-dark-130.png")
         val textLayouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithTag("font-reset-label", useUnmergedTree = true)
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
                 check(action(textLayouts))
             }
-        assertEquals("Reset label must stay on one line on a compact window", 1, textLayouts.single().lineCount)
-        assertFalse("Reset label must not clip at 130% scale", textLayouts.single().hasVisualOverflow)
-        capture("font-compact-dark-130.png")
+        val result = textLayouts.single()
+        assertEquals("Reset label must stay on one line on a compact window", 1, result.lineCount)
+        assertFalse(
+            "Reset label clips: size=${result.size}, widthOverflow=${result.didOverflowWidth}, heightOverflow=${result.didOverflowHeight}",
+            result.hasVisualOverflow,
+        )
     }
 
     private fun capture(name: String) {
         compose.waitForIdle()
-        // Robolectric has no real window compositor. Draw its actual native
-        // Android Canvas instead of waiting for a device PixelCopy redraw fence.
+        // Native Canvas rendering works without an instrumented device compositor.
         val image = compose.runOnIdle {
             check(renderingView.width > 0 && renderingView.height > 0)
             Bitmap.createBitmap(renderingView.width, renderingView.height, Bitmap.Config.ARGB_8888).also {
