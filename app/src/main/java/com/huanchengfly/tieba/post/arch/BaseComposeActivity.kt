@@ -18,6 +18,7 @@ import androidx.core.view.WindowCompat
 import com.google.accompanist.systemuicontroller.SystemUiController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.activities.BaseActivity
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideAppFontScale
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowSizeClass
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.calculateWindowSizeClass
@@ -26,29 +27,18 @@ import com.huanchengfly.tieba.post.utils.ThemeUtil
 
 abstract class BaseComposeActivityWithParcelable<DATA : Parcelable> : BaseComposeActivityWithData<DATA>() {
     abstract val dataExtraKey: String
-
-    override fun parseData(intent: Intent): DATA? {
-        return intent.extras?.getParcelable(dataExtraKey)
-    }
+    override fun parseData(intent: Intent): DATA? = intent.extras?.getParcelable(dataExtraKey)
 }
 
 abstract class BaseComposeActivityWithData<DATA> : BaseComposeActivity() {
     var data: DATA? = null
-
     abstract fun parseData(intent: Intent): DATA?
-
     override fun onCreate(savedInstanceState: Bundle?) {
         data = parseData(intent)
         super.onCreate(savedInstanceState)
     }
-
     @Composable
-    final override fun Content() {
-        data?.let { data ->
-            Content(data)
-        }
-    }
-
+    final override fun Content() { data?.let { Content(it) } }
     @Composable
     abstract fun Content(data: DATA)
 }
@@ -60,86 +50,54 @@ abstract class BaseComposeActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             TiebaLiteTheme {
-                val systemUiController = rememberSystemUiController()
-                SideEffect {
-                    systemUiController.apply {
-                        setStatusBarColor(
-                            Color.Transparent,
-                            darkIcons = ThemeUtil.isStatusBarFontDark()
-                        )
-                        setNavigationBarColor(
-                            Color.Transparent,
-                            darkIcons = ThemeUtil.isNavigationBarFontDark(),
-                            navigationBarContrastEnforced = false
-                        )
+                ProvideAppFontScale {
+                    val systemUiController = rememberSystemUiController()
+                    SideEffect {
+                        systemUiController.apply {
+                            setStatusBarColor(Color.Transparent, darkIcons = ThemeUtil.isStatusBarFontDark())
+                            setNavigationBarColor(
+                                Color.Transparent,
+                                darkIcons = ThemeUtil.isNavigationBarFontDark(),
+                                navigationBarContrastEnforced = false,
+                            )
+                        }
                     }
-                }
-
-                LaunchedEffect(key1 = "onCreateContent") {
-                    onCreateContent(systemUiController)
-                }
-
-                LocalAccountProvider {
-                    CompositionLocalProvider(
-                        LocalWindowSizeClass provides calculateWindowSizeClass(activity = this)
-                    ) {
-                        Content()
+                    LaunchedEffect("onCreateContent") { onCreateContent(systemUiController) }
+                    LocalAccountProvider {
+                        CompositionLocalProvider(
+                            LocalWindowSizeClass provides calculateWindowSizeClass(activity = this)
+                        ) { Content() }
                     }
                 }
             }
         }
     }
 
-    /**
-     * 在创建内容前执行
-     *
-     * @param systemUiController SystemUiController
-     */
-    open fun onCreateContent(
-        systemUiController: SystemUiController
-    ) {}
-
+    open fun onCreateContent(systemUiController: SystemUiController) {}
     @Composable
     abstract fun Content()
-
     fun handleCommonEvent(event: CommonUiEvent) {
         when (event) {
-            is CommonUiEvent.Toast -> {
-                Toast.makeText(this, event.message, event.length).show()
-            }
-
+            is CommonUiEvent.Toast -> Toast.makeText(this, event.message, event.length).show()
             else -> {}
         }
     }
-
     companion object {
-        val LocalWindowSizeClass =
-            staticCompositionLocalOf<WindowSizeClass> {
-                WindowSizeClass.calculateFromSize(DpSize(0.dp, 0.dp))
-            }
+        val LocalWindowSizeClass = staticCompositionLocalOf<WindowSizeClass> {
+            WindowSizeClass.calculateFromSize(DpSize(0.dp, 0.dp))
+        }
     }
 }
 
-
-
 sealed interface CommonUiEvent : UiEvent {
     object ScrollToTop : CommonUiEvent
-
     object NavigateUp : CommonUiEvent
-
-    data class Toast(
-        val message: CharSequence,
-        val length: Int = android.widget.Toast.LENGTH_SHORT
-    ) : CommonUiEvent
-
+    data class Toast(val message: CharSequence, val length: Int = android.widget.Toast.LENGTH_SHORT) : CommonUiEvent
     @Composable
     fun BaseViewModel<*, *, *, *>.bindScrollToTopEvent(lazyListState: LazyListState) {
-        onEvent<ScrollToTop> {
-            lazyListState.scrollToItem(0, 0)
-        }
+        onEvent<ScrollToTop> { lazyListState.scrollToItem(0, 0) }
     }
 }

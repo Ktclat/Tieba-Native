@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="native_font_heading">适合你的阅读大小</string>
+    <string name="native_font_help">先在下方预览，满意后再保存。返回不会更改已保存的字号。</string>
+    <string name="native_font_preview">阅读预览</string>
+    <string name="native_font_sample_title">让每一次阅读都更舒适</string>
+    <string name="native_font_sample_body">这里是帖子的正文预览。调整字号后，标题、正文和辅助信息仍然保持清晰的层次。Hello, Tieba Native! 0123456789</string>
+    <string name="native_font_sample_caption">刚刚 · 阅读与交流</string>
+    <string name="native_font_slider_label">调整应用字号</string>
+    <string name="native_font_percentage">%1$d%%</string>
+    <string name="native_font_increase">放大一级</string>
+    <string name="native_font_decrease">缩小一级</string>
+    <string name="native_font_reset">默认字号</string>
+    <string name="native_font_save">保存字号</string>
+    <string name="native_font_saving">正在保存…</string>
+    <string name="native_font_apply_hint">保存后，原生 Compose 页面会自动采用新字号，无需重启应用。</string>
+    <string name="native_font_load_failed">无法读取字号设置，请重试。</string>
+    <string name="native_font_save_failed">字号未能保存，请重试；原设置未改变。</string>
+    <string name="native_font_retry">重试</string>
+</resources>
