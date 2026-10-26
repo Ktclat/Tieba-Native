@@ -20,13 +20,8 @@ if (isPerVersion) {
     applicationVersionName += "-${property.preReleaseName}.${property.preReleaseVer}"
 }
 wire {
-    sourcePath {
-        srcDir("src/main/protos")
-    }
-
-    kotlin {
-        android = true
-    }
+    sourcePath { srcDir("src/main/protos") }
+    kotlin { android = true }
 }
 
 android {
@@ -38,14 +33,12 @@ android {
         versionCode = applicationVersionCode
         versionName = applicationVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        vectorDrawables { useSupportLibrary = true }
         manifestPlaceholders["is_self_build"] = "$isSelfBuild"
     }
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
+    // Host-side Compose regression tests need the merged Android resources/manifest.
+    testOptions { unitTests.isIncludeAndroidResources = true }
     signingConfigs {
         if (property.keystore.file.isNotBlank()) {
             create("config") {
@@ -62,43 +55,27 @@ android {
     }
     buildTypes {
         all {
-            signingConfig =
-                if (signingConfigs.any { it.name == "config" })
-                    signingConfigs.getByName("config")
-                else signingConfigs.getByName("debug")
+            signingConfig = if (signingConfigs.any { it.name == "config" })
+                signingConfigs.getByName("config") else signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             isDebuggable = false
             isJniDebuggable = false
         }
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
     compileOptions {
         targetCompatibility = JavaVersion.VERSION_17
         sourceCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
         jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-P",
-            "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" + project.buildDir.absolutePath + "/compose_metrics"
-        )
-        freeCompilerArgs += listOf(
-            "-P",
-            "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" + project.buildDir.absolutePath + "/compose_metrics"
-        )
-        freeCompilerArgs += listOf(
-            "-P", "plugin:androidx.compose.compiler.plugins.kotlin:stabilityConfigurationPath=" +
-                    project.rootDir.absolutePath + "/compose_stability_configuration.txt"
-        )
+        freeCompilerArgs += listOf("-P", "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" + project.buildDir.absolutePath + "/compose_metrics")
+        freeCompilerArgs += listOf("-P", "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" + project.buildDir.absolutePath + "/compose_metrics")
+        freeCompilerArgs += listOf("-P", "plugin:androidx.compose.compiler.plugins.kotlin:stabilityConfigurationPath=" + project.rootDir.absolutePath + "/compose_stability_configuration.txt")
     }
     packaging {
         resources {
@@ -110,100 +87,66 @@ android {
     applicationVariants.configureEach {
         val variant = this
         outputs.configureEach {
-            val fileName =
-                "${variant.buildType.name}-${applicationVersionName}(${applicationVersionCode}).apk"
-
-            (this as BaseVariantOutputImpl).outputFileName = fileName
+            (this as BaseVariantOutputImpl).outputFileName = "${variant.buildType.name}-${applicationVersionName}(${applicationVersionCode}).apk"
         }
         kotlin.sourceSets {
-            getByName(variant.name) {
-                kotlin.srcDir("build/generated/ksp/${variant.name}/kotlin")
-            }
+            getByName(variant.name) { kotlin.srcDir("build/generated/ksp/${variant.name}/kotlin") }
         }
     }
 }
 
 dependencies {
-    //Local Files
-//    implementation fileTree(include: ["*.jar"], dir: "libs")
-
     implementation(godaddy.color.picker)
-
     implementation(airbnb.lottie)
     implementation(airbnb.lottie.compose)
-
     implementation(kotlinx.serialization.json)
     implementation(kotlinx.collections.immutable)
-
     implementation(androidx.media3.exoplayer)
     implementation(androidx.media3.ui)
-
     implementation(compose.destinations.core)
     ksp(compose.destinations.ksp)
-
     implementation(androidx.navigation.compose)
-
     api(wire.runtime)
-
     implementation(hilt.android)
     kapt(hilt.compiler)
     implementation(androidx.hilt.navigation.compose)
     kapt(androidx.hilt.compiler)
-
     implementation(accompanist.drawablepainter)
     implementation(accompanist.insets.ui)
     implementation(accompanist.systemuicontroller)
     implementation(accompanist.placeholder.material)
-
     implementation(sketch.core)
     implementation(sketch.compose)
     implementation(sketch.ext.compose)
     implementation(sketch.gif)
     implementation(sketch.okhttp)
-
     implementation(zoomimage.compose.sketch)
-
     implementation(compose.bom)
     androidTestImplementation(compose.bom)
-
     runtimeOnly(compose.runtime.tracing)
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     implementation(compose.material)
-    // Kotlin 1.9-compatible Material 3 ColorScheme bridge; M3 Expressive
-    // tonal roles are shared with existing Material 2 pages during migration.
+    // Existing Kotlin 1.9 toolchain: M3 + shared expressive design tokens, not the latest Expressive API.
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation(compose.material.icons.core)
-    // Optional - Add full set of material icons
     implementation(compose.material.icons.extended)
     implementation(compose.ui.util)
-//    implementation "androidx.compose.material3:material3"
-
-    // Android Studio Preview support
     implementation(compose.ui.tooling.preview)
     debugImplementation(compose.ui.tooling)
-
-    // UI Tests
     androidTestImplementation(compose.ui.test.junit4)
     debugRuntimeOnly(compose.ui.test.manifest)
-
     implementation(androidx.constraintlayout.compose)
-
     implementation(github.oaid)
-
     implementation(org.jetbrains.annotations)
-
     implementation(kotlin.stdlib)
     implementation(kotlin.reflect)
-
     implementation(kotlinx.coroutines.core)
     implementation(kotlinx.coroutines.android)
-
     implementation(androidx.lifecycle.runtime)
     implementation(androidx.lifecycle.viewmodel)
     implementation(androidx.lifecycle.viewmodel.compose)
-
-    //AndroidX
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation(androidx.activity)
     implementation(androidx.activity.compose)
     implementation(androidx.appcompat)
@@ -217,37 +160,31 @@ dependencies {
     implementation(androidx.palette)
     implementation(androidx.window)
     implementation(androidx.startup.runtime)
-
-    //Test
     testImplementation(junit.junit)
+    testImplementation(platform("androidx.compose:compose-bom:2024.10.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation(androidx.test.core)
     androidTestImplementation(androidx.test.core)
     androidTestImplementation(androidx.test.ext.junit)
     androidTestImplementation(androidx.test.rules)
     androidTestImplementation(androidx.test.espresso.core)
     androidTestRuntimeOnly(androidx.test.runner)
-
-    //Glide
     implementation(glide.core)
     ksp(glide.ksp)
     implementation(glide.okhttp3.integration)
-
     implementation(google.material)
-
     implementation(okhttp3.core)
     implementation(retrofit2.core)
     implementation(retrofit2.converter.wire)
-
     implementation(google.gson)
     implementation(org.litepal.android.kotlin)
     implementation(com.jaredrummler.colorpicker)
-
     implementation(github.matisse)
     implementation(xx.permissions)
     implementation(com.gyf.immersionbar.immersionbar)
-
     implementation(com.github.yalantis.ucrop)
-
     implementation(com.jakewharton.butterknife)
     kapt(com.jakewharton.butterknife.compiler)
-
 }

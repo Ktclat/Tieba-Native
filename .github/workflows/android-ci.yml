@@ -3,17 +3,19 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: android-ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-and-test:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -35,8 +37,20 @@ jobs:
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-      - name: Build APK and run JVM tests
+      - name: Build APK and run JVM and Compose regression tests
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --stacktrace --no-daemon
+      - name: Upload test reports and UI review screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Tieba-Native-UI-Regression
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/ui-screenshots/
+            build/reports/ui-screenshots/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v6
@@ -45,3 +59,36 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+  cleanup-merged-test-branch:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'ui/native-settings-polish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Verify merged head and remove temporary branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          read_ref="repos/${GITHUB_REPOSITORY}/git/ref/heads/ui/native-settings-polish"
+          if current=$(gh api "$read_ref" --jq '.object.sha' 2>ref-error.txt); then
+            if [[ "$current" != "$EXPECTED_SHA" ]]; then
+              echo "Branch changed since review; refusing to delete it." >&2
+              exit 1
+            fi
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/ui/native-settings-polish"
+          elif grep -q 'HTTP 404' ref-error.txt; then
+            echo "Temporary branch is already absent."
+          else
+            cat ref-error.txt >&2
+            exit 1
+          fi

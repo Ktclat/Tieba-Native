@@ -1,43 +1,35 @@
-# Tieba Native · Material 3 Expressive 迁移盘点
+# Tieba Native · Material 3 / Expressive 风格迁移状态
 
-本文件用于区分「源码使用了 M3 组件」与「设备上视觉与交互完成验收」。
+区分源码改造、自动化回归与真机验收，不用 CI 绿色代替所有页面完成验收。
 
-## 设计体系
+## 共享基础
 
-- 采用共享 ColorScheme（主题种子色 + Android 12 及以后动态色），统一深浅主题、容器层级和文本色。
-- 采用共享 Shape / Typography token，保留已有底部悬浮胶囊的果冻动画与滚动自动隐藏。
-- 通用按钮、开关、标签、工具栏、脚手架、偏好设置容器、帖子卡片、弹窗输入框使用 Jetpack Compose Material 3。
-- 各主业务页面文本、图标、图标按钮使用 Material 3。
-- 平板/折叠屏的侧边导航栏和抽屉使用 Material 3。
-- 贴吧 Protobuf、网络层及上游 GPL-3.0 授权文件不变。
+- 共享 ColorScheme、动态色、Shape 与 Typography；保留悬浮导航的果冻动画、拖动选择和滚动显隐。
+- 主页面迁移 M3 文本、图标、工具栏和无抽屉 Scaffold；共享按钮、开关、搜索框、帖子卡片、偏好设置容器及平板侧边导航使用 M3。
+- 旧字体大小 Activity 改为原生 Compose M3：可滚动预览、80%—130% 十一个档位、无障碍滑块、增减与复位按钮、显式保存和返回取消。
+- 字号草稿不会立即写入。保存等待 DataStore 成功；失败保留草稿并提示。Compose 根部按生命周期收集字号，无需重启应用。
+- 设置行改为 M3 ListItem。共享点击/长按菜单改用 M3 DropdownMenu；圆角作用于弹出表面而非仅锚点。
+- MaterialInterop 向 M2 与 M3 同时传递有效颜色、透明度和文字样式，修复混合迁移阶段的按钮、菜单、设置行与提示文字。
+- 上游 LICENSE、UPSTREAM_README.md、协议定义与业务网络请求不变。
 
-## 页面覆盖范围
-
-页面基础迁移涵盖以下 42 个主要 Page.kt 文件：
-
-- 首页、动态（关注/个性推荐/热门）、消息和个人中心
-- 贴吧主页、帖子列表、帖子详情、楼中楼、发帖及回复
-- 搜索（综合/贴吧/帖子/用户）、历史、收藏、热榜
-- 账户、外观、阅读习惯、屏蔽、签到、更多设置及关于
-- 登录 WebView 容器、用户主页和用户内容
-
-上述覆盖指共享样式与页面基础组件，并**不**代表每个页面的全部旧控件都已替换。
-登录需要保留百度认证 WebView，原生业务页也可能内嵌视频播放器等 AndroidView。
-
-## 仍需验证或改造
-
-- 旧 Android View/XML 页面还需逐项迁移，特别是旧签到 Activity 和字体大小设置。
-- 页面里部分旧 M2 DropdownMenuItem、旧式弹层、选项卡和内容输入组件尚未全部换成 M3。
-- 仍使用兼容库（Kotlin 1.9.22、Compose BOM 2024.10、Material3 1.2.1）；
-  当前提供 **Material 3 + Expressive 风格设计 token**，尚不是最新 1.5 beta 的所有原生 Expressive API。
-- 需在 Android 8 / 12 / 16 上测试浅色、深色、动态色、字体缩放、折叠屏、
-  预测性返回和导航按压效果；CI 编译不等于真机视觉验收。
-- 对 UI 进行 screenshot/golden 测试、性能基准（Macrobenchmark）和可访问性检查。
-
-## 验收命令
+## 自动化验证
 
 ```bash
 ./gradlew :app:assembleDebug :app:testDebugUnitTest
 ```
 
-构建状态以 GitHub Actions 为准。保留上游 LICENSE、UPSTREAM_README.md 与非商业说明。
+新增字号步进、无效值保护、预览不落盘、保存和取消、复位、滑块无障碍进度、最小档位、浅色布局、窄屏深色大字体布局及 M2/M3 样式互通测试。
+
+Robolectric 使用独立的普通 Application，不连接用户账户。`Tieba-Native-UI-Regression` 构建产物包含 JUnit/HTML 报告和字号页复核截图。它们用于检查当前渲染结果，**不是黄金图像比对，也不是真机截图**。实际通过/失败以对应提交的 Actions 与报告为准。
+
+## 覆盖与剩余工作
+
+基础迁移涉及约 42 个 Page.kt 文件（首页、动态、消息、个人中心、贴吧、帖子、楼中楼、搜索、历史、收藏、设置、登录容器与用户主页），不代表每页所有旧控件均已替换。
+
+仍需推进：
+- 旧签到及半透明主题等 View/XML 流程，旧 M2 菜单项、部分弹层、选项卡和编辑控件。
+- 最新 Material 3 Expressive 专用 API 与 Kotlin/Compose 工具链的配套升级。当前仍为 Kotlin 1.9.22、Compose BOM 2024.10、Material3 1.2.1；风格 token 桥接不等于完整官方 Expressive API 迁移。
+- Android 8/12/16、动态色、平板/折叠屏、预测性返回、登录和发帖的真机回归。
+- 截图基线、辅助功能服务验证和 Macrobenchmark 性能数据。
+
+保留百度认证 WebView 与视频 AndroidView。独立模型审阅尚未接入；源码自查与自动化测试不冒称第二模型复审。
