@@ -2,27 +2,29 @@ package com.huanchengfly.tieba.post.ui.page.settings.font
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.view.View
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
@@ -45,12 +47,18 @@ class FontSizeScreenTest {
     private var saves = 0
     private var savedDraft = -1
     private var backs = 0
+    private lateinit var renderingView: View
 
     private fun show(initial: Int = 4, dark: Boolean = false, largeControls: Boolean = false) {
         compose.setContent {
-            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme(),
-                typography = ExpressiveTypography, shapes = ExpressiveShapes) {
+            MaterialTheme(
+                colorScheme = if (dark) darkColorScheme() else lightColorScheme(),
+                typography = ExpressiveTypography,
+                shapes = ExpressiveShapes,
+            ) {
                 val density = LocalDensity.current
+                val view = LocalView.current
+                SideEffect { renderingView = view }
                 CompositionLocalProvider(LocalDensity provides Density(density.density, if (largeControls) 1.3f else 1f)) {
                     var draft by remember { mutableIntStateOf(initial) }
                     FontSizeScreen(
@@ -65,9 +73,15 @@ class FontSizeScreenTest {
         }
     }
 
+    private fun scrollToControls() {
+        // Off-screen LazyColumn items may not exist in the semantics tree yet.
+        compose.onNodeWithTag("font-content").performScrollToIndex(2)
+    }
+
     @Test fun previewDoesNotSaveAndSaveCommitsOnlyChosenStep() {
         show()
         compose.onNodeWithTag("font-save").assertIsNotEnabled()
+        scrollToControls()
         compose.onNodeWithTag("font-increase").performScrollTo().performClick()
         compose.onNodeWithTag("font-percentage").assertTextEquals("105%")
         compose.runOnIdle { assertEquals(0, saves) }
@@ -83,6 +97,7 @@ class FontSizeScreenTest {
 
     @Test fun resetRestoresDefaultAndDisablesUnnecessarySave() {
         show(initial = 10)
+        scrollToControls()
         compose.onNodeWithTag("font-reset").performScrollTo().performClick()
         compose.onNodeWithTag("font-percentage").assertTextEquals("100%")
         compose.onNodeWithTag("font-save").assertIsNotEnabled()
@@ -90,6 +105,7 @@ class FontSizeScreenTest {
 
     @Test fun sliderSupportsAccessibilityProgressAction() {
         show()
+        scrollToControls()
         compose.onNodeWithTag("font-slider").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(7f) }
         compose.onNodeWithTag("font-percentage").assertTextEquals("115%")
@@ -98,6 +114,7 @@ class FontSizeScreenTest {
 
     @Test fun minimumStepCannotDecrease() {
         show(initial = 0)
+        scrollToControls()
         compose.onNodeWithTag("font-decrease").performScrollTo().assertIsNotEnabled()
     }
 
@@ -112,17 +129,34 @@ class FontSizeScreenTest {
     fun compactDarkLayoutSupportsLargeFontsAndScroll() {
         show(initial = 10, dark = true, largeControls = true)
         compose.onNodeWithTag("font-save").assertIsDisplayed()
+        scrollToControls()
         compose.onNodeWithTag("font-increase").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("font-reset").assertIsDisplayed()
         capture("font-compact-dark-130.png")
     }
 
     private fun capture(name: String) {
-        val image = compose.onRoot().captureToImage().asAndroidBitmap()
-        assertTrue(image.width > 0 && image.height > 0)
-        val directory = File("build/reports/ui-screenshots").apply { mkdirs() }
-        File(directory, name).outputStream().use {
-            check(image.compress(Bitmap.CompressFormat.PNG, 100, it))
+        compose.waitForIdle()
+        // Robolectric has no real window compositor. Draw its actual native
+        // Android Canvas instead of waiting for a device PixelCopy redraw fence.
+        val image = compose.runOnIdle {
+            check(renderingView.width > 0 && renderingView.height > 0)
+            Bitmap.createBitmap(renderingView.width, renderingView.height, Bitmap.Config.ARGB_8888).also {
+                renderingView.draw(Canvas(it))
+            }
+        }
+        try {
+            val samples = mutableSetOf<Int>()
+            for (y in 0 until image.height step 7) {
+                for (x in 0 until image.width step 7) samples.add(image.getPixel(x, y))
+            }
+            assertTrue("Review image must contain rendered content, not a blank canvas", samples.size > 4)
+            val directory = File("build/reports/ui-screenshots").apply { mkdirs() }
+            File(directory, name).outputStream().use {
+                check(image.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            image.recycle()
         }
     }
 }
