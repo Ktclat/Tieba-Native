@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTag
@@ -78,15 +80,30 @@ internal fun FontSizeScreen(
         bottomBar = {
             Surface(color = colors.surfaceContainerLow, tonalElevation = 0.dp) {
                 Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
-                    Button(
-                        onClick = onSave,
-                        enabled = !saving && index != savedIndex,
+                    Column(
                         modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 12.dp)
-                            .semantics { testTag = "font-save" },
-                        contentPadding = PaddingValues(vertical = 14.dp, horizontal = 24.dp),
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(stringResource(if (saving) R.string.native_font_saving else R.string.native_font_save))
+                        if (saveError != null) {
+                            Text(
+                                text = saveError,
+                                color = colors.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.semantics {
+                                    liveRegion = LiveRegionMode.Polite
+                                    testTag = "font-save-error"
+                                },
+                            )
+                        }
+                        Button(
+                            onClick = onSave,
+                            enabled = !saving && index != savedIndex,
+                            modifier = Modifier.fillMaxWidth().semantics { testTag = "font-save" },
+                            contentPadding = PaddingValues(vertical = 14.dp, horizontal = 24.dp),
+                        ) {
+                            Text(stringResource(if (saving) R.string.native_font_saving else R.string.native_font_save))
+                        }
                     }
                 }
             }
@@ -174,12 +191,6 @@ internal fun FontSizeScreen(
                                 )
                             }
                         }
-                    }
-                }
-                if (saveError != null) {
-                    item(key = "save-error") {
-                        Text(saveError, color = colors.error, style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.semantics { testTag = "font-save-error" })
                     }
                 }
                 item(key = "hint") {

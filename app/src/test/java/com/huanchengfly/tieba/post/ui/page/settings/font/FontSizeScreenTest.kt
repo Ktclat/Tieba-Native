@@ -11,11 +11,16 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -28,6 +33,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
 import java.io.File
@@ -49,6 +55,7 @@ class FontSizeScreenTest {
     private var saves = 0
     private var savedDraft = -1
     private var backs = 0
+    private var saveError by mutableStateOf<String?>(null)
     private lateinit var renderingView: View
 
     private fun show(initial: Int = 4, dark: Boolean = false, largeControls: Boolean = false) {
@@ -69,6 +76,7 @@ class FontSizeScreenTest {
                         onDraftChange = { draft = it },
                         onSave = { saves++; savedDraft = draft },
                         onBack = { backs++ },
+                        saveError = saveError,
                     )
                 }
             }
@@ -94,6 +102,28 @@ class FontSizeScreenTest {
         show(initial = 8)
         compose.onNodeWithTag("font-back").performClick()
         compose.runOnIdle { assertEquals(1, backs); assertEquals(0, saves) }
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h568dp")
+    fun failedSaveShowsMessageAndAllowsRetryWithoutScrolling() {
+        show(initial = 7, largeControls = true)
+        val save = compose.onNodeWithTag("font-save")
+        save.assertIsDisplayed().performClick()
+        val message = compose.runOnIdle {
+            assertEquals(1, saves)
+            assertEquals(7, savedDraft)
+            renderingView.context.getString(R.string.native_font_save_failed).also { saveError = it }
+        }
+        compose.onNodeWithTag("font-save-error")
+            .assertIsDisplayed()
+            .assertTextEquals(message)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        save.assertIsDisplayed().assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertEquals(2, saves)
+            assertEquals(7, savedDraft)
+        }
     }
 
     @Test fun resetRestoresDefaultAndDisablesUnnecessarySave() {
