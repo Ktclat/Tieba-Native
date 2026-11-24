@@ -7,7 +7,7 @@
 - 共享 ColorScheme、动态色、Shape 与 Typography；保留悬浮导航的果冻动画、拖动选择和滚动显隐。
 - 主页面迁移 M3 文本、图标、工具栏和无抽屉 Scaffold；共享按钮、开关、搜索框、帖子卡片、偏好设置容器及平板侧边导航使用 M3。
 - 旧字体大小 Activity 改为原生 Compose M3：可滚动预览、80%—130% 十一个档位、无障碍滑块、增减与复位按钮、显式保存和返回取消。
-- 字号草稿不会立即写入。保存等待 DataStore 成功；失败保留草稿并提示。Compose 根部按生命周期收集字号，无需重启应用。
+- 点保存后才将字号写入 DataStore。写入失败时，错误提示显示在保存按钮上方，并通过无障碍语义通知读屏服务。用户可以用当前草稿重试。保存成功后，已打开的 Compose 页面会自动应用新字号。
 - 设置行改为 M3 ListItem。共享点击/长按菜单改用 M3 DropdownMenu；圆角作用于弹出表面而非仅锚点。
 - MaterialInterop 向 M2 与 M3 同时传递有效颜色、透明度和文字样式，修复混合迁移阶段的按钮、菜单、设置行与提示文字。
 - 上游 LICENSE、UPSTREAM_README.md、协议定义与业务网络请求不变。
@@ -28,7 +28,7 @@ Robolectric 使用独立的普通 Application，不连接用户账户。`Tieba-N
 
 仍需推进：
 - 旧签到及半透明主题等 View/XML 流程，旧 M2 菜单项、部分弹层、选项卡和编辑控件。
-- 最新 Material 3 Expressive 专用 API 与 Kotlin/Compose 工具链的配套升级。当前仍为 Kotlin 1.9.22、Compose BOM 2024.10、Material3 1.2.1；风格 token 桥接不等于完整官方 Expressive API 迁移。
+- 升级 Kotlin/Compose 工具链并迁移到官方 Material 3 Expressive 专用 API。当前使用 Kotlin 1.9.22 和 Compose BOM 2024.10.00。`app/build.gradle.kts` 声明 Material 3 1.2.1，调试构建按 BOM 解析为 1.3.0。
 - Android 8/12/16、动态色、平板/折叠屏、预测性返回、登录和发帖的真机回归。
 - 截图基线、辅助功能服务验证和 Macrobenchmark 性能数据。
 
