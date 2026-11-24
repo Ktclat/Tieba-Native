@@ -14,6 +14,13 @@ class NavigationBehaviorTest {
         assertEquals(2, resolveNavigationDragTarget(2, 34f, 100f, 4))
     }
 
+    @Test fun halfATabSelectsTheNeighborInEitherDirection() {
+        assertEquals(1, resolveNavigationDragTarget(2, -50f, 100f, 4))
+        assertEquals(3, resolveNavigationDragTarget(2, 50f, 100f, 4))
+        assertEquals(2, resolveNavigationDragTarget(2, -49f, 100f, 4))
+        assertEquals(2, resolveNavigationDragTarget(2, 49f, 100f, 4))
+    }
+
     @Test fun dragClampsToExistingSegments() {
         assertEquals(0, resolveNavigationDragTarget(0, -500f, 100f, 4))
         assertEquals(3, resolveNavigationDragTarget(3, 500f, 100f, 4))

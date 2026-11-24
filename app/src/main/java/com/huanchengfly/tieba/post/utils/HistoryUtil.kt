@@ -2,118 +2,98 @@ package com.huanchengfly.tieba.post.utils
 
 import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.utils.extension.findFlow
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.litepal.LitePal
 import org.litepal.crud.async.FindMultiExecutor
 import org.litepal.extension.deleteAll
 import org.litepal.extension.find
 import org.litepal.extension.findAsync
-import org.litepal.extension.findFirstAsync
+
+internal data class HistoryCursor(val timestamp: Long, val count: Int, val id: Long)
+
+internal data class HistoryPageResult(val rows: List<History>, val next: HistoryCursor?)
 
 object HistoryUtil {
     const val PAGE_SIZE = 100
     const val TYPE_FORUM = 1
     const val TYPE_THREAD = 2
+    private const val ORDER = "timestamp DESC, count DESC, id DESC"
+
+    // Clearing history must also clear visits that were already queued when the user confirmed.
+    private val writer = Executors.newSingleThreadExecutor()
+    private val clears = MutableStateFlow(0L)
+    val clearVersion = clears.asStateFlow()
+
     fun deleteAll() {
-        LitePal.deleteAll<History>()
+        writer.submit {
+            LitePal.deleteAll<History>()
+            clears.value += 1L
+        }.get()
+    }
+
+    internal fun delete(type: Int, id: Long) {
+        writer.submit { LitePal.deleteAll<History>("type = ? AND id = ?", type.toString(), id.toString()) }.get()
     }
 
     @JvmOverloads
     fun saveHistory(history: History, async: Boolean = true) {
-        if (async) {
-            saveOrUpdateAsync(history)
-        } else {
-            saveOrUpdate(history)
+        val write = writer.submit {
+            val existing = LitePal.where("type = ? AND data = ?", history.type.toString(), history.data)
+                .findFirst(History::class.java)
+            val visit = history.copy(
+                timestamp = System.currentTimeMillis(),
+                count = (existing?.count ?: 0) + 1,
+            )
+            if (existing == null) visit.saveThrows() else visit.update(existing.id)
         }
+        if (!async) write.get()
     }
 
     val all: List<History>
-        get() = LitePal.order("timestamp desc, count desc").limit(100).find<History>()
+        get() = LitePal.order(ORDER).limit(PAGE_SIZE).find<History>()
 
-    fun getAll(type: Int): List<History> {
-        return LitePal.order("timestamp desc, count desc").where("type = ?", type.toString())
-            .limit(PAGE_SIZE)
+    fun getAll(type: Int): List<History> =
+        LitePal.where("type = ?", type.toString()).order(ORDER).limit(PAGE_SIZE).find<History>()
+
+    fun getAllAsync(type: Int): FindMultiExecutor<History> =
+        LitePal.where("type = ?", type.toString()).order(ORDER).limit(PAGE_SIZE).findAsync<History>()
+
+    fun getFlow(type: Int, page: Int): Flow<List<History>> =
+        LitePal.where("type = ?", type.toString()).order(ORDER)
+            .limit(PAGE_SIZE).offset(page * PAGE_SIZE).findFlow()
+
+    internal fun search(type: Int, keyword: String, after: HistoryCursor?): HistoryPageResult {
+        val query = keyword.trim()
+        val predicates = mutableListOf("type = ?")
+        val args = mutableListOf(type.toString())
+        if (query.isNotEmpty()) {
+            // instr treats %, _, quotes and backslashes as part of the search term.
+            if (type == TYPE_THREAD) {
+                predicates += "(instr(lower(title), lower(?)) > 0 OR instr(lower(username), lower(?)) > 0 OR data = ?)"
+                args += listOf(query, query, query)
+            } else {
+                predicates += "(instr(lower(data), lower(?)) > 0 OR instr(lower(title), lower(?)) > 0)"
+                args += listOf(query, query)
+            }
+        }
+        if (after != null) {
+            predicates += "(timestamp < ? OR (timestamp = ? AND count < ?) OR (timestamp = ? AND count = ? AND id < ?))"
+            args += listOf(
+                after.timestamp.toString(), after.timestamp.toString(), after.count.toString(),
+                after.timestamp.toString(), after.count.toString(), after.id.toString(),
+            )
+        }
+        val found = LitePal.where(predicates.joinToString(" AND "), *args.toTypedArray())
+            .order(ORDER)
+            .limit(PAGE_SIZE + 1)
             .find<History>()
-    }
-
-    fun getAllAsync(type: Int): FindMultiExecutor<History> {
-        return LitePal.order("timestamp desc, count desc").where("type = ?", type.toString())
-            .limit(PAGE_SIZE)
-            .findAsync<History>()
-    }
-
-    fun getFlow(
-        type: Int,
-        page: Int
-    ): Flow<List<History>> {
-        return LitePal.where("type = ?", "$type")
-            .order("timestamp desc, count desc")
-            .limit(PAGE_SIZE)
-            .offset(page * 100)
-            .findFlow()
-    }
-
-    private fun update(history: History): Boolean {
-        val historyBean = LitePal.where("data = ?", history.data).findFirst(
-            History::class.java
-        )
-        if (historyBean != null) {
-            historyBean.copy(
-                timestamp = System.currentTimeMillis(),
-                title = history.title,
-                extras = history.extras,
-                avatar = history.avatar,
-                username = history.username,
-                count = historyBean.count + 1
-            ).update(historyBean.id)
-            return true
-        }
-        return false
-    }
-
-    private fun updateAsync(
-        history: History,
-        callback: ((Boolean) -> Unit)? = null,
-    ) {
-        LitePal.where("data = ?", history.data).findFirstAsync<History?>()
-            .listen {
-                if (it == null) {
-                    callback?.invoke(false)
-                } else {
-                    history.copy(
-                        timestamp = System.currentTimeMillis(),
-                        count = it.count + 1
-                    ).updateAsync(it.id).listen {
-                        callback?.invoke(true)
-                    }
-                }
-            }
-    }
-
-    private fun saveOrUpdate(history: History, async: Boolean = false) {
-        if (update(history)) {
-            return
-        }
-        val saveHistory = history.copy(count = 1, timestamp = System.currentTimeMillis())
-        if (async) {
-            saveHistory.saveAsync().listen(null)
-        } else {
-            saveHistory.save()
-        }
-    }
-
-    private fun saveOrUpdateAsync(
-        history: History,
-        callback: ((Boolean) -> Unit)? = null
-    ) {
-        updateAsync(history) { success ->
-            if (!success) {
-                history.copy(count = 1, timestamp = System.currentTimeMillis())
-                    .saveAsync()
-                    .listen {
-                        callback?.invoke(it)
-                    }
-            }
-        }
+        val rows = found.take(PAGE_SIZE)
+        val next = if (found.size > PAGE_SIZE) {
+            rows.last().let { HistoryCursor(it.timestamp, it.count, it.id) }
+        } else null
+        return HistoryPageResult(rows, next)
     }
 }
