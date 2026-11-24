@@ -40,13 +40,16 @@ class HistorySearchTest {
     }
 
     @Test
-    fun filtersDatabaseBeforePagingByTitleAuthorOrRawForumName() {
+    fun filtersDatabaseBeforePagingByTitleAuthorAndBothForumNames() {
         val term = "百分%_'"
         val title = History(title = "A ${term}BOX", data = "11", type = thread, timestamp = 1)
         val author = History(title = "Different", username = "${term}BoX", data = "12", type = thread, timestamp = 1)
-        val bar = History(title = "A localized title", data = "${term}Box", type = forum)
+        val bar = History(title = "曾用名", data = "${term}Box", type = forum)
+        val photography = History(title = "摄影吧", data = "摄影", type = forum)
+        val literalName = History(title = "胶片%_吧", data = "胶片%_", type = forum)
+        val similar = History(title = "胶片相机吧", data = "胶片相机", type = forum)
         val decoy = History(title = "百分 many_'Box", data = "13", type = thread)
-        LitePal.saveAll(listOf(title, author, bar, decoy))
+        LitePal.saveAll(listOf(title, author, bar, photography, literalName, similar, decoy))
         seedThreads(105)
 
         val query = " ${term}box "
@@ -54,7 +57,11 @@ class HistorySearchTest {
         assertEquals(setOf("11", "12"), results.rows.map { it.data }.toSet())
         assertNull(results.next)
         assertEquals(listOf(bar.data), HistoryUtil.search(forum, query, null).rows.map { it.data })
-        assertTrue(HistoryUtil.search(forum, "localized", null).rows.isEmpty())
+        assertEquals(listOf(bar.data), HistoryUtil.search(forum, "曾用名", null).rows.map { it.data })
+        for (name in listOf("摄影", "摄影吧")) {
+            assertEquals(listOf("摄影"), HistoryUtil.search(forum, name, null).rows.map { it.data })
+        }
+        assertEquals(listOf("胶片%_"), HistoryUtil.search(forum, "%_吧", null).rows.map { it.data })
         assertTrue(HistoryUtil.search(thread, "missing", null).rows.isEmpty())
     }
 

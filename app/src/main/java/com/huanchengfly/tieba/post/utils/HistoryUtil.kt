@@ -75,8 +75,8 @@ object HistoryUtil {
                 predicates += "(instr(lower(title), lower(?)) > 0 OR instr(lower(username), lower(?)) > 0 OR data = ?)"
                 args += listOf(query, query, query)
             } else {
-                predicates += "instr(lower(data), lower(?)) > 0"
-                args += query
+                predicates += "(instr(lower(data), lower(?)) > 0 OR instr(lower(title), lower(?)) > 0)"
+                args += listOf(query, query)
             }
         }
         if (after != null) {

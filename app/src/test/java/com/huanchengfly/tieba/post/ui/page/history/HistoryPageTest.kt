@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.history
 
 import android.app.Application
 import android.view.View
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertIsDisplayed
@@ -16,10 +15,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.ui.captureReviewImage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
+import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import org.junit.Assert.assertTrue
@@ -33,7 +32,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], application = Application::class, qualifiers = "w360dp-h720dp-mdpi")
+@Config(sdk = [28], application = App::class, qualifiers = "w360dp-h720dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HistoryPageTest {
     @get:Rule val compose = createComposeRule()
@@ -54,7 +53,7 @@ class HistoryPageTest {
         restore.setContent {
             val local = LocalView.current
             SideEffect { view = local }
-            MaterialTheme(typography = ExpressiveTypography, shapes = ExpressiveShapes) {
+            TiebaLiteTheme {
                 HistoryPage(EmptyDestinationsNavigator)
             }
         }
