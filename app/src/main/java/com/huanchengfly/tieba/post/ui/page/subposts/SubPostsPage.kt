@@ -15,7 +15,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.DropdownMenuItem
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,14 +44,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.User
-import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
-import com.huanchengfly.tieba.post.arch.onEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
@@ -62,11 +62,11 @@ import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyDialog
 import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
 import com.huanchengfly.tieba.post.ui.page.thread.PostCard
-import com.huanchengfly.tieba.post.ui.page.thread.UserNameText
+import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
+import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
@@ -75,13 +75,11 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
-import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
@@ -89,7 +87,6 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.spec.DestinationStyleBottomSheet
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Destination
@@ -216,10 +213,7 @@ internal fun SubPostsContent(
 
     val lazyListState = rememberLazyListState()
 
-    viewModel.onEvent<SubPostsUiEvent.ScrollToSubPosts> {
-        delay(20)
-        lazyListState.scrollToItem(2 + subPosts.indexOfFirst { it.id == subPostId })
-    }
+    PositionSubPostOnOpen(lazyListState, subPostId, subPosts)
 
     val confirmDeleteDialogState = rememberDialogState()
     var deleteSubPost by remember { mutableStateOf<ImmutableHolder<SubPostList>?>(null) }
@@ -421,6 +415,7 @@ internal fun SubPostsContent(
                                 PostCard(
                                     postHolder = it,
                                     contentRenders = postContentRenders,
+                                    threadAuthorId = thread?.get { author?.id } ?: 0L,
                                     canDelete = { it.author_id == account?.uid?.toLongOrNull() },
                                     showSubPosts = false,
                                     onUserClick = {
@@ -480,10 +475,7 @@ internal fun SubPostsContent(
                             )
                         }
                     }
-                    itemsIndexed(
-                        items = subPosts,
-                        key = { _, subPost -> subPost.id }
-                    ) { index, item ->
+                    items(subPosts, key = { it.id }) { item ->
                         SubPostItem(
                             item = item,
                             canDelete = { it.author_id == account?.uid?.toLongOrNull() },
@@ -536,20 +528,25 @@ internal fun SubPostsContent(
     }
 }
 
-private fun getDescText(
-    time: Long?,
-    ipAddress: String?
-): String {
-    val texts = listOfNotNull(
-        time?.let { DateTimeUtils.getRelativeTimeString(App.INSTANCE, it) },
-        ipAddress?.let { App.INSTANCE.getString(R.string.text_ip_location, it) }
-    )
-    if (texts.isEmpty()) return ""
-    return texts.joinToString(" ")
+@Composable
+internal fun PositionSubPostOnOpen(list: LazyListState, targetId: Long, replies: List<SubPostItemData>) {
+    var located by rememberSaveable(targetId) { mutableStateOf(false) }
+    val replyIndex = remember(targetId, replies) {
+        if (targetId > 0L) replies.indexOfFirst { it.id == targetId } else -1
+    }
+    LaunchedEffect(list, targetId, replyIndex) {
+        if (!located && replyIndex >= 0) {
+            val index = replyIndex + 2 // Parent floor and pinned replies heading.
+            list.scrollToItem(index)
+            val heading = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "SubPostsHeader" }
+            if (heading != null) list.scrollToItem(index, -heading.size)
+            located = true
+        }
+    }
 }
 
 @Composable
-private fun SubPostItem(
+internal fun SubPostItem(
     item: SubPostItemData,
     threadAuthorId: Long? = null,
     canDelete: (SubPostList) -> Boolean = { false },
@@ -563,7 +560,6 @@ private fun SubPostItem(
     val context = LocalContext.current
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
-    val author = remember(subPost) { subPost.get { author }?.wrapImmutable() }
     val hasAgreed = remember(subPost) {
         subPost.get { agree?.hasAgree == 1 }
     }
@@ -625,59 +621,26 @@ private fun SubPostItem(
             },
             onClick = { onReplyClick(subPost.get()) }.takeUnless { context.appPreferences.hideReply }
         ) {
-            Card(
+            CommentLayout(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 header = {
-                    if (author != null) {
-                        UserHeader(
-                            avatar = {
-                                Avatar(
-                                    data = StringUtil.getAvatarUrl(author.get { portrait }),
-                                    size = Sizes.Small,
-                                    contentDescription = null
-                                )
-                            },
-                            name = {
-                                UserNameText(
-                                    userName = StringUtil.getUsernameAnnotatedString(
-                                        LocalContext.current,
-                                        author.get { name },
-                                        author.get { nameShow }
-                                    ),
-                                    userLevel = author.get { level_id },
-                                    isLz = author.get { id } == threadAuthorId,
-                                    bawuType = author.get { bawuType },
-                                )
-                            },
-                            desc = {
-                                Text(
-                                    text = getDescText(
-                                        subPost.get { time }.toLong(),
-                                        author.get { ip_address })
-                                )
-                            },
-                            onClick = {
-                                onUserClick(author.get())
-                            }
-                        ) {
-                            PostAgreeBtn(
-                                hasAgreed = hasAgreed,
-                                agreeNum = agreeNum,
-                                onClick = { onAgree(subPost.get()) }
-                            )
-                        }
-                    }
+                    CommentHeader(
+                        author = subPost.get { author },
+                        threadAuthorId = threadAuthorId,
+                        time = subPost.get { time.toLong() },
+                        onUserClick = onUserClick,
+                    )
                 },
-                content = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .padding(start = Sizes.Small + 8.dp)
-                            .fillMaxWidth()
-                    ) {
-                        contentRenders.fastForEach { it.Render() }
-                    }
-                }
-            )
+                action = {
+                    PostAgreeBtn(
+                        hasAgreed = hasAgreed,
+                        agreeNum = agreeNum,
+                        onClick = { onAgree(subPost.get()) },
+                    )
+                },
+            ) {
+                contentRenders.fastForEach { it.Render() }
+            }
         }
     }
 }

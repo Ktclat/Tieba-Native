@@ -215,6 +215,17 @@ private val PbContent.picUrl: String
             src
         )
 
+private fun PbContent.mediaSize(): Pair<Int, Int> {
+    val parts = bsize.split(',', limit = 2)
+    val parsedWidth = parts.getOrNull(0)?.toIntOrNull()
+    val parsedHeight = parts.getOrNull(1)?.toIntOrNull()
+    return when {
+        parsedWidth != null && parsedWidth > 0 && parsedHeight != null && parsedHeight > 0 -> parsedWidth to parsedHeight
+        width > 0 && height > 0 -> width to height
+        else -> 1 to 1
+    }
+}
+
 val List<PbContent>.plainText: String
     get() = renders.joinToString("\n") { it.toString() }
 
@@ -260,8 +271,7 @@ val List<PbContent>.renders: ImmutableList<PbContentRender>
                 }
 
                 3 -> {
-                    val width = it.bsize.split(",")[0].toInt()
-                    val height = it.bsize.split(",")[1].toInt()
+                    val (width, height) = it.mediaSize()
                     renders.add(
                         PicContentRender(
                             picUrl = it.picUrl,
@@ -297,8 +307,7 @@ val List<PbContent>.renders: ImmutableList<PbContentRender>
 
                 5 -> {
                     if (it.src.isNotBlank()) {
-                        val width = it.bsize.split(",")[0].toInt()
-                        val height = it.bsize.split(",")[1].toInt()
+                        val (width, height) = it.mediaSize()
                         renders.add(
                             VideoContentRender(
                                 videoUrl = it.link,
@@ -336,8 +345,7 @@ val List<PbContent>.renders: ImmutableList<PbContentRender>
                 }
 
                 20 -> {
-                    val width = it.bsize.split(",")[0].toInt()
-                    val height = it.bsize.split(",")[1].toInt()
+                    val (width, height) = it.mediaSize()
                     renders.add(
                         PicContentRender(
                             picUrl = it.src,
@@ -390,39 +398,40 @@ val Post.subPosts: ImmutableList<SubPostItemData>
     get() = sub_post_list?.sub_post_list?.map {
         SubPostItemData(
             it.wrapImmutable(),
-            it.getContentText(origin_thread_info?.author?.id)
+            it.previewBody
         )
     }?.toImmutableList() ?: persistentListOf()
 
-@OptIn(ExperimentalTextApi::class)
-fun SubPostList.getContentText(threadAuthorId: Long? = null): AnnotatedString {
-    val context = App.INSTANCE
-    val accentColor = Color(ThemeUtils.getColorByAttr(context, R.attr.colorNewPrimary))
-
-    val userNameString = buildAnnotatedString {
-        withAnnotation("user", "${author?.id}") {
-            withStyle(
-                SpanStyle(
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold
-                )
-            ) {
-                append(
-                    StringUtil.getUsernameAnnotatedString(
-                        context,
-                        author?.name ?: "",
-                        author?.nameShow
-                    )
-                )
-            }
-            if (author?.id == threadAuthorId) {
-                appendInlineContent("Lz")
-            }
-            append(": ")
+internal val SubPostList.previewBody: AnnotatedString
+    get() = buildAnnotatedString {
+        content.renders.forEach { render ->
+            val text = render.toAnnotationString()
+            if (text.isEmpty()) append(render.toString()) else append(text)
         }
     }
 
-    val contentStrings = content.renders.map { it.toAnnotationString() }
-
-    return userNameString + contentStrings.reduce { acc, annotatedString -> acc + annotatedString }
+@OptIn(ExperimentalTextApi::class)
+fun SubPostList.getContentText(threadAuthorId: Long? = null): AnnotatedString {
+    val user = author ?: return previewBody
+    if (user.name.isBlank() && user.nameShow.isBlank()) return previewBody
+    val context = App.INSTANCE
+    val displayName = StringUtil.getUsernameAnnotatedString(
+        context, user.name, user.nameShow.takeIf { it.isNotBlank() },
+    )
+    val nameStyle = SpanStyle(
+        color = Color(ThemeUtils.getColorByAttr(context, R.attr.colorNewPrimary)),
+        fontWeight = FontWeight.Bold,
+    )
+    return buildAnnotatedString {
+        withStyle(nameStyle) {
+            if (user.id > 0) {
+                withAnnotation("user", user.id.toString()) { append(displayName) }
+            } else {
+                append(displayName)
+            }
+        }
+        if (user.id > 0 && user.id == threadAuthorId) appendInlineContent("Lz")
+        append(": ")
+        append(previewBody)
+    }
 }

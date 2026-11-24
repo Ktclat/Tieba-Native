@@ -22,29 +22,20 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.lang.ref.WeakReference
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 
-open class AppPreferencesUtils private constructor(ctx: Context) {
+open class AppPreferencesUtils private constructor(private val preferencesDataStore: DataStore<Preferences>) {
     companion object {
         private var instance: AppPreferencesUtils? = null
 
         fun getInstance(context: Context): AppPreferencesUtils {
-            return instance ?: AppPreferencesUtils(context).also {
+            return instance ?: AppPreferencesUtils(context.dataStore).also {
                 instance = it
             }
         }
     }
-
-    private val contextWeakReference: WeakReference<Context> = WeakReference(ctx)
-
-    private val context: Context
-        get() = contextWeakReference.get()!!
-
-    private val preferencesDataStore: DataStore<Preferences>
-        get() = context.dataStore
 
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
