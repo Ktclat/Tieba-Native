@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.forum.rule
 
+import android.app.Application
 import android.view.View
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
@@ -7,8 +8,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
@@ -25,10 +26,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], application = App::class, qualifiers = "zh-rCN-w360dp-h640dp")
+@Config(sdk = [28], application = Application::class, qualifiers = "zh-rCN-w360dp-h640dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ForumRuleDetailLayoutTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val appContext = AppContextRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun firstRuleTitleStartsBelowTheToolbar() {
         val state = ForumRuleDetailUiState(

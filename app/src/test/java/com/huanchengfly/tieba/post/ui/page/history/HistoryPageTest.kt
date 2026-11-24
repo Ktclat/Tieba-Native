@@ -15,8 +15,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.models.database.History
+import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.utils.HistoryUtil
@@ -32,10 +32,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], application = App::class, qualifiers = "w360dp-h720dp-mdpi")
+@Config(sdk = [28], application = Application::class, qualifiers = "w360dp-h720dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HistoryPageTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val appContext = AppContextRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
     private val restore = StateRestorationTester(compose)
     private lateinit var view: View
 
