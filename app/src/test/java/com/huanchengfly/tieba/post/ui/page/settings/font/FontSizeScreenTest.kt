@@ -135,16 +135,25 @@ class FontSizeScreenTest {
         compose.onNodeWithTag("font-reset").performScrollTo().assertIsDisplayed()
         // Preserve a review image even when a later layout assertion fails.
         capture("font-compact-dark-130.png")
+        val label = compose.onNodeWithTag("font-reset-label", useUnmergedTree = true)
         val textLayouts = mutableListOf<TextLayoutResult>()
-        compose.onNodeWithTag("font-reset-label", useUnmergedTree = true)
-            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
-                check(action(textLayouts))
-            }
+        label.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+            check(action(textLayouts))
+        }
         val result = textLayouts.single()
         assertEquals("Reset label must stay on one line on a compact window", 1, result.lineCount)
-        assertFalse(
-            "Reset label clips: size=${result.size}, widthOverflow=${result.didOverflowWidth}, heightOverflow=${result.didOverflowHeight}",
-            result.hasVisualOverflow,
+        assertEquals(result.layoutInput.text.length, result.getLineEnd(0, visibleEnd = true))
+        assertFalse("Reset label must not be ellipsized", result.isLineEllipsized(0))
+        assertFalse("Reset label must fit vertically", result.didOverflowHeight)
+
+        // Compose 1.7 rebuilds the semantics paragraph at the parent's maximum width.
+        // Compare the drawn line with the visible label, excluding unused paragraph space.
+        val visibleBounds = label.fetchSemanticsNode().boundsInRoot
+        val lineWidth = result.getLineRight(0) - result.getLineLeft(0)
+        val lineHeight = result.getLineBottom(0) - result.getLineTop(0)
+        assertTrue(
+            "Reset label line (${lineWidth}x${lineHeight}) exceeds visible bounds $visibleBounds",
+            lineWidth <= visibleBounds.width && lineHeight <= visibleBounds.height,
         )
     }
 
