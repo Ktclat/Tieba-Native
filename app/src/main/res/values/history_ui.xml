@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_search">搜索浏览记录</string>
+    <string name="history_thread_hint">标题、作者或帖子 ID</string>
+    <string name="history_forum_hint">贴吧名</string>
+    <string name="history_clear_query">清除搜索词</string>
+    <string name="history_clear_message">将删除此设备上的所有帖子和贴吧浏览记录。</string>
+    <string name="history_no_matches">没有找到匹配的浏览记录</string>
+    <string name="history_empty_thread">暂无帖子浏览记录</string>
+    <string name="history_empty_forum">暂无贴吧浏览记录</string>
+    <string name="history_item_actions">“%1$s”的更多选项</string>
+    <string name="history_author_time">%1$s · %2$s</string>
+</resources>

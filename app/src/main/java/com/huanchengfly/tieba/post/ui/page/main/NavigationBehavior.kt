@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -17,8 +18,12 @@ internal fun resolveNavigationDragTarget(
     if (!dragDistancePx.isFinite() || !itemWidthPx.isFinite() || itemWidthPx <= 0f) {
         return selected
     }
-    return (selected + (dragDistancePx / itemWidthPx).roundToInt())
-        .coerceIn(0, itemCount - 1)
+    val steps = (abs(dragDistancePx) / itemWidthPx).roundToInt()
+    return if (dragDistancePx < 0f) {
+        selected - steps.coerceAtMost(selected)
+    } else {
+        selected + steps.coerceAtMost(itemCount - 1 - selected)
+    }
 }
 
 /**

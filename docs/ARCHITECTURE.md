@@ -25,11 +25,13 @@
 - NavigationBehavior.kt：不依赖 Android 环境的拖动索引与导航显隐计算
 - MainPage.kt：通过 NestedScrollConnection 只观察子页面滚动，不消费滚动距离
 - MyScaffold.bottomBar：动态预留空间，胶囊不会遮挡正文或底部按钮
-- NavigationBehaviorTest.kt：覆盖拖动跨多个项、越界、渐隐、渐显与非法数值
+- 底栏固定胶囊的测量高度，仅调整可视区域和正文底部留白。反向滚动时从当前位置拉回胶囊
+- NavigationBehaviorTest.kt 覆盖拖动跨项、越界和滚动距离换算
 - 宽屏和折叠屏继续使用上游原有的 NavigationRail / NavigationDrawer
 
 ## 数据和可靠性
 
+- 浏览历史先在 LitePal 中按记录类型和关键词筛选，再用时间、访问次数和记录 ID 分页。点开搜索结果时沿用记录中保存的楼层
 - FrsPageRepository 改为有限容量的按参数键控缓存，降低请求间数据覆盖风险
 - ForumViewModel 成功加载时及时结束 Loading 状态
 - PbPageRepository 作者匹配使用哈希索引，缺失数据转为已有 API 异常

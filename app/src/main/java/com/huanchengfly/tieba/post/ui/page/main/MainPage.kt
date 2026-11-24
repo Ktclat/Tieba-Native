@@ -10,13 +10,7 @@ import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +26,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -287,7 +280,7 @@ fun MainPage(
             }
         }
     }
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(pagerState.currentPage, navigationType) {
         navHideFraction.floatValue = 0f
     }
 
@@ -330,31 +323,16 @@ fun MainPage(
                 modifier = Modifier.fillMaxSize().nestedScroll(navScrollObserver),
                 bottomBar = {
                     if (navigationType == MainNavigationType.BOTTOM_NAVIGATION) {
-                        val visibleFraction = 1f - navHideFraction.floatValue
-                        // Bottom bar owns the reserved height instead of covering
-                        // page content. Android's gesture inset stays clear at 0%.
-                        Column {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(74.dp * visibleFraction)
-                                    .clipToBounds()
-                            ) {
-                                FloatingBottomNavigation(
-                                    currentPosition = pagerState.currentPage,
-                                    onChangePosition = {
-                                        coroutineScope.launch { pagerState.scrollToPage(it) }
-                                    },
-                                    onReselected = onReselected,
-                                    navigationItems = navigationItems,
-                                    themeColors = themeColors,
-                                    modifier = Modifier
-                                        .align(Alignment.TopCenter)
-                                        .padding(horizontal = 20.dp, vertical = 5.dp)
-                                        .graphicsLayer { alpha = visibleFraction }
-                                )
-                            }
-                            Spacer(Modifier.navigationBarsPadding())
+                        FloatingNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
+                            FloatingBottomNavigation(
+                                currentPosition = pagerState.currentPage,
+                                onChangePosition = {
+                                    coroutineScope.launch { pagerState.scrollToPage(it) }
+                                },
+                                onReselected = onReselected,
+                                navigationItems = navigationItems,
+                                themeColors = themeColors,
+                            )
                         }
                     }
                 }
