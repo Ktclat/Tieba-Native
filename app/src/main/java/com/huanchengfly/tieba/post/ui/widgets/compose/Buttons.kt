@@ -1,35 +1,24 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonColors
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.ButtonElevation
 import androidx.compose.material.ContentAlpha
-import androidx.compose.material.LocalContentAlpha
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideTextStyle
-import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideMaterial3Content
 
 @Composable
 fun Button(
@@ -42,17 +31,16 @@ fun Button(
     border: BorderStroke? = null,
     colors: ButtonColors = ButtonDefaults.buttonColors(
         backgroundColor = ExtendedTheme.colors.accent,
-        contentColor = ExtendedTheme.colors.onAccent
+        contentColor = ExtendedTheme.colors.onAccent,
     ),
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
-    // Keep the old ButtonColors signature for screens while rendering a real
-    // Material 3 component with native ripple, semantics and minimum hit area.
     val containerColor by colors.backgroundColor(enabled)
     val contentColor by colors.contentColor(enabled)
     val disabledBackground by colors.backgroundColor(false)
     val disabledContent by colors.contentColor(false)
+    val resolvedElevation = elevation?.elevation(enabled, interactionSource)?.value ?: 0.dp
     androidx.compose.material3.Button(
         onClick = onClick,
         modifier = modifier.defaultMinSize(minHeight = 48.dp),
@@ -66,9 +54,18 @@ fun Button(
             disabledContainerColor = disabledBackground,
             disabledContentColor = disabledContent,
         ),
+        elevation = androidx.compose.material3.ButtonDefaults.buttonElevation(
+            defaultElevation = resolvedElevation,
+            pressedElevation = resolvedElevation,
+            focusedElevation = resolvedElevation,
+            hoveredElevation = resolvedElevation,
+            disabledElevation = resolvedElevation,
+        ),
         contentPadding = contentPadding,
-        content = content,
-    )
+    ) {
+        // A migrated M3 Button must also supply its on-container color to old M2 Text.
+        ProvideMaterial3Content { content() }
+    }
 }
 
 @Composable
@@ -81,7 +78,7 @@ fun TextButton(
     border: BorderStroke? = null,
     color: Color = ExtendedTheme.colors.text,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
     Button(
         onClick = onClick,
@@ -94,9 +91,9 @@ fun TextButton(
             backgroundColor = color.copy(alpha = 0.1f),
             contentColor = color,
             disabledBackgroundColor = color.copy(alpha = ContentAlpha.disabled * 0.1f),
-            disabledContentColor = color.copy(alpha = ContentAlpha.disabled)
+            disabledContentColor = color.copy(alpha = ContentAlpha.disabled),
         ),
         contentPadding = contentPadding,
-        content = content
+        content = content,
     )
 }

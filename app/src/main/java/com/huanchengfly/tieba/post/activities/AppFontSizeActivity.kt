@@ -1,129 +1,124 @@
 package com.huanchengfly.tieba.post.activities
 
 import android.os.Bundle
-import android.util.TypedValue
-import android.widget.SeekBar
-import android.widget.TextView
-import androidx.appcompat.widget.Toolbar
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import butterknife.BindView
-import com.google.android.material.appbar.CollapsingToolbarLayout
-import com.huanchengfly.tieba.post.*
-import com.huanchengfly.tieba.post.adapters.ChatBubbleStyleAdapter
-import com.huanchengfly.tieba.post.components.MyLinearLayoutManager
-import com.huanchengfly.tieba.post.ui.widgets.RulerSeekBar
-import com.huanchengfly.tieba.post.utils.ThemeUtil
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.lifecycle.lifecycleScope
+import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.arch.BaseComposeActivity
+import com.huanchengfly.tieba.post.dataStore
+import com.huanchengfly.tieba.post.ui.page.settings.font.FontScaleSteps
+import com.huanchengfly.tieba.post.ui.page.settings.font.FontSizeScreen
+import java.io.IOException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
-
-class AppFontSizeActivity : BaseActivity() {
-    @BindView(R.id.toolbar)
-    lateinit var toolbar: Toolbar
-
-    @BindView(R.id.collapsing_toolbar)
-    lateinit var collapsingToolbar: CollapsingToolbarLayout
-
-    @BindView(R.id.app_font_size_seekbar)
-    lateinit var seekBar: RulerSeekBar
-
-    @BindView(R.id.app_font_size_text)
-    lateinit var sizeText: TextView
-
-    @BindView(R.id.app_font_size_bubbles)
-    lateinit var chatBubblesRv: RecyclerView
-
-    var oldFontSize: Float = 0f
-    var finished: Boolean = false
-
-    private val bubblesAdapter: ChatBubbleStyleAdapter by lazy {
-        ChatBubbleStyleAdapter(
-            this,
-            listOf(
-                ChatBubbleStyleAdapter.Bubble(
-                    getString(R.string.bubble_want_change_font_size),
-                    ChatBubbleStyleAdapter.Bubble.POSITION_RIGHT
-                ),
-                ChatBubbleStyleAdapter.Bubble(getString(R.string.bubble_change_font_size))
-            )
-        )
-    }
+/** Native M3 editor. Drafts survive rotation, save atomically and never restart the app. */
+class AppFontSizeActivity : BaseComposeActivity() {
+    private var storedScale by mutableStateOf<Float?>(null)
+    private var loadFailed by mutableStateOf(false)
+    private var saving by mutableStateOf(false)
+    private var saveError by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ThemeUtil.setTranslucentThemeBackground(this, findViewById(R.id.background))
-        setSupportActionBar(toolbar)
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            title = this@AppFontSizeActivity.title
-        }
-        collapsingToolbar.title = title
-        oldFontSize = appPreferences.fontScale
-        chatBubblesRv.apply {
-            layoutManager =
-                MyLinearLayoutManager(this@AppFontSizeActivity, LinearLayoutManager.VERTICAL, false)
-            adapter = bubblesAdapter
-        }
-        val progress =
-            ((appPreferences.fontScale * 1000L - FONT_SCALE_MIN * 1000L).toInt()) / ((FONT_SCALE_STEP * 1000L).toInt())
-        seekBar.progress = progress
-        updateSizeText(progress)
-        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val fontScale = FONT_SCALE_MIN + progress * FONT_SCALE_STEP
-                appPreferences.fontScale = fontScale
-                updatePreview(fontScale)
-                updateSizeText(progress)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
+        loadScale()
     }
 
-    override fun finish() {
-        if (!finished && oldFontSize != appPreferences.fontScale) {
-            finished = true
-            toastShort(R.string.toast_after_change_will_restart)
-            App.INSTANCE.removeAllActivity()
-            packageManager.getLaunchIntentForPackage(packageName)?.let {
-                startActivity(it)
+    private fun loadScale() {
+        loadFailed = false
+        lifecycleScope.launch {
+            try {
+                storedScale = FontScaleSteps.normalized(dataStore.data.first()[floatPreferencesKey("fontScale")] ?: DEFAULT_FONT_SCALE)
+            } catch (_: IOException) {
+                loadFailed = true
             }
         }
-        super.finish()
     }
 
-    fun updateSizeText(progress: Int) {
-        val sizeTexts = SIZE_TEXT_MAPPING.filterValues {
-            progress in it
+    @Composable
+    override fun Content() {
+        val initial = storedScale
+        if (initial == null) {
+            Surface(color = MaterialTheme.colorScheme.background) {
+                Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    if (loadFailed) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(stringResource(R.string.native_font_load_failed))
+                            Button(onClick = ::loadScale) { Text(stringResource(R.string.native_font_retry)) }
+                            Button(onClick = { finish() }) { Text(stringResource(R.string.button_back)) }
+                        }
+                    } else CircularProgressIndicator()
+                }
+            }
+            return
         }
-        if (sizeTexts.isNotEmpty()) {
-            sizeText.setText(sizeTexts.map { it.key }[0])
+        val savedIndex = FontScaleSteps.indexForScale(initial)
+        var draft by rememberSaveable(initial) { mutableIntStateOf(savedIndex) }
+        // A write is awaited before leaving. A cancelled draft never touches the DataStore.
+        BackHandler(enabled = saving) { }
+        FontSizeScreen(
+            savedIndex = savedIndex,
+            draftIndex = draft,
+            onDraftChange = { draft = it },
+            onSave = { saveScale(draft) },
+            onBack = { finish() },
+            saving = saving,
+            saveError = saveError,
+        )
+    }
+
+    private fun saveScale(index: Int) {
+        if (saving) return
+        saving = true
+        saveError = null
+        lifecycleScope.launch {
+            try {
+                dataStore.edit { it[floatPreferencesKey("fontScale")] = FontScaleSteps.scaleForIndex(index) }
+                setResult(RESULT_OK)
+                finish()
+            } catch (_: IOException) {
+                saveError = getString(R.string.native_font_save_failed)
+            } finally {
+                saving = false
+            }
         }
-    }
-
-    fun updatePreview(fontScale: Float = appPreferences.fontScale) {
-        bubblesAdapter.bubblesFontSize = 15f.dpToPxFloat() * fontScale
-        sizeText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 16f.dpToPxFloat() * fontScale)
-    }
-
-    override fun getLayoutId(): Int {
-        return R.layout.activity_app_font_size
     }
 
     companion object {
+        // Keep upstream constants/API for callers and existing preference values.
         const val FONT_SCALE_MIN = 0.8f
         const val FONT_SCALE_MAX = 1.3f
         const val FONT_SCALE_STEP = 0.05f
         const val DEFAULT_FONT_SCALE = 1f
-
         val SIZE_TEXT_MAPPING = mapOf(
             R.string.text_size_small to 0..1,
             R.string.text_size_little_small to 2..3,
             R.string.text_size_default to 4..4,
             R.string.text_size_little_large to 5..6,
             R.string.text_size_large to 7..8,
-            R.string.text_size_very_large to 9..10
+            R.string.text_size_very_large to 9..10,
         )
     }
 }
