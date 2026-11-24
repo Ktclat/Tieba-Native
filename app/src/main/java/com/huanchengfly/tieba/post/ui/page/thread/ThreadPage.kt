@@ -31,12 +31,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
@@ -80,10 +81,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,7 +96,6 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.booleanToString
@@ -103,7 +104,6 @@ import com.huanchengfly.tieba.post.api.models.protos.SimpleForum
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
-import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.api.models.protos.plainText
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -138,7 +138,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Button
-import com.huanchengfly.tieba.post.ui.widgets.compose.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -157,19 +156,16 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TextWithMinWidth
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.buildChipInlineContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
-import com.huanchengfly.tieba.post.utils.DateTimeUtils.getRelativeTimeString
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
-import com.huanchengfly.tieba.post.utils.Util.getIconColorByLevel
 import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
@@ -182,25 +178,6 @@ import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
 import kotlin.math.max
 
-private fun getDescText(
-    time: Long?,
-    floor: Int,
-    ipAddress: String?
-): String {
-    val texts = listOfNotNull(
-        time?.let { getRelativeTimeString(App.INSTANCE, it) },
-        if (floor > 1) App.INSTANCE.getString(R.string.tip_post_floor, floor) else null,
-        if (ipAddress.isNullOrEmpty()) null else App.INSTANCE.getString(
-            R.string.text_ip_location,
-            ipAddress
-        )
-    )
-    if (texts.isEmpty()) {
-        return ""
-    }
-    return texts.joinToString(" · ")
-}
-
 @Composable
 fun PostAgreeBtn(
     hasAgreed: Boolean,
@@ -212,15 +189,10 @@ fun PostAgreeBtn(
         targetValue = if (hasAgreed) ExtendedTheme.colors.accent else ExtendedTheme.colors.textSecondary,
         label = "postAgreeBtnColor"
     )
-    Button(
+    TextButton(
         onClick = onClick,
-        shape = RoundedCornerShape(4.dp),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = ExtendedTheme.colors.background,
-            contentColor = animatedColor
-        ),
-        modifier = modifier
+        modifier = modifier.semantics { selected = hasAgreed },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -236,7 +208,7 @@ fun PostAgreeBtn(
                 Text(
                     text = agreeNum.getShortNumString(),
                     color = animatedColor,
-                    style = MaterialTheme.typography.caption,
+                    style = M3Theme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
             }
@@ -975,7 +947,7 @@ fun ThreadPage(
                             threadId = threadId,
                             postId = item.get { id },
                             subPostId = it,
-                            loadFromSubPost = false
+                            loadFromSubPost = it > 0L
                         )
                     )
                 }
@@ -1336,6 +1308,7 @@ fun ThreadPage(
                                                 PostCard(
                                                     postHolder = firstPost!!,
                                                     contentRenders = firstPostContentRenders,
+                                                    threadAuthorId = author?.get { id } ?: 0L,
                                                     canDelete = { it.author_id == user.get { id } },
                                                     immersiveMode = isImmersiveMode,
                                                     isCollected = {
@@ -1751,11 +1724,6 @@ fun PostCard(
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val post = remember(postHolder) { postHolder.get() }
-    val hasPadding = remember(key1 = postHolder, key2 = immersiveMode) {
-        postHolder.get { floor > 1 } && !immersiveMode
-    }
-    val paddingModifier = Modifier.padding(start = if (hasPadding) Sizes.Small + 8.dp else 0.dp)
-    val author = postHolder.get { author!! }
     val showTitle = remember(postHolder) {
         post.title.isNotBlank() && post.floor <= 1 && post.is_ntitle != 1
     }
@@ -1843,140 +1811,85 @@ fun PostCard(
                 }
             }
         ) {
-            Card(
+            CommentLayout(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 header = {
                     if (!immersiveMode) {
-                        UserHeader(
-                            avatar = {
-                                Avatar(
-                                    data = StringUtil.getAvatarUrl(author.portrait),
-                                    size = Sizes.Small,
-                                    contentDescription = null
-                                )
-                            },
-                            name = {
-                                UserNameText(
-                                    userName = StringUtil.getUsernameAnnotatedString(
-                                        LocalContext.current,
-                                        author.name,
-                                        author.nameShow
-                                    ),
-                                    userLevel = author.level_id,
-                                    isLz = author.id == threadAuthorId,
-                                    bawuType = author.bawuType,
-                                )
-                            },
-                            desc = {
-                                Text(
-                                    text = getDescText(
-                                        post.time.toLong(),
-                                        post.floor,
-                                        author.ip_address
-                                    )
-                                )
-                            },
-                            onClick = {
-                                onUserClick(author)
-                            }
-                        ) {
-                            if (post.floor > 1) {
-                                PostAgreeBtn(
-                                    hasAgreed = hasAgreed,
-                                    agreeNum = agreeNum,
-                                    onClick = onAgree
-                                )
-                            }
-                        }
+                        CommentHeader(
+                            author = post.author,
+                            threadAuthorId = threadAuthorId,
+                            time = post.time.toLong(),
+                            floor = post.floor,
+                            onUserClick = onUserClick,
+                        )
                     }
                 },
+                action = if (post.floor > 1 && !immersiveMode) {
+                    { PostAgreeBtn(hasAgreed = hasAgreed, agreeNum = agreeNum, onClick = onAgree) }
+                } else null,
                 content = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = paddingModifier
-                            .fillMaxWidth()
-                    ) {
-                        if (showTitle) {
-                            Text(
-                                text = post.title,
-                                style = MaterialTheme.typography.subtitle1,
-                                fontSize = 15.sp
-                            )
-                        }
-
-                        if (isCollected(post)) {
-                            Chip(
-                                text = stringResource(id = R.string.title_collected_floor),
-                                invertColor = true,
-                                prefixIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                        }
-
-                        contentRenders.fastForEach { it.Render() }
+                    if (showTitle) {
+                        Text(
+                            text = post.title,
+                            style = M3Theme.typography.titleLarge,
+                            color = ExtendedTheme.colors.text,
+                        )
                     }
 
-                    if (showSubPosts && post.sub_post_number > 0 && subPosts.isNotEmpty() && !immersiveMode) {
+                    if (isCollected(post)) {
+                        Chip(
+                            text = stringResource(id = R.string.title_collected_floor),
+                            invertColor = true,
+                            prefixIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+
+                    contentRenders.fastForEach { it.Render() }
+
+                    if (showSubPosts && post.sub_post_number > 0 && !immersiveMode) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(paddingModifier)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(ExtendedTheme.colors.floorCard)
-                                .padding(vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            modifier = Modifier.fillMaxWidth()
+                                .clip(M3Theme.shapes.medium)
+                                .background(M3Theme.colorScheme.surfaceContainerLow)
+                                .padding(vertical = 4.dp),
                         ) {
                             subPosts.fastForEach { item ->
                                 BlockableContent(
                                     blocked = item.blocked,
                                     blockedTip = {
                                         Text(
-                                            text = stringResource(id = R.string.tip_blocked_sub_post),
-                                            style = MaterialTheme.typography.body2.copy(
-                                                color = ExtendedTheme.colors.textDisabled,
-                                                fontSize = 13.sp
-                                            ),
-                                            modifier = Modifier.padding(horizontal = 12.dp)
+                                            text = stringResource(R.string.tip_blocked_sub_post),
+                                            style = M3Theme.typography.bodySmall,
+                                            color = M3Theme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                         )
                                     },
                                 ) {
                                     SubPostItem(
                                         subPostList = item.subPost,
                                         subPostContent = item.subPostContent,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp),
-                                        onReplyClick = {
-                                            onSubPostReplyClick?.invoke(post, it)
-                                        },
+                                        threadAuthorId = threadAuthorId,
+                                        onUserClick = onUserClick,
+                                        onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
                                         onOpenSubPosts = onOpenSubPosts,
-                                        onMenuCopyClick = {
-                                            onMenuCopyClick?.invoke(it.content.plainText)
-                                        }
+                                        onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
                                     )
                                 }
                             }
-
                             if (post.sub_post_number > subPosts.size) {
                                 Text(
-                                    text = stringResource(
-                                        id = R.string.open_all_sub_posts,
-                                        post.sub_post_number
-                                    ),
-                                    style = MaterialTheme.typography.caption,
-                                    fontSize = 13.sp,
-                                    color = ExtendedTheme.colors.accent,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 2.dp)
-                                        .clickable {
-                                            onOpenSubPosts(0)
-                                        }
-                                        .padding(horizontal = 12.dp)
+                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
+                                    style = M3Theme.typography.labelLarge,
+                                    color = M3Theme.colorScheme.primary,
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable { onOpenSubPosts(0) }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
                                 )
                             }
                         }
@@ -1988,10 +1901,11 @@ fun PostCard(
 }
 
 @Composable
-private fun SubPostItem(
+internal fun SubPostItem(
     subPostList: ImmutableHolder<SubPostList>,
     subPostContent: AnnotatedString,
-    modifier: Modifier = Modifier,
+    threadAuthorId: Long,
+    onUserClick: (User) -> Unit,
     onReplyClick: ((SubPostList) -> Unit)?,
     onOpenSubPosts: (Long) -> Unit,
     onMenuCopyClick: ((SubPostList) -> Unit)?,
@@ -2003,10 +1917,10 @@ private fun SubPostItem(
     LongClickMenu(
         menuState = menuState,
         menuContent = {
-            if (!context.appPreferences.hideReply) {
+            if (!context.appPreferences.hideReply && onReplyClick != null) {
                 DropdownMenuItem(
                     onClick = {
-                        onReplyClick?.invoke(subPostList.get())
+                        onReplyClick(subPostList.get())
                         menuState.expanded = false
                     }
                 ) {
@@ -2039,65 +1953,33 @@ private fun SubPostItem(
             onOpenSubPosts(subPostList.get { id })
         }
     ) {
-        ProvideTextStyle(value = MaterialTheme.typography.body2.copy(color = ExtendedTheme.colors.text)) {
-            PbContentText(
-                text = subPostContent,
-                modifier = modifier,
-                fontSize = 13.sp,
-                emoticonSize = 0.9f,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 4,
-                lineSpacing = 0.4.sp,
-                inlineContent = mapOf(
-                    "Lz" to buildChipInlineContent(
-                        stringResource(id = R.string.tip_lz),
-                        backgroundColor = ExtendedTheme.colors.textSecondary.copy(alpha = 0.1f),
-                        color = ExtendedTheme.colors.textSecondary
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val author = subPostList.get { author }
+            if (author != null && (author.name.isNotBlank() || author.nameShow.isNotBlank())) {
+                val authorLink = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
+                CommentAuthorName(
+                    userName = StringUtil.getUsernameAnnotatedString(
+                        context, author.name, author.nameShow.takeIf { it.isNotBlank() },
                     ),
+                    isLz = threadAuthorId > 0 && author.id == threadAuthorId,
+                    modifier = authorLink,
                 )
-            )
+            }
+            CommentMetadata(time = subPostList.get { time.toLong() }, ipAddress = author?.ip_address)
+            if (subPostContent.isNotEmpty()) {
+                PbContentText(
+                    text = subPostContent,
+                    style = M3Theme.typography.bodyMedium,
+                    color = M3Theme.colorScheme.onSurface,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 4,
+                )
+            }
         }
     }
-}
-
-@Composable
-fun UserNameText(
-    userName: AnnotatedString,
-    userLevel: Int,
-    modifier: Modifier = Modifier,
-    isLz: Boolean = false,
-    bawuType: String? = null,
-) {
-    val text = buildAnnotatedString {
-        append(userName)
-        append(" ")
-        if (userLevel > 0) appendInlineContent("Level", alternateText = "$userLevel")
-        if (!bawuType.isNullOrBlank()) {
-            append(" ")
-            appendInlineContent("Bawu", alternateText = bawuType)
-        }
-        if (isLz) {
-            append(" ")
-            appendInlineContent("Lz")
-        }
-    }
-    Text(
-        text = text,
-        inlineContent = mapOf(
-            "Level" to buildChipInlineContent(
-                "18",
-                color = Color(getIconColorByLevel("$userLevel")),
-                backgroundColor = Color(getIconColorByLevel("$userLevel")).copy(alpha = 0.25f)
-            ),
-            "Bawu" to buildChipInlineContent(
-                bawuType ?: "",
-                color = ExtendedTheme.colors.primary,
-                backgroundColor = ExtendedTheme.colors.primary.copy(alpha = 0.1f)
-            ),
-            "Lz" to buildChipInlineContent(stringResource(id = R.string.tip_lz)),
-        ),
-        modifier = modifier
-    )
 }
 
 @Composable

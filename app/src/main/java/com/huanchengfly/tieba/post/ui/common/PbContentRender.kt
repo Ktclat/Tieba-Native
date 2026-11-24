@@ -166,7 +166,7 @@ data class VoiceContentRender(
     }
 
     override fun toString(): String {
-        return "[视频]"
+        return "[语音]"
     }
 }
 
@@ -222,7 +222,7 @@ data class VideoContentRender(
     }
 
     override fun toString(): String {
-        return "[语音]"
+        return "[视频]"
     }
 }
 
@@ -301,13 +301,16 @@ fun PbContentText(
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
     EmoticonText(
         text = text,
-        modifier = modifier.pointerInput(Unit) {
+        modifier = modifier.pointerInput(text, navigator) {
             awaitEachGesture {
                 val change = awaitFirstDown()
                 val annotation =
                     layoutResult.value?.getOffsetForPosition(change.position)?.let { offset ->
                         text.getStringAnnotations(start = offset, end = offset)
-                            .firstOrNull { it.tag == "url" || it.tag == "user" }
+                            .firstOrNull {
+                                (it.tag == "url" && it.item.isNotBlank()) ||
+                                    (it.tag == "user" && (it.item.toLongOrNull() ?: 0L) > 0L)
+                            }
                     }
                 if (annotation != null) {
                     if (change.pressed != change.previousPressed) change.consume()
@@ -321,8 +324,7 @@ fun PbContentText(
                             }
 
                             "user" -> {
-                                val uid = annotation.item.toLong()
-                                navigator.navigate(UserProfilePageDestination(uid))
+                                navigator.navigate(UserProfilePageDestination(annotation.item.toLong()))
                             }
                         }
                     }

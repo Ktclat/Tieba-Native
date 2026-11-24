@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_open_reply">查看回复</string>
+    <string name="notification_open_source">查看原文</string>
+    <string name="notification_unknown_author">未知用户</string>
+    <string name="notification_content_unavailable">通知内容暂不可用</string>
+    <string name="notification_quoted_reply">引用的回复</string>
+    <string name="notification_replied_thread">回复的主题</string>
+    <string name="notification_mentioned_thread">提到我的主题</string>
+</resources>

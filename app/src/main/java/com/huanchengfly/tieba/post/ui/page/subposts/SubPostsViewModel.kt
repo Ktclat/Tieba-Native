@@ -49,12 +49,6 @@ class SubPostsViewModel @Inject constructor() :
 
     override fun createPartialChangeProducer() = SubPostsPartialChangeProducer
 
-    override fun dispatchEvent(partialChange: SubPostsPartialChange): UiEvent? =
-        when (partialChange) {
-            is SubPostsPartialChange.Load.Success -> SubPostsUiEvent.ScrollToSubPosts
-            else -> null
-        }
-
     object SubPostsPartialChangeProducer :
         PartialChangeProducer<SubPostsUiIntent, SubPostsPartialChange, SubPostsUiState> {
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -412,6 +406,4 @@ data class SubPostsUiState(
     val subPosts: ImmutableList<SubPostItemData> = persistentListOf(),
 ) : UiState
 
-sealed interface SubPostsUiEvent : UiEvent {
-    data object ScrollToSubPosts : SubPostsUiEvent
-}
+sealed interface SubPostsUiEvent : UiEvent
