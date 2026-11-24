@@ -18,137 +18,103 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.transform
 import javax.inject.Inject
 
 @Stable
 @HiltViewModel
 class SearchThreadViewModel @Inject constructor() :
     BaseViewModel<SearchThreadUiIntent, SearchThreadPartialChange, SearchThreadUiState, SearchThreadUiEvent>() {
-    override fun createInitialState(): SearchThreadUiState = SearchThreadUiState()
+    override fun createInitialState() = SearchThreadUiState()
 
     override fun createPartialChangeProducer(): PartialChangeProducer<SearchThreadUiIntent, SearchThreadPartialChange, SearchThreadUiState> =
-        SearchThreadPartialChangeProducer
-
-    private object SearchThreadPartialChangeProducer :
-        PartialChangeProducer<SearchThreadUiIntent, SearchThreadPartialChange, SearchThreadUiState> {
-        @OptIn(ExperimentalCoroutinesApi::class)
-        override fun toPartialChangeFlow(intentFlow: Flow<SearchThreadUiIntent>): Flow<SearchThreadPartialChange> =
-            merge(
-                intentFlow.filterIsInstance<SearchThreadUiIntent.Refresh>()
-                    .flatMapConcat { it.producePartialChange() },
-                intentFlow.filterIsInstance<SearchThreadUiIntent.LoadMore>()
-                    .flatMapConcat { it.producePartialChange() },
-            )
-
-        private fun SearchThreadUiIntent.Refresh.producePartialChange(): Flow<SearchThreadPartialChange.Refresh> =
-            TiebaApi.getInstance().searchThreadFlow(keyword, 1, sortType)
-                .map<SearchThreadBean, SearchThreadPartialChange.Refresh> {
-                    val threadList = it.data.postList
-                    SearchThreadPartialChange.Refresh.Success(
-                        keyword = keyword,
-                        data = threadList,
-                        hasMore = it.data.hasMore == 1,
-                        sortType = sortType
-                    )
-                }
-                .onStart { emit(SearchThreadPartialChange.Refresh.Start) }
-                .catch { emit(SearchThreadPartialChange.Refresh.Failure(it)) }
-
-        private fun SearchThreadUiIntent.LoadMore.producePartialChange(): Flow<SearchThreadPartialChange.LoadMore> =
-            TiebaApi.getInstance().searchThreadFlow(keyword, page + 1, sortType)
-                .map<SearchThreadBean, SearchThreadPartialChange.LoadMore> {
-                    val threadList = it.data.postList
-                    SearchThreadPartialChange.LoadMore.Success(
-                        data = threadList,
-                        page = page + 1,
-                        hasMore = it.data.hasMore == 1
-                    )
-                }
-                .onStart { emit(SearchThreadPartialChange.LoadMore.Start) }
-                .catch { emit(SearchThreadPartialChange.LoadMore.Failure(it)) }
-
-    }
+        SearchThreadPartialChangeProducer { query, page ->
+            TiebaApi.getInstance().searchThreadFlow(query.keyword, page, query.sortType)
+        }
 }
 
-sealed interface SearchThreadUiIntent : UiIntent {
-    data class Refresh(val keyword: String, val sortType: Int) : SearchThreadUiIntent
+internal class SearchThreadPartialChangeProducer(
+    private val search: (SearchThreadQuery, Int) -> Flow<SearchThreadBean>,
+) : PartialChangeProducer<SearchThreadUiIntent, SearchThreadPartialChange, SearchThreadUiState> {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun toPartialChangeFlow(intentFlow: Flow<SearchThreadUiIntent>): Flow<SearchThreadPartialChange> =
+        intentFlow.filterIsInstance<SearchThreadUiIntent.Refresh>().flatMapLatest { (query) ->
+            // A new search or pull-to-refresh also cancels pagination for the previous result set.
+            var nextPage: Int? = 1
+            intentFlow.filterIsInstance<SearchThreadUiIntent.LoadMore>()
+                .filter { it.query == query }
+                .map { it.page }
+                .conflate()
+                .onStart { emit(1) }
+                .filter { it == nextPage }
+                .transform { page ->
+                    emit(SearchThreadPartialChange.Start(query, page))
+                    emitAll(
+                        search(query, page).map<SearchThreadBean, SearchThreadPartialChange> {
+                            val hasMore = it.data.hasMore == 1
+                            nextPage = if (hasMore) page + 1 else null
+                            SearchThreadPartialChange.Success(page, it.data.postList, hasMore)
+                        }.catch { emit(SearchThreadPartialChange.Failure(it)) }
+                    )
+                }
+        }
+}
 
-    data class LoadMore(val keyword: String, val page: Int, val sortType: Int) :
-        SearchThreadUiIntent
+data class SearchThreadQuery(val keyword: String, val sortType: Int)
+
+sealed interface SearchThreadUiIntent : UiIntent {
+    data class Refresh(val query: SearchThreadQuery) : SearchThreadUiIntent
+    data class LoadMore(val query: SearchThreadQuery, val page: Int) : SearchThreadUiIntent
 }
 
 sealed interface SearchThreadPartialChange : PartialChange<SearchThreadUiState> {
-    sealed class Refresh : SearchThreadPartialChange {
-        override fun reduce(oldState: SearchThreadUiState): SearchThreadUiState = when (this) {
-            Start -> oldState.copy(isRefreshing = true, error = null)
-            is Success -> oldState.copy(
-                isRefreshing = false,
-                error = null,
-                data = data.toImmutableList(),
-                currentPage = 1,
-                hasMore = hasMore,
-                keyword = keyword,
-                sortType = sortType
-            )
+    data class Start(val query: SearchThreadQuery, val page: Int) : SearchThreadPartialChange
+    data class Success(
+        val page: Int,
+        val data: List<SearchThreadBean.ThreadInfoBean>,
+        val hasMore: Boolean,
+    ) : SearchThreadPartialChange
+    data class Failure(val error: Throwable) : SearchThreadPartialChange
 
-            is Failure -> oldState.copy(isRefreshing = false, error = error.wrapImmutable())
+    override fun reduce(oldState: SearchThreadUiState): SearchThreadUiState = when (this) {
+        is Start -> when {
+            query != oldState.query -> SearchThreadUiState(query = query)
+            page == 1 -> oldState.copy(isRefreshing = true, isLoadingMore = false, hasMore = false, error = null)
+            else -> oldState.copy(isLoadingMore = true, error = null)
         }
-
-        data object Start : Refresh()
-        data class Success(
-            val keyword: String,
-            val data: List<SearchThreadBean.ThreadInfoBean>,
-            val hasMore: Boolean,
-            val sortType: Int,
-        ) : Refresh()
-
-        data class Failure(val error: Throwable) : Refresh()
-    }
-
-    sealed class LoadMore : SearchThreadPartialChange {
-        override fun reduce(oldState: SearchThreadUiState): SearchThreadUiState = when (this) {
-            Start -> oldState.copy(isLoadingMore = true, error = null)
-            is Success -> oldState.copy(
+        is Success -> {
+            val rows = if (page == 1) data else oldState.data + data
+            oldState.copy(
+                data = rows.distinctBy { Triple(it.tid, it.pid, it.cid) }.toImmutableList(),
+                currentPage = page,
+                hasMore = hasMore,
+                isRefreshing = false,
                 isLoadingMore = false,
                 error = null,
-                data = (oldState.data + data).toImmutableList(),
-                currentPage = page,
-                hasMore = hasMore
             )
-
-            is Failure -> oldState.copy(isLoadingMore = false, error = error.wrapImmutable())
         }
-
-        data object Start : LoadMore()
-        data class Success(
-            val data: List<SearchThreadBean.ThreadInfoBean>,
-            val page: Int,
-            val hasMore: Boolean,
-        ) : LoadMore()
-
-        data class Failure(val error: Throwable) : LoadMore()
+        is Failure -> oldState.copy(isRefreshing = false, isLoadingMore = false, error = error.wrapImmutable())
     }
 }
 
 data class SearchThreadUiState(
+    val query: SearchThreadQuery? = null,
     val isRefreshing: Boolean = true,
     val isLoadingMore: Boolean = false,
     val error: ImmutableHolder<Throwable>? = null,
-    val currentPage: Int = 1,
-    val hasMore: Boolean = true,
-    val keyword: String = "",
+    val currentPage: Int = 0,
+    val hasMore: Boolean = false,
     val data: ImmutableList<SearchThreadBean.ThreadInfoBean> = persistentListOf(),
-    val sortType: Int = SearchThreadSortType.SORT_TYPE_NEWEST,
 ) : UiState
 
-sealed interface SearchThreadUiEvent : UiEvent {
-    data class SwitchSortType(val sortType: Int) : SearchThreadUiEvent
-}
+sealed interface SearchThreadUiEvent : UiEvent
 
 object SearchThreadSortType {
     const val SORT_TYPE_NEWEST = 5

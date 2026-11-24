@@ -18,35 +18,28 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchUserBean
-import com.huanchengfly.tieba.post.arch.collectPartialAsState
-import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
-import com.huanchengfly.tieba.post.ui.page.search.SearchUiEvent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.StringUtil
-import kotlinx.collections.immutable.persistentListOf
 
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
@@ -56,68 +49,27 @@ fun SearchUserPage(
     viewModel: SearchUserViewModel = pageViewModel(),
 ) {
     val navigator = LocalNavigator.current
-    LazyLoad(loaded = viewModel.initialized) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val matchesKeyword = state.keyword == keyword
+    LazyLoad(key = keyword, loaded = matchesKeyword) {
         viewModel.send(SearchUserUiIntent.Refresh(keyword))
-        viewModel.initialized = true
     }
-    val currentKeyword by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchUserUiState::keyword,
-        initial = ""
-    )
-    val isRefreshing by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchUserUiState::isRefreshing,
-        initial = true
-    )
-    val error by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchUserUiState::error,
-        initial = null
-    )
+
+    val exactMatch = state.exactMatch
+    val fuzzyMatch = state.fuzzyMatch
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
+        refreshing = state.isRefreshing,
         onRefresh = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) }
     )
-    val exactMatch by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchUserUiState::exactMatch,
-        initial = null
-    )
-    val fuzzyMatch by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchUserUiState::fuzzyMatch,
-        initial = persistentListOf()
-    )
-
-    val showExactMatchResult by remember {
-        derivedStateOf { exactMatch != null }
-    }
-    val showFuzzyMatchResult by remember {
-        derivedStateOf { fuzzyMatch.isNotEmpty() }
-    }
-
-    onGlobalEvent<SearchUiEvent.KeywordChanged> {
-        viewModel.send(SearchUserUiIntent.Refresh(it.keyword))
-    }
-    val shouldLoad = LocalShouldLoad.current
-    LaunchedEffect(currentKeyword) {
-        if (currentKeyword.isNotEmpty() && keyword != currentKeyword) {
-            if (shouldLoad) {
-                viewModel.send(SearchUserUiIntent.Refresh(keyword))
-            } else {
-                viewModel.initialized = false
-            }
-        }
-    }
-
-    val isEmpty by remember {
-        derivedStateOf { !showExactMatchResult && !showFuzzyMatchResult }
-    }
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = isEmpty,
-        isError = error != null,
-        isLoading = isRefreshing,
+        isEmpty = !matchesKeyword || (exactMatch == null && fuzzyMatch.isEmpty()),
+        isError = matchesKeyword && state.error != null,
+        isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) },
         errorScreen = {
-            error?.let {
+            state.error?.let {
                 val (e) = it
                 ErrorScreen(error = e)
             }
@@ -129,7 +81,7 @@ fun SearchUserPage(
                 .pullRefresh(pullRefreshState)
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (showExactMatchResult) {
+                if (exactMatch != null) {
                     stickyHeader(key = "ExactMatchHeader") {
                         Column(
                             modifier = Modifier
@@ -143,21 +95,19 @@ fun SearchUserPage(
                             )
                         }
                     }
-                    exactMatch?.let {
-                        item(key = "ExactMatch") {
-                            SearchUserItem(
-                                item = it,
-                                onClick = {
-                                    val id = it.id?.toLongOrNull()
-                                    if (id != null) {
-                                        navigator.navigate(UserProfilePageDestination(id))
-                                    }
+                    item(key = "ExactMatch") {
+                        SearchUserItem(
+                            item = exactMatch,
+                            onClick = {
+                                val id = exactMatch.id?.toLongOrNull()
+                                if (id != null) {
+                                    navigator.navigate(UserProfilePageDestination(id))
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
-                if (showFuzzyMatchResult) {
+                if (fuzzyMatch.isNotEmpty()) {
                     stickyHeader(key = "FuzzyMatchHeader") {
                         Column(
                             modifier = Modifier
@@ -186,7 +136,7 @@ fun SearchUserPage(
             }
 
             PullRefreshIndicator(
-                refreshing = isRefreshing,
+                refreshing = state.isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
                 backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,

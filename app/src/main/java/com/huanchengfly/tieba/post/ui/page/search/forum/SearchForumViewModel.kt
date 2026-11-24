@@ -18,9 +18,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 
@@ -37,10 +36,8 @@ class SearchForumViewModel @Inject constructor() :
         PartialChangeProducer<SearchForumUiIntent, SearchForumPartialChange, SearchForumUiState> {
         @OptIn(ExperimentalCoroutinesApi::class)
         override fun toPartialChangeFlow(intentFlow: Flow<SearchForumUiIntent>): Flow<SearchForumPartialChange> =
-            merge(
-                intentFlow.filterIsInstance<SearchForumUiIntent.Refresh>()
-                    .flatMapConcat { it.producePartialChange() },
-            )
+            intentFlow.filterIsInstance<SearchForumUiIntent.Refresh>()
+                .flatMapLatest { it.producePartialChange() }
 
         private fun SearchForumUiIntent.Refresh.producePartialChange(): Flow<SearchForumPartialChange.Refresh> =
             TiebaApi.getInstance()
@@ -53,7 +50,7 @@ class SearchForumViewModel @Inject constructor() :
                         fuzzyMatchForumList = fuzzyForumList,
                     )
                 }
-                .onStart { emit(SearchForumPartialChange.Refresh.Start) }
+                .onStart { emit(SearchForumPartialChange.Refresh.Start(keyword)) }
                 .catch { emit(SearchForumPartialChange.Refresh.Failure(it)) }
     }
 }
@@ -65,7 +62,12 @@ sealed interface SearchForumUiIntent : UiIntent {
 sealed interface SearchForumPartialChange : PartialChange<SearchForumUiState> {
     sealed class Refresh : SearchForumPartialChange {
         override fun reduce(oldState: SearchForumUiState): SearchForumUiState = when (this) {
-            Start -> oldState.copy(isRefreshing = true)
+            is Start -> if (keyword == oldState.keyword) {
+                oldState.copy(isRefreshing = true, error = null)
+            } else {
+                SearchForumUiState(keyword = keyword)
+            }
+
             is Success -> oldState.copy(
                 keyword = keyword,
                 exactMatchForum = exactMatchForum,
@@ -77,7 +79,7 @@ sealed interface SearchForumPartialChange : PartialChange<SearchForumUiState> {
             is Failure -> oldState.copy(isRefreshing = false, error = error.wrapImmutable())
         }
 
-        data object Start : Refresh()
+        data class Start(val keyword: String) : Refresh()
 
         data class Success(
             val keyword: String,
