@@ -9,12 +9,15 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -76,6 +79,11 @@ class NotificationCommentTest {
         }
     }
 
+    private fun tapText(text: String) {
+        // Tap the glyphs; the center of a merged card can lie over its separate quote action.
+        compose.onNodeWithText(text, useUnmergedTree = true).performTouchInput { click(center) }
+    }
+
     @Test fun bodyAuthorAndQuoteKeepTheirOwnDestinations() {
         show(NotificationsType.ReplyMe to reply, NotificationsType.AtMe to mention)
         val replyText = requireNotNull(reply.content)
@@ -91,17 +99,25 @@ class NotificationCommentTest {
         println("Notification bounds: author=$author, body=$body, quote=$quote")
         compose.captureReviewImage(view, "notifications-comments.png")
 
-        compose.onNodeWithText("北窗").performClick()
-        compose.onNodeWithText(replyText).performClick()
-        compose.onNodeWithText(quoteText).performClick()
-        compose.onNodeWithText(mention.content!!).performClick()
-        compose.onNodeWithText(mention.title!!).performClick()
+        tapText("北窗")
+        tapText(replyText)
+        tapText(quoteText)
+        tapText(mention.content!!)
+        tapText(mention.title!!)
+        val replyAction = compose.onNodeWithText(requireNotNull(mention.content))
+        val sourceAction = compose.onNodeWithText(requireNotNull(mention.title))
+        assertEquals("查看回复", replyAction.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
+        assertEquals("查看原文", sourceAction.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
+        replyAction.performSemanticsAction(SemanticsActions.OnClick)
+        sourceAction.performSemanticsAction(SemanticsActions.OnClick)
         compose.runOnIdle {
             assertEquals(
                 listOf(
                     UserProfilePageDestination(42L).route,
                     SubPostsPageDestination(threadId = 101L, subPostId = 202L, loadFromSubPost = true).route,
                     SubPostsPageDestination(threadId = 101L, postId = 303L, loadFromSubPost = true).route,
+                    ThreadPageDestination(threadId = 404L, postId = 505L).route,
+                    ThreadPageDestination(threadId = 404L).route,
                     ThreadPageDestination(threadId = 404L, postId = 505L).route,
                     ThreadPageDestination(threadId = 404L).route,
                 ),
@@ -113,8 +129,8 @@ class NotificationCommentTest {
     @Test fun missingFloorTargetsCanStillOpenTheParentThread() {
         val partial = reply.copy(postId = "", quotePid = "not-a-pid")
         show(NotificationsType.ReplyMe to partial)
-        compose.onNodeWithText(requireNotNull(partial.content)).performClick()
-        compose.onNodeWithText(requireNotNull(partial.quoteContent)).performClick()
+        tapText(requireNotNull(partial.content))
+        tapText(requireNotNull(partial.quoteContent))
         compose.runOnIdle {
             assertEquals(List(2) { ThreadPageDestination(threadId = 101L).route }, routes)
         }

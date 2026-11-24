@@ -206,7 +206,7 @@ internal fun NotificationCard(
                             Text(
                                 stringResource(label),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             EmoticonText(
                                 text = quoteText,
