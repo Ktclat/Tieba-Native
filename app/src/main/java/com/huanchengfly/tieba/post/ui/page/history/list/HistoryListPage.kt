@@ -1,8 +1,8 @@
 package com.huanchengfly.tieba.post.ui.page.history.list
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +15,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,8 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,9 +40,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.arch.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.gson.JsonParseException
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.arch.hiltViewModel
 import com.huanchengfly.tieba.post.fromJson
 import com.huanchengfly.tieba.post.models.ThreadHistoryInfoBean
 import com.huanchengfly.tieba.post.models.database.History
@@ -64,7 +65,11 @@ internal fun HistoryListPage(
     refreshVersion: Long,
     onClearQuery: () -> Unit,
     onMessage: (String) -> Unit,
-    viewModel: HistoryListViewModel = if (type == HistoryUtil.TYPE_THREAD) hiltViewModel<ThreadHistoryListViewModel>() else hiltViewModel<ForumHistoryListViewModel>(),
+    viewModel: HistoryListViewModel = if (type == HistoryUtil.TYPE_THREAD) {
+        hiltViewModel<ThreadHistoryListViewModel>()
+    } else {
+        hiltViewModel<ForumHistoryListViewModel>()
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -73,10 +78,11 @@ internal fun HistoryListPage(
     LaunchedEffect(viewModel, query, refreshVersion) { viewModel.refresh(query) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { result ->
-            showMessage(when (result) {
+            val message = when (result) {
                 HistoryListUiEvent.Delete.Success -> context.getString(R.string.delete_history_success)
                 is HistoryListUiEvent.Delete.Failure -> context.getString(R.string.delete_history_failure, result.errorMsg)
-            })
+            }
+            showMessage(message)
         }
     }
     when {
@@ -102,7 +108,10 @@ internal fun HistoryListPage(
                         Text(stringResource(R.string.history_no_matches))
                         TextButton(onClick = onClearQuery) { Text(stringResource(R.string.history_clear_query)) }
                     }
-                    else -> Text(stringResource(if (type == HistoryUtil.TYPE_THREAD) R.string.history_empty_thread else R.string.history_empty_forum))
+                    else -> {
+                        val label = if (type == HistoryUtil.TYPE_THREAD) R.string.history_empty_thread else R.string.history_empty_forum
+                        Text(stringResource(label))
+                    }
                 }
             }
         }
@@ -119,11 +128,17 @@ internal fun HistoryListPage(
                         if (tid != null) {
                             val extra = try {
                                 entry.extras?.fromJson<ThreadHistoryInfoBean>()
-                            } catch (_: com.google.gson.JsonParseException) {
+                            } catch (_: JsonParseException) {
                                 null
                             }
-                            navigator.navigate(ThreadPageDestination(tid, postId = extra?.pid?.toLongOrNull() ?: 0L,
-                                seeLz = extra?.isSeeLz ?: false, from = ThreadPageFrom.FROM_HISTORY))
+                            navigator.navigate(
+                                ThreadPageDestination(
+                                    threadId = tid,
+                                    postId = extra?.pid?.toLongOrNull() ?: 0L,
+                                    seeLz = extra?.isSeeLz ?: false,
+                                    from = ThreadPageFrom.FROM_HISTORY,
+                                )
+                            )
                         }
                     }
                 },
@@ -150,20 +165,28 @@ private fun HistoryRows(
         isEmpty = false,
     ) {
         MyLazyColumn(Modifier.fillMaxSize(), state = listState) {
-            listOf(R.string.title_history_today to state.todayHistoryData, R.string.title_history_before to state.beforeHistoryData)
-                .forEach { (label, rows) ->
-                    if (rows.isNotEmpty()) {
-                        stickyHeader(key = "group-$label") {
-                            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
-                                .padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() }) {
-                                Text(stringResource(label), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        items(rows, key = { it.id }) { entry ->
-                            HistoryItem(entry, onClick = onClick, onDelete = onDelete)
-                        }
-                    }
+            val groups = listOf(
+                R.string.title_history_today to state.todayHistoryData,
+                R.string.title_history_before to state.beforeHistoryData,
+            )
+            for ((label, rows) in groups) {
+                if (rows.isEmpty()) continue
+                stickyHeader(key = "group-$label") {
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .semantics { heading() },
+                    )
                 }
+                items(rows, key = { it.id }) { entry ->
+                    HistoryItem(entry, onClick = onClick, onDelete = onDelete)
+                }
+            }
             if (state.error != null) {
                 item {
                     TextButton(onClick = onLoadMore, modifier = Modifier.fillMaxWidth()) {
@@ -192,7 +215,10 @@ private fun HistoryItem(info: History, onClick: (History) -> Unit, onDelete: (Hi
         ),
         headlineContent = { Text(title) },
         supportingContent = {
-            Text(if (thread && !info.username.isNullOrBlank()) stringResource(R.string.history_author_time, info.username, time) else time)
+            val subtitle = if (thread && !info.username.isNullOrBlank()) {
+                stringResource(R.string.history_author_time, info.username, time)
+            } else time
+            Text(subtitle)
         },
         leadingContent = {
             if (info.avatar.isNullOrBlank()) {
@@ -205,7 +231,10 @@ private fun HistoryItem(info: History, onClick: (History) -> Unit, onDelete: (Hi
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.title_delete)) },
-                        onClick = { menuOpen = false; onDelete(info) },
+                        onClick = {
+                            menuOpen = false
+                            onDelete(info)
+                        },
                     )
                 }
             }

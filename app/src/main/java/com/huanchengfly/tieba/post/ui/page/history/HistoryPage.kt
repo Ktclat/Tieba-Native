@@ -114,12 +114,15 @@ fun HistoryPage(navigator: DestinationsNavigator) {
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(requester),
                         label = { Text(stringResource(R.string.history_search)) },
                         placeholder = {
-                            Text(stringResource(if (pager.currentPage == 0) R.string.history_thread_hint else R.string.history_forum_hint))
+                            val hint = if (pager.currentPage == 0) R.string.history_thread_hint else R.string.history_forum_hint
+                            Text(stringResource(hint))
                         },
                         trailingIcon = if (query.isNotEmpty()) {
-                            { IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Outlined.Close, stringResource(R.string.history_clear_query))
-                            } }
+                            {
+                                IconButton(onClick = { query = "" }) {
+                                    Icon(Icons.Outlined.Close, stringResource(R.string.history_clear_query))
+                                }
+                            }
                         } else null,
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
