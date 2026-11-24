@@ -158,7 +158,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
-import com.huanchengfly.tieba.post.ui.widgets.compose.buildChipInlineContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -1852,7 +1851,7 @@ fun PostCard(
 
                     contentRenders.fastForEach { it.Render() }
 
-                    if (showSubPosts && post.sub_post_number > 0 && !immersiveMode) {
+                    if (showSubPosts && !immersiveMode && (subPosts.isNotEmpty() || post.sub_post_number > 0)) {
                         Column(
                             modifier = Modifier.fillMaxWidth()
                                 .clip(M3Theme.shapes.medium)

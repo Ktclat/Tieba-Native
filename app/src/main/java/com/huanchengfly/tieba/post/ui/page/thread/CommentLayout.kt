@@ -62,7 +62,11 @@ internal fun CommentHeader(
     floor: Int? = null,
     onUserClick: (User) -> Unit,
 ) {
-    val profile = author?.takeIf { it.id > 0 }
+    val authorId = author?.id ?: 0L
+    val isThreadAuthor = authorId > 0 && authorId == threadAuthorId
+    val openProfile: (() -> Unit)? = if (author != null && authorId > 0) {
+        { onUserClick(author) }
+    } else null
     val name = StringUtil.getUsernameAnnotatedString(
         LocalContext.current,
         author?.name.orEmpty().trim(),
@@ -72,11 +76,11 @@ internal fun CommentHeader(
         name = name,
         portrait = author?.portrait,
         time = time,
-        onAuthorClick = if (profile != null) ({ onUserClick(profile) }) else null,
+        onAuthorClick = openProfile,
         floor = floor,
         ipAddress = author?.ip_address,
         userLevel = author?.level_id ?: 0,
-        isLz = profile != null && profile.id == threadAuthorId,
+        isLz = isThreadAuthor,
         bawuType = author?.bawuType,
     )
 }

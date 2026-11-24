@@ -415,9 +415,15 @@ fun SubPostList.getContentText(threadAuthorId: Long? = null): AnnotatedString {
     val user = author ?: return previewBody
     if (user.name.isBlank() && user.nameShow.isBlank()) return previewBody
     val context = App.INSTANCE
-    val displayName = StringUtil.getUsernameAnnotatedString(context, user.name, user.nameShow.takeIf { it.isNotBlank() })
+    val displayName = StringUtil.getUsernameAnnotatedString(
+        context, user.name, user.nameShow.takeIf { it.isNotBlank() },
+    )
+    val nameStyle = SpanStyle(
+        color = Color(ThemeUtils.getColorByAttr(context, R.attr.colorNewPrimary)),
+        fontWeight = FontWeight.Bold,
+    )
     return buildAnnotatedString {
-        withStyle(SpanStyle(color = Color(ThemeUtils.getColorByAttr(context, R.attr.colorNewPrimary)), fontWeight = FontWeight.Bold)) {
+        withStyle(nameStyle) {
             if (user.id > 0) {
                 withAnnotation("user", user.id.toString()) { append(displayName) }
             } else {
