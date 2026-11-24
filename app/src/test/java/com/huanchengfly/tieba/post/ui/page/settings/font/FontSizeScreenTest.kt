@@ -1,8 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.settings.font
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.view.View
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -34,9 +32,9 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
-import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -152,7 +150,7 @@ class FontSizeScreenTest {
     @Test fun lightLayoutKeepsSaveVisibleAndProducesReviewImage() {
         show()
         compose.onNodeWithTag("font-save").assertIsDisplayed()
-        capture("font-light.png")
+        compose.captureReviewImage(renderingView, "font-light.png")
     }
 
     @Test
@@ -164,7 +162,7 @@ class FontSizeScreenTest {
         compose.onNodeWithTag("font-increase").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("font-reset").performScrollTo().assertIsDisplayed()
         // Preserve a review image even when a later layout assertion fails.
-        capture("font-compact-dark-130.png")
+        compose.captureReviewImage(renderingView, "font-compact-dark-130.png")
         assertEquals("Reset label must stay on one line on a compact window", 1, assertTextFits("font-reset-label").lineCount)
     }
 
@@ -187,7 +185,7 @@ class FontSizeScreenTest {
         percentage.assertTextEquals("130%")
         val reset = compose.onNodeWithTag("font-reset")
         reset.performScrollTo().assertIsDisplayed()
-        capture("font-narrow-dark-130.png")
+        compose.captureReviewImage(renderingView, "font-narrow-dark-130.png")
         assertTrue("Reset label must wrap within the narrow window", assertTextFits("font-reset-label").lineCount > 1)
         reset.assertIsEnabled().performClick()
         compose.onNodeWithTag("font-percentage").assertTextEquals("100%")
@@ -218,27 +216,4 @@ class FontSizeScreenTest {
         return result
     }
 
-    private fun capture(name: String) {
-        compose.waitForIdle()
-        // Native Canvas rendering works without an instrumented device compositor.
-        val image = compose.runOnIdle {
-            check(renderingView.width > 0 && renderingView.height > 0)
-            Bitmap.createBitmap(renderingView.width, renderingView.height, Bitmap.Config.ARGB_8888).also {
-                renderingView.draw(Canvas(it))
-            }
-        }
-        try {
-            val samples = mutableSetOf<Int>()
-            for (y in 0 until image.height step 7) {
-                for (x in 0 until image.width step 7) samples.add(image.getPixel(x, y))
-            }
-            assertTrue("Review image must contain rendered content, not a blank canvas", samples.size > 4)
-            val directory = File("build/reports/ui-screenshots").apply { mkdirs() }
-            File(directory, name).outputStream().use {
-                check(image.compress(Bitmap.CompressFormat.PNG, 100, it))
-            }
-        } finally {
-            image.recycle()
-        }
-    }
 }

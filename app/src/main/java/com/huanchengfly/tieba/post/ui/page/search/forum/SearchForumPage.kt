@@ -18,33 +18,26 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchForumBean
-import com.huanchengfly.tieba.post.arch.collectPartialAsState
-import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
-import com.huanchengfly.tieba.post.ui.page.search.SearchUiEvent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
-import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -53,69 +46,27 @@ fun SearchForumPage(
     viewModel: SearchForumViewModel = pageViewModel(),
 ) {
     val navigator = LocalNavigator.current
-    LazyLoad(loaded = viewModel.initialized) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val matchesKeyword = state.keyword == keyword
+    LazyLoad(key = keyword, loaded = matchesKeyword) {
         viewModel.send(SearchForumUiIntent.Refresh(keyword))
-        viewModel.initialized = true
-    }
-    val currentKeyword by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchForumUiState::keyword,
-        initial = ""
-    )
-    val isRefreshing by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchForumUiState::isRefreshing,
-        initial = true
-    )
-    val error by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchForumUiState::error,
-        initial = null
-    )
-    val exactMatchForum by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchForumUiState::exactMatchForum,
-        initial = null
-    )
-    val fuzzyMatchForumList by viewModel.uiState.collectPartialAsState(
-        prop1 = SearchForumUiState::fuzzyMatchForumList,
-        initial = persistentListOf()
-    )
-
-    val showExactMatchResult by remember {
-        derivedStateOf { exactMatchForum != null }
-    }
-    val showFuzzyMatchResult by remember {
-        derivedStateOf { fuzzyMatchForumList.isNotEmpty() }
     }
 
+    val exactMatchForum = state.exactMatchForum
+    val fuzzyMatchForumList = state.fuzzyMatchForumList
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
+        refreshing = state.isRefreshing,
         onRefresh = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) }
     )
 
-    val isEmpty by remember {
-        derivedStateOf { !showExactMatchResult && !showFuzzyMatchResult }
-    }
-
-    onGlobalEvent<SearchUiEvent.KeywordChanged> {
-        viewModel.send(SearchForumUiIntent.Refresh(it.keyword))
-    }
-    val shouldLoad = LocalShouldLoad.current
-    LaunchedEffect(currentKeyword) {
-        if (currentKeyword.isNotEmpty() && keyword != currentKeyword) {
-            if (shouldLoad) {
-                viewModel.send(SearchForumUiIntent.Refresh(keyword))
-            } else {
-                viewModel.initialized = false
-            }
-        }
-    }
-
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = isEmpty,
-        isError = error != null,
-        isLoading = isRefreshing,
+        isEmpty = !matchesKeyword || (exactMatchForum == null && fuzzyMatchForumList.isEmpty()),
+        isError = matchesKeyword && state.error != null,
+        isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) },
         errorScreen = {
-            error?.let {
+            state.error?.let {
                 val (e) = it
                 ErrorScreen(error = e)
             }
@@ -127,7 +78,7 @@ fun SearchForumPage(
                 .pullRefresh(pullRefreshState)
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (showExactMatchResult) {
+                if (exactMatchForum != null) {
                     stickyHeader(key = "ExactMatchHeader") {
                         Column(
                             modifier = Modifier
@@ -143,14 +94,14 @@ fun SearchForumPage(
                     }
                     item(key = "ExactMatch") {
                         SearchForumItem(
-                            item = exactMatchForum!!,
+                            item = exactMatchForum,
                             onClick = {
-                                navigator.navigate(ForumPageDestination(exactMatchForum!!.forumName.orEmpty()))
+                                navigator.navigate(ForumPageDestination(exactMatchForum.forumName.orEmpty()))
                             }
                         )
                     }
                 }
-                if (showFuzzyMatchResult) {
+                if (fuzzyMatchForumList.isNotEmpty()) {
                     stickyHeader(key = "FuzzyMatchHeader") {
                         Column(
                             modifier = Modifier
@@ -176,7 +127,7 @@ fun SearchForumPage(
             }
 
             PullRefreshIndicator(
-                refreshing = isRefreshing,
+                refreshing = state.isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
                 backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,

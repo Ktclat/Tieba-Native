@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_manage">管理</string>
+    <string name="search_history_empty">暂无搜索历史</string>
+    <string name="search_history_search_again">重新搜索</string>
+    <string name="search_history_delete_term">删除搜索记录“%1$s”</string>
+    <string name="search_history_confirm_clear">清除全部搜索历史？</string>
+    <string name="search_history_clear_global_message">将清除本机的全部全站搜索记录。</string>
+    <string name="search_history_clear_forum_message">将清除本机在“%1$s”吧的搜索记录。</string>
+    <string name="search_fill_suggestion">将“%1$s”填入搜索框</string>
+    <string name="search_current_sort">当前排序：%1$s</string>
+</resources>

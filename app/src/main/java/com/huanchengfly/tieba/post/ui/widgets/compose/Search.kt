@@ -1,9 +1,7 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,24 +14,28 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material3.Surface as M3Surface
+import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,12 +45,14 @@ import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -162,6 +166,7 @@ fun SearchThreadList(
     onMainPostClick: (SearchThreadBean.MainPost) -> Unit = {},
     hideForum: Boolean = false,
     searchKeyword: String? = null,
+    footer: LazyListScope.() -> Unit = {},
     header: LazyListScope.() -> Unit = {},
 ) {
     MyLazyColumn(
@@ -184,6 +189,7 @@ fun SearchThreadList(
                 searchKeyword = searchKeyword
             )
         }
+        footer()
     }
 }
 
@@ -408,82 +414,50 @@ fun SearchBox(
     contentColor: Color = M3Theme.colorScheme.onSurface,
     elevation: Dp = 0.dp,
 ) {
-    val isKeywordNotEmpty = remember(keyword) { keyword.isNotEmpty() }
+    // Keep IME composition and selection during typing. A suggestion replaces the whole query.
+    var editingValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(keyword, TextRange(keyword.length)))
+    }
+    val field = if (keyword == editingValue.text) editingValue else TextFieldValue(keyword, TextRange(keyword.length))
+    SideEffect { if (field != editingValue) editingValue = field }
     var isFocused by remember { mutableStateOf(false) }
-    M3Surface(
-        modifier = modifier,
-        shape = shape,
-        color = color,
-        contentColor = contentColor,
-        tonalElevation = elevation,
-    ) {
+    M3Surface(modifier = modifier, shape = shape, color = color, contentColor = contentColor, tonalElevation = elevation) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             prependIcon()
-            BaseTextField(
-                value = keyword,
+            BasicTextField(
+                value = field,
                 onValueChange = {
-                    onKeywordChange(it)
+                    editingValue = it
+                    if (it.text != keyword) onKeywordChange(it.text)
                 },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Search,
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        onKeywordSubmit(keyword)
-                    }
-                ),
-                placeholder = placeholder,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
+                    .padding(horizontal = 4.dp)
                     .focusRequester(focusRequester)
-                    .onFocusEvent {
-                        isFocused = it.isFocused
+                    .onFocusEvent { isFocused = it.isFocused },
+                singleLine = true,
+                textStyle = M3Theme.typography.bodyLarge.copy(color = contentColor),
+                cursorBrush = SolidColor(M3Theme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit(keyword) }),
+                decorationBox = { input ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (keyword.isEmpty()) placeholder()
+                        input()
                     }
+                },
             )
             appendIcon()
-            AnimatedVisibility(visible = isKeywordNotEmpty && isFocused) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(100))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(bounded = true, radius = 24.dp),
-                                role = Role.Button
-                            ) { onKeywordChange("") },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Clear,
-                            contentDescription = stringResource(id = R.string.button_clear)
-                        )
-                    }
+            if (keyword.isNotEmpty() && isFocused) {
+                IconButton(onClick = { onKeywordChange("") }) {
+                    M3Icon(Icons.Rounded.Clear, stringResource(R.string.button_clear))
                 }
             }
-            AnimatedVisibility(visible = isKeywordNotEmpty) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(100))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, radius = 24.dp),
-                            role = Role.Button
-                        ) { onKeywordSubmit(keyword) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = stringResource(id = R.string.button_search)
-                    )
+            if (keyword.isNotBlank()) {
+                IconButton(onClick = { onKeywordSubmit(keyword) }) {
+                    M3Icon(Icons.Rounded.Search, stringResource(R.string.button_search))
                 }
             }
         }
