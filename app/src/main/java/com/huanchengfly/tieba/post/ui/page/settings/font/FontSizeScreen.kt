@@ -3,8 +3,9 @@ package com.huanchengfly.tieba.post.ui.page.settings.font
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,13 +44,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import kotlin.math.roundToInt
 
 /** Stateless editor: preview changes never write preferences; only Save invokes persistence. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun FontSizeScreen(
     savedIndex: Int,
@@ -146,24 +148,27 @@ internal fun FontSizeScreen(
                 item(key = "controls") {
                     Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.surfaceContainerLow) {
                         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
                                     percentage, style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.SemiBold, maxLines = 1,
-                                    modifier = Modifier.weight(1f).semantics { testTag = "font-percentage" },
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                        .semantics { testTag = "font-percentage" },
                                 )
-                                FilledTonalIconButton(
-                                    onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
-                                    modifier = Modifier.semantics { testTag = "font-decrease" },
-                                ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
-                                FilledTonalIconButton(
-                                    onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
-                                    modifier = Modifier.semantics { testTag = "font-increase" },
-                                ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
+                                FlowRow(modifier = Modifier.align(Alignment.CenterVertically)) {
+                                    FilledTonalIconButton(
+                                        onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
+                                        modifier = Modifier.semantics { testTag = "font-decrease" },
+                                    ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
+                                    FilledTonalIconButton(
+                                        onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
+                                        modifier = Modifier.semantics { testTag = "font-increase" },
+                                    ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
+                                }
                             }
                             Slider(
                                 value = index.toFloat(),
@@ -186,7 +191,7 @@ internal fun FontSizeScreen(
                             ) {
                                 Text(
                                     stringResource(R.string.native_font_reset),
-                                    maxLines = 1,
+                                    textAlign = TextAlign.Center,
                                     modifier = Modifier.semantics { testTag = "font-reset-label" },
                                 )
                             }

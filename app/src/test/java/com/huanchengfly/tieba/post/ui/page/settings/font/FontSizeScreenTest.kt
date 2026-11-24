@@ -165,26 +165,57 @@ class FontSizeScreenTest {
         compose.onNodeWithTag("font-reset").performScrollTo().assertIsDisplayed()
         // Preserve a review image even when a later layout assertion fails.
         capture("font-compact-dark-130.png")
-        val label = compose.onNodeWithTag("font-reset-label", useUnmergedTree = true)
+        assertEquals("Reset label must stay on one line on a compact window", 1, assertTextFits("font-reset-label").lineCount)
+    }
+
+    @Test
+    @Config(qualifiers = "w180dp-h568dp")
+    fun narrowWindowKeepsPercentageAndAllFontControlsUsable() {
+        show(initial = 10, dark = true, largeControls = true)
+        scrollToControls()
+        val percentage = compose.onNodeWithTag("font-percentage")
+        val decrease = compose.onNodeWithTag("font-decrease")
+        val increase = compose.onNodeWithTag("font-increase")
+        percentage.assertIsDisplayed().assertTextEquals("130%")
+        assertTextFits("font-percentage")
+        val percentageBounds = percentage.fetchSemanticsNode().boundsInRoot
+        assertFalse(percentageBounds.overlaps(decrease.fetchSemanticsNode().boundsInRoot))
+        assertFalse(percentageBounds.overlaps(increase.fetchSemanticsNode().boundsInRoot))
+        decrease.assertIsDisplayed().performClick()
+        percentage.assertTextEquals("125%")
+        increase.assertIsDisplayed().performClick()
+        percentage.assertTextEquals("130%")
+        val reset = compose.onNodeWithTag("font-reset")
+        reset.performScrollTo().assertIsDisplayed()
+        capture("font-narrow-dark-130.png")
+        assertTrue("Reset label must wrap within the narrow window", assertTextFits("font-reset-label").lineCount > 1)
+        reset.assertIsEnabled().performClick()
+        compose.onNodeWithTag("font-percentage").assertTextEquals("100%")
+        reset.assertIsNotEnabled()
+    }
+
+    private fun assertTextFits(tag: String): TextLayoutResult {
+        val label = compose.onNodeWithTag(tag, useUnmergedTree = true)
         val textLayouts = mutableListOf<TextLayoutResult>()
         label.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
             check(action(textLayouts))
         }
         val result = textLayouts.single()
-        assertEquals("Reset label must stay on one line on a compact window", 1, result.lineCount)
-        assertEquals(result.layoutInput.text.length, result.getLineEnd(0, visibleEnd = true))
-        assertFalse("Reset label must not be ellipsized", result.isLineEllipsized(0))
-        assertFalse("Reset label must fit vertically", result.didOverflowHeight)
+        val lastLine = result.lineCount - 1
+        assertEquals(result.layoutInput.text.length, result.getLineEnd(lastLine, visibleEnd = true))
+        assertFalse("$tag must fit vertically", result.didOverflowHeight)
 
         // Compose 1.7 rebuilds the semantics paragraph at the parent's maximum width.
-        // Compare the drawn line with the visible label, excluding unused paragraph space.
+        // Compare the drawn lines with the visible label, excluding unused paragraph space.
         val visibleBounds = label.fetchSemanticsNode().boundsInRoot
-        val lineWidth = result.getLineRight(0) - result.getLineLeft(0)
-        val lineHeight = result.getLineBottom(0) - result.getLineTop(0)
-        assertTrue(
-            "Reset label line (${lineWidth}x${lineHeight}) exceeds visible bounds $visibleBounds",
-            lineWidth <= visibleBounds.width && lineHeight <= visibleBounds.height,
-        )
+        for (line in 0..lastLine) {
+            assertFalse("$tag must not be ellipsized", result.isLineEllipsized(line))
+            val lineWidth = result.getLineRight(line) - result.getLineLeft(line)
+            assertTrue("$tag line $line exceeds width $visibleBounds", lineWidth <= visibleBounds.width)
+        }
+        val height = result.getLineBottom(lastLine) - result.getLineTop(0)
+        assertTrue("$tag exceeds height $visibleBounds", height <= visibleBounds.height)
+        return result
     }
 
     private fun capture(name: String) {
