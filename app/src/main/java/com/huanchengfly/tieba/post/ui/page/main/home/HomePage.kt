@@ -105,7 +105,6 @@ import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
-import kotlinx.collections.immutable.persistentListOf
 
 private fun getGridCells(context: Context, listSingle: Boolean = context.appPreferences.listSingle): GridCells {
     return if (listSingle) {
@@ -397,30 +396,12 @@ fun HomePage(
     val account = LocalAccount.current
     val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val isLoading by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::isLoading,
-        initial = true
-    )
-    val forums by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::forums,
-        initial = persistentListOf()
-    )
-    val topForums by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::topForums,
-        initial = persistentListOf()
-    )
-    val historyForums by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::historyForums,
-        initial = persistentListOf()
-    )
-    val expandHistoryForum by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::expandHistoryForum,
-        initial = true
-    )
-    val error by viewModel.uiState.collectPartialAsState(
-        prop1 = HomeUiState::error,
-        initial = null
-    )
+    val isLoading by viewModel.uiState.collectPartialAsState(HomeUiState::isLoading)
+    val forums by viewModel.uiState.collectPartialAsState(HomeUiState::forums)
+    val topForums by viewModel.uiState.collectPartialAsState(HomeUiState::topForums)
+    val historyForums by viewModel.uiState.collectPartialAsState(HomeUiState::historyForums)
+    val expandHistoryForum by viewModel.uiState.collectPartialAsState(HomeUiState::expandHistoryForum)
+    val error by viewModel.uiState.collectPartialAsState(HomeUiState::error)
     val isLoggedIn = remember(account) { account != null }
     val isEmpty by remember { derivedStateOf { forums.isEmpty() } }
     val hasTopForum by remember { derivedStateOf { topForums.isNotEmpty() } }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.InternalComposeApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.currentComposer
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,6 +46,14 @@ fun <T> Flow<T>.collectIn(
     action: (T) -> Unit
 ): Job = lifecycleOwner.lifecycleScope.launch {
     flowWithLifecycle(lifecycleOwner.lifecycle, minActiveState).collect(action)
+}
+
+@Composable
+inline fun <reified T : UiState, A> StateFlow<T>.collectPartialAsState(
+    prop1: KProperty1<T, A>,
+): State<A> = key(this, prop1) {
+    val initial = remember { prop1.get(value) }
+    collectPartialAsState(prop1, initial)
 }
 
 @Composable

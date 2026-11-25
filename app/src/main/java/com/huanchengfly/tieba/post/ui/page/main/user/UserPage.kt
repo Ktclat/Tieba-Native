@@ -252,14 +252,8 @@ fun UserPage(
 ) {
     val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val isLoading by viewModel.uiState.collectPartialAsState(
-        prop1 = UserUiState::isLoading,
-        initial = false
-    )
-    val account by viewModel.uiState.collectPartialAsState(
-        prop1 = UserUiState::account,
-        initial = null
-    )
+    val isLoading by viewModel.uiState.collectPartialAsState(UserUiState::isLoading)
+    val account by viewModel.uiState.collectPartialAsState(UserUiState::account)
 
     val switchToNightDialogState = rememberDialogState()
     ConfirmDialog(

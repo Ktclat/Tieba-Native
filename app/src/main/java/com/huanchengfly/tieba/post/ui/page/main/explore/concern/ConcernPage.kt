@@ -34,7 +34,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
-import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -46,22 +45,10 @@ fun ConcernPage(
         viewModel.initialized = true
     }
     val navigator = LocalNavigator.current
-    val isRefreshing by viewModel.uiState.collectPartialAsState(
-        prop1 = ConcernUiState::isRefreshing,
-        initial = false
-    )
-    val isLoadingMore by viewModel.uiState.collectPartialAsState(
-        prop1 = ConcernUiState::isLoadingMore,
-        initial = false
-    )
-    val nextPageTag by viewModel.uiState.collectPartialAsState(
-        prop1 = ConcernUiState::nextPageTag,
-        initial = ""
-    )
-    val data by viewModel.uiState.collectPartialAsState(
-        prop1 = ConcernUiState::data,
-        initial = persistentListOf()
-    )
+    val isRefreshing by viewModel.uiState.collectPartialAsState(ConcernUiState::isRefreshing)
+    val isLoadingMore by viewModel.uiState.collectPartialAsState(ConcernUiState::isLoadingMore)
+    val nextPageTag by viewModel.uiState.collectPartialAsState(ConcernUiState::nextPageTag)
+    val data by viewModel.uiState.collectPartialAsState(ConcernUiState::data)
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = { viewModel.send(ConcernUiIntent.Refresh) })

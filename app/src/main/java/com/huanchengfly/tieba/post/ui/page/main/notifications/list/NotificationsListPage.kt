@@ -45,7 +45,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.ramcosta.composedestinations.spec.Direction
-import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -61,26 +60,11 @@ fun NotificationsListPage(
         viewModel.initialized = true
     }
     val navigator = LocalNavigator.current
-    val isRefreshing by viewModel.uiState.collectPartialAsState(
-        prop1 = NotificationsListUiState::isRefreshing,
-        initial = false
-    )
-    val isLoadingMore by viewModel.uiState.collectPartialAsState(
-        prop1 = NotificationsListUiState::isLoadingMore,
-        initial = false
-    )
-    val hasMore by viewModel.uiState.collectPartialAsState(
-        prop1 = NotificationsListUiState::hasMore,
-        initial = true
-    )
-    val data by viewModel.uiState.collectPartialAsState(
-        prop1 = NotificationsListUiState::data,
-        initial = persistentListOf()
-    )
-    val currentPage by viewModel.uiState.collectPartialAsState(
-        prop1 = NotificationsListUiState::currentPage,
-        initial = 1
-    )
+    val isRefreshing by viewModel.uiState.collectPartialAsState(NotificationsListUiState::isRefreshing)
+    val isLoadingMore by viewModel.uiState.collectPartialAsState(NotificationsListUiState::isLoadingMore)
+    val hasMore by viewModel.uiState.collectPartialAsState(NotificationsListUiState::hasMore)
+    val data by viewModel.uiState.collectPartialAsState(NotificationsListUiState::data)
+    val currentPage by viewModel.uiState.collectPartialAsState(NotificationsListUiState::currentPage)
     val rowKeys = remember(data) { notificationKeys(data) }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,

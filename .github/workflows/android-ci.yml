@@ -37,7 +37,14 @@ jobs:
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+      - name: Cache Robolectric Android runtimes
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric/android-all-instrumented
+          key: ${{ runner.os }}-robolectric-${{ hashFiles('app/build.gradle.kts') }}
       - name: Build APK and run JVM and Compose regression tests
+        env:
+          JAVA_TOOL_OPTIONS: -Drobolectric.dependency.repo.url=https://maven-central.storage-download.googleapis.com/maven2
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --stacktrace --no-daemon
       - name: Upload test reports and UI review screenshots
         if: always()

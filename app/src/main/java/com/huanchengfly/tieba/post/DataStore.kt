@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post
 
-import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,13 +93,16 @@ fun <T> rememberPreferenceAsState(
     return state
 }
 
-@SuppressLint("FlowOperatorInvokedInComposition")
 @Composable
 fun <T> DataStore<Preferences>.collectPreferenceAsState(
     key: Preferences.Key<T>,
-    defaultValue: T
+    defaultValue: T,
+    initialValue: T = defaultValue,
 ): State<T> {
-    return data.map { it[key] ?: defaultValue }.collectAsState(initial = defaultValue)
+    val values = remember(this, key, defaultValue) {
+        data.map { it[key] ?: defaultValue }.distinctUntilChanged()
+    }
+    return values.collectAsState(initial = initialValue)
 }
 
 fun DataStore<Preferences>.putString(key: String, value: String? = null) {

@@ -126,8 +126,7 @@ fun NavigationDrawerItem(
 @Composable
 fun NavigationDrawerContent(
     currentPosition: Int,
-    onChangePosition: (position: Int) -> Unit,
-    onReselected: (position: Int) -> Unit,
+    onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
     navigationContentPosition: MainNavigationContentPosition
 ) {
@@ -190,13 +189,7 @@ fun NavigationDrawerContent(
                 navigationItems.fastForEachIndexed { index, navigationItem ->
                     NavigationDrawerItem(
                         selected = index == currentPosition,
-                        onClick = {
-                            if (index == currentPosition) {
-                                onReselected(index)
-                            } else {
-                                onChangePosition(index)
-                            }
-                        },
+                        onClick = { onSelect(index) },
                         label = { Text(text = navigationItem.title(index == currentPosition)) },
                         icon = {
                             Box {
@@ -284,8 +277,7 @@ private fun PositionLayout(
 @Composable
 fun NavigationRail(
     currentPosition: Int,
-    onChangePosition: (position: Int) -> Unit,
-    onReselected: (position: Int) -> Unit,
+    onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
     navigationContentPosition: MainNavigationContentPosition
 ) {
@@ -303,13 +295,7 @@ fun NavigationRail(
             navigationItems.forEachIndexed { index, navigationItem ->
                 M3NavigationRailItem(
                     selected = index == currentPosition,
-                    onClick = {
-                        if (index == currentPosition) {
-                            onReselected(index)
-                        } else {
-                            onChangePosition(index)
-                        }
-                    },
+                    onClick = { onSelect(index) },
                     icon = {
                         Box {
                             Icon(

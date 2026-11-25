@@ -74,7 +74,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -88,34 +87,13 @@ fun PersonalizedPage(
         viewModel.initialized = true
     }
     val navigator = LocalNavigator.current
-    val isRefreshing by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::isRefreshing,
-        initial = false
-    )
-    val isLoadingMore by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::isLoadingMore,
-        initial = false
-    )
-    val currentPage by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::currentPage,
-        initial = 1
-    )
-    val data by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::data,
-        initial = persistentListOf()
-    )
-    val error by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::error,
-        initial = null
-    )
-    val refreshPosition by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::refreshPosition,
-        initial = 0
-    )
-    val hiddenThreadIds by viewModel.uiState.collectPartialAsState(
-        prop1 = PersonalizedUiState::hiddenThreadIds,
-        initial = persistentListOf()
-    )
+    val isRefreshing by viewModel.uiState.collectPartialAsState(PersonalizedUiState::isRefreshing)
+    val isLoadingMore by viewModel.uiState.collectPartialAsState(PersonalizedUiState::isLoadingMore)
+    val currentPage by viewModel.uiState.collectPartialAsState(PersonalizedUiState::currentPage)
+    val data by viewModel.uiState.collectPartialAsState(PersonalizedUiState::data)
+    val error by viewModel.uiState.collectPartialAsState(PersonalizedUiState::error)
+    val refreshPosition by viewModel.uiState.collectPartialAsState(PersonalizedUiState::refreshPosition)
+    val hiddenThreadIds by viewModel.uiState.collectPartialAsState(PersonalizedUiState::hiddenThreadIds)
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = { viewModel.send(PersonalizedUiIntent.Refresh) }
