@@ -83,10 +83,11 @@ class ReplyEditorTest {
             val view = LocalView.current
             SideEffect { host = view }
             TiebaLiteTheme {
-                ReplyPage(navigator, 1L, "旅行", 100L, postId = 12L, subPostId = 201L, viewModel = model)
+                ReplyPage(navigator, 1L, "旅行", 100L, postId = 12L, subPostId = 201L, replyUserName = "林间月", viewModel = model)
             }
         }
         val login = compose.onNodeWithText(App.INSTANCE.getString(R.string.login_to_reply))
+        compose.onNodeWithText("回复 林间月").assertExists()
         login.assertIsEnabled()
         compose.captureReviewImage(host, "reply-guest-login.png")
         login.performClick()

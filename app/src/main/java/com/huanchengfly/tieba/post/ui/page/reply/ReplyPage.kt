@@ -91,6 +91,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -335,7 +336,7 @@ internal fun ReplyPageContent(
             content = getText(), forumId = forumId, forumName = forumName, threadId = threadId,
             tbs = tbs.orEmpty(), postId = postId, subPostId = subPostId, replyUserId = replyUserId,
             replyUserName = replyUserName, replyUserPortrait = replyUserPortrait,
-            imageUris = selectedImageList, isOriginImage = isOriginImage,
+            imageUris = selectedImageList, isOriginImage = isOriginImage, accountId = accountId,
         ))
     }
 
@@ -657,7 +658,11 @@ fun ReplyPage(
 ) {
     val account = AccountUtil.LocalAccount.current
     if (account == null) {
-        ReplyLoginPrompt(onLogin = { navigator.navigate(LoginPageDestination) }, onBack = { navigator.navigateUp() })
+        ReplyLoginPrompt(
+            recipient = replyUserName,
+            onLogin = { navigator.navigate(LoginPageDestination) },
+            onBack = { navigator.navigateUp() },
+        )
         return
     }
     key(account.uid) {
@@ -682,11 +687,14 @@ fun ReplyPage(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ReplyLoginPrompt(onLogin: () -> Unit, onBack: () -> Unit) {
+internal fun ReplyLoginPrompt(recipient: String?, onLogin: () -> Unit, onBack: () -> Unit) {
     Surface(Modifier.fillMaxSize()) {
         Column {
-            TopAppBar(title = { Text(stringResource(R.string.title_reply)) },
-                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) })
+            TopAppBar(
+                title = { Text(if (recipient.isNullOrBlank()) stringResource(R.string.title_reply)
+                    else stringResource(R.string.hint_reply, recipient), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
+            )
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Button(onClick = onLogin) { Text(stringResource(R.string.login_to_reply)) }
             }
