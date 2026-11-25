@@ -23,6 +23,8 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -43,7 +45,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.User
@@ -51,6 +55,7 @@ import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.arch.wrapImmutable
+import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.threadBottomBar
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
@@ -64,6 +69,8 @@ import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
 import com.huanchengfly.tieba.post.ui.page.thread.PostCard
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
+import com.huanchengfly.tieba.post.ui.page.thread.ReplyRecipient
+import com.huanchengfly.tieba.post.ui.page.thread.splitDirectedReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
@@ -75,7 +82,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -418,6 +424,7 @@ internal fun SubPostsContent(
                                     threadAuthorId = thread?.get { author?.id } ?: 0L,
                                     canDelete = { it.author_id == account?.uid?.toLongOrNull() },
                                     showSubPosts = false,
+                                    showFloorDivider = false,
                                     onUserClick = {
                                         navigator.navigate(UserProfilePageDestination(it.id))
                                     },
@@ -455,26 +462,10 @@ internal fun SubPostsContent(
                                     deleteSubPost = null
                                     confirmDeleteDialogState.show()
                                 }
-                                VerticalDivider(thickness = 2.dp)
                             }
                         }
                     }
-                    stickyHeader(key = "SubPostsHeader") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(ExtendedTheme.colors.background)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    id = R.string.title_sub_posts_header,
-                                    totalCount
-                                ),
-                                style = MaterialTheme.typography.subtitle1
-                            )
-                        }
-                    }
+                    stickyHeader(key = "SubPostsHeader") { SubPostsHeading(totalCount) }
                     items(subPosts, key = { it.id }) { item ->
                         SubPostItem(
                             item = item,
@@ -529,6 +520,20 @@ internal fun SubPostsContent(
 }
 
 @Composable
+internal fun SubPostsHeading(totalCount: Int) {
+    val colors = M3Theme.colorScheme
+    Column(Modifier.fillMaxWidth().background(colors.surfaceContainerLow)) {
+        HorizontalDivider(color = colors.outlineVariant)
+        Text(
+            text = stringResource(R.string.title_sub_posts_header, totalCount),
+            style = M3Theme.typography.titleSmall,
+            color = colors.onSurface,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).semantics { heading() },
+        )
+    }
+}
+
+@Composable
 internal fun PositionSubPostOnOpen(list: LazyListState, targetId: Long, replies: List<SubPostItemData>) {
     var located by rememberSaveable(targetId) { mutableStateOf(false) }
     val replyIndex = remember(targetId, replies) {
@@ -567,14 +572,18 @@ internal fun SubPostItem(
         subPost.get { agree?.diffAgreeNum ?: 0L }
     }
     val menuState = rememberMenuState()
+    val directed = remember(contentRenders) {
+        (contentRenders.firstOrNull() as? TextContentRender)?.text?.splitDirectedReply()
+    }
+    val colors = M3Theme.colorScheme
+    val rowFrame = Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp).replyRail(colors.outlineVariant)
     BlockableContent(
         blocked = blocked,
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = rowFrame.padding(start = 14.dp, top = 12.dp, bottom = 12.dp),
     ) {
         LongClickMenu(
+            modifier = rowFrame,
             menuState = menuState,
             indication = null,
             menuContent = {
@@ -621,25 +630,35 @@ internal fun SubPostItem(
             },
             onClick = { onReplyClick(subPost.get()) }.takeUnless { context.appPreferences.hideReply }
         ) {
-            CommentLayout(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                header = {
-                    CommentHeader(
-                        author = subPost.get { author },
-                        threadAuthorId = threadAuthorId,
-                        time = subPost.get { time.toLong() },
-                        onUserClick = onUserClick,
-                    )
-                },
-                action = {
-                    PostAgreeBtn(
-                        hasAgreed = hasAgreed,
-                        agreeNum = agreeNum,
-                        onClick = { onAgree(subPost.get()) },
-                    )
-                },
-            ) {
-                contentRenders.fastForEach { it.Render() }
+            Column {
+                CommentLayout(
+                    modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
+                    header = {
+                        CommentHeader(
+                            author = subPost.get { author },
+                            threadAuthorId = threadAuthorId,
+                            time = subPost.get { time.toLong() },
+                            onUserClick = onUserClick,
+                            recipient = if (directed != null) { { ReplyRecipient(directed) } } else null,
+                        )
+                    },
+                    action = {
+                        PostAgreeBtn(
+                            hasAgreed = hasAgreed,
+                            agreeNum = agreeNum,
+                            onClick = { onAgree(subPost.get()) },
+                        )
+                    },
+                ) {
+                    contentRenders.fastForEachIndexed { index, render ->
+                        if (index == 0 && directed != null) {
+                            if (directed.body.isNotEmpty()) TextContentRender(directed.body).Render()
+                        } else {
+                            render.Render()
+                        }
+                    }
+                }
+                HorizontalDivider(Modifier.padding(start = 14.dp), color = colors.outlineVariant)
             }
         }
     }

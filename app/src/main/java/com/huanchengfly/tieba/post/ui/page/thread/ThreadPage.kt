@@ -92,6 +92,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.util.fastForEachIndexed
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -126,6 +127,7 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.loadMoreIndicator
 import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.common.theme.compose.threadBottomBar
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
+import com.huanchengfly.tieba.post.ui.page.subposts.replyRail
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
@@ -1307,6 +1309,7 @@ fun ThreadPage(
                                                 PostCard(
                                                     postHolder = firstPost!!,
                                                     contentRenders = firstPostContentRenders,
+                                                    showFloorDivider = false,
                                                     threadAuthorId = author?.get { id } ?: 0L,
                                                     canDelete = { it.author_id == user.get { id } },
                                                     immersiveMode = isImmersiveMode,
@@ -1710,6 +1713,7 @@ fun PostCard(
     immersiveMode: Boolean = false,
     isCollected: (Post) -> Boolean = { false },
     showSubPosts: Boolean = true,
+    showFloorDivider: Boolean = true,
     onUserClick: (User) -> Unit = {},
     onAgree: () -> Unit = {},
     onReplyClick: (Post) -> Unit = {},
@@ -1733,167 +1737,192 @@ fun PostCard(
         post.agree?.diffAgreeNum ?: 0L
     }
     val menuState = rememberMenuState()
-    BlockableContent(
-        blocked = blocked,
-        blockedTip = {
-            BlockTip {
-                Text(
-                    text = stringResource(id = R.string.tip_blocked_post, postHolder.get { floor }),
-                )
-            }
-        },
-        hideBlockedContent = context.appPreferences.hideBlockedContent || immersiveMode,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
-    ) {
-        LongClickMenu(
-            menuState = menuState,
-            indication = null,
-            onClick = {
-                onReplyClick(post)
-            }.takeIf { !context.appPreferences.hideReply },
-            menuContent = {
-                if (!context.appPreferences.hideReply) {
-                    DropdownMenuItem(
-                        onClick = {
-                            onReplyClick(post)
-                            menuState.expanded = false
-                        }
-                    ) {
-                        Text(text = stringResource(id = R.string.btn_reply))
-                    }
+    val hideBlockedContent = context.appPreferences.hideBlockedContent || immersiveMode
+    val visibleSubPosts = remember(subPosts, hideBlockedContent) {
+        if (hideBlockedContent) subPosts.filterNot { it.blocked } else subPosts
+    }
+    val moreReplies = post.sub_post_number > subPosts.size
+    Column {
+        BlockableContent(
+            blocked = blocked,
+            blockedTip = {
+                BlockTip {
+                    Text(
+                        text = stringResource(id = R.string.tip_blocked_post, postHolder.get { floor }),
+                    )
                 }
-                if (onMenuCopyClick != null) {
-                    DropdownMenuItem(
-                        onClick = {
-                            onMenuCopyClick(post.content.plainText)
-                            menuState.expanded = false
-                        }
-                    ) {
-                        Text(text = stringResource(id = R.string.menu_copy))
-                    }
-                }
-                DropdownMenuItem(
-                    onClick = {
-                        coroutineScope.launch {
-                            TiebaUtil.reportPost(context, navigator, post.id.toString())
-                        }
-                        menuState.expanded = false
-                    }
-                ) {
-                    Text(text = stringResource(id = R.string.title_report))
-                }
-                if (onMenuFavoriteClick != null) {
-                    DropdownMenuItem(
-                        onClick = {
-                            onMenuFavoriteClick(post)
-                            menuState.expanded = false
-                        }
-                    ) {
-                        if (isCollected(post)) {
-                            Text(text = stringResource(id = R.string.title_collect_on))
-                        } else {
-                            Text(text = stringResource(id = R.string.title_collect_floor))
-                        }
-                    }
-                }
-                if (canDelete(post) && onMenuDeleteClick != null) {
-                    DropdownMenuItem(
-                        onClick = {
-                            onMenuDeleteClick(post)
-                            menuState.expanded = false
-                        }
-                    ) {
-                        Text(text = stringResource(id = R.string.title_delete))
-                    }
-                }
-            }
+            },
+            hideBlockedContent = hideBlockedContent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 16.dp)
         ) {
-            CommentLayout(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                header = {
-                    if (!immersiveMode) {
-                        CommentHeader(
-                            author = post.author,
-                            threadAuthorId = threadAuthorId,
-                            time = post.time.toLong(),
-                            floor = post.floor,
-                            onUserClick = onUserClick,
-                        )
-                    }
-                },
-                action = if (post.floor > 1 && !immersiveMode) {
-                    { PostAgreeBtn(hasAgreed = hasAgreed, agreeNum = agreeNum, onClick = onAgree) }
-                } else null,
-                content = {
-                    if (showTitle) {
-                        Text(
-                            text = post.title,
-                            style = M3Theme.typography.titleLarge,
-                            color = ExtendedTheme.colors.text,
-                        )
-                    }
-
-                    if (isCollected(post)) {
-                        Chip(
-                            text = stringResource(id = R.string.title_collected_floor),
-                            invertColor = true,
-                            prefixIcon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
+            LongClickMenu(
+                menuState = menuState,
+                indication = null,
+                onClick = {
+                    onReplyClick(post)
+                }.takeIf { !context.appPreferences.hideReply },
+                menuContent = {
+                    if (!context.appPreferences.hideReply) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onReplyClick(post)
+                                menuState.expanded = false
                             }
-                        )
-                    }
-
-                    contentRenders.fastForEach { it.Render() }
-
-                    if (showSubPosts && !immersiveMode && (subPosts.isNotEmpty() || post.sub_post_number > 0)) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                                .clip(M3Theme.shapes.medium)
-                                .background(M3Theme.colorScheme.surfaceContainerLow)
-                                .padding(vertical = 4.dp),
                         ) {
-                            subPosts.fastForEach { item ->
-                                BlockableContent(
-                                    blocked = item.blocked,
-                                    blockedTip = {
-                                        Text(
-                                            text = stringResource(R.string.tip_blocked_sub_post),
-                                            style = M3Theme.typography.bodySmall,
-                                            color = M3Theme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            Text(text = stringResource(id = R.string.btn_reply))
+                        }
+                    }
+                    if (onMenuCopyClick != null) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onMenuCopyClick(post.content.plainText)
+                                menuState.expanded = false
+                            }
+                        ) {
+                            Text(text = stringResource(id = R.string.menu_copy))
+                        }
+                    }
+                    DropdownMenuItem(
+                        onClick = {
+                            coroutineScope.launch {
+                                TiebaUtil.reportPost(context, navigator, post.id.toString())
+                            }
+                            menuState.expanded = false
+                        }
+                    ) {
+                        Text(text = stringResource(id = R.string.title_report))
+                    }
+                    if (onMenuFavoriteClick != null) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onMenuFavoriteClick(post)
+                                menuState.expanded = false
+                            }
+                        ) {
+                            if (isCollected(post)) {
+                                Text(text = stringResource(id = R.string.title_collect_on))
+                            } else {
+                                Text(text = stringResource(id = R.string.title_collect_floor))
+                            }
+                        }
+                    }
+                    if (canDelete(post) && onMenuDeleteClick != null) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onMenuDeleteClick(post)
+                                menuState.expanded = false
+                            }
+                        ) {
+                            Text(text = stringResource(id = R.string.title_delete))
+                        }
+                    }
+                }
+            ) {
+                CommentLayout(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    header = {
+                        if (!immersiveMode) {
+                            CommentHeader(
+                                author = post.author,
+                                threadAuthorId = threadAuthorId,
+                                time = post.time.toLong(),
+                                floor = post.floor,
+                                onUserClick = onUserClick,
+                            )
+                        }
+                    },
+                    content = {
+                        if (showTitle) {
+                            Text(
+                                text = post.title,
+                                style = M3Theme.typography.titleLarge,
+                                color = ExtendedTheme.colors.text,
+                            )
+                        }
+
+                        if (isCollected(post)) {
+                            Chip(
+                                text = stringResource(id = R.string.title_collected_floor),
+                                invertColor = true,
+                                prefixIcon = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                        }
+
+                        contentRenders.fastForEach { it.Render() }
+                        if (post.floor > 1 && !immersiveMode) {
+                            PostAgreeBtn(
+                                hasAgreed = hasAgreed,
+                                agreeNum = agreeNum,
+                                onClick = onAgree,
+                                modifier = Modifier.align(Alignment.End),
+                            )
+                        }
+
+                        if (showSubPosts && !immersiveMode && (visibleSubPosts.isNotEmpty() || moreReplies)) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(start = 8.dp)
+                                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+                                    .background(M3Theme.colorScheme.surfaceContainerLow)
+                                    .replyRail(M3Theme.colorScheme.outlineVariant),
+                            ) {
+                                visibleSubPosts.fastForEachIndexed { index, item ->
+                                    BlockableContent(
+                                        blocked = item.blocked,
+                                        blockedTip = {
+                                            Text(
+                                                text = stringResource(R.string.tip_blocked_sub_post),
+                                                style = M3Theme.typography.bodySmall,
+                                                color = M3Theme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            )
+                                        },
+                                    ) {
+                                        SubPostItem(
+                                            subPostList = item.subPost,
+                                            subPostContent = item.subPostContent,
+                                            threadAuthorId = threadAuthorId,
+                                            onUserClick = onUserClick,
+                                            onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
+                                            onOpenSubPosts = onOpenSubPosts,
+                                            onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
                                         )
-                                    },
-                                ) {
-                                    SubPostItem(
-                                        subPostList = item.subPost,
-                                        subPostContent = item.subPostContent,
-                                        threadAuthorId = threadAuthorId,
-                                        onUserClick = onUserClick,
-                                        onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
-                                        onOpenSubPosts = onOpenSubPosts,
-                                        onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
+                                    }
+                                    if (index < visibleSubPosts.lastIndex || moreReplies) {
+                                        androidx.compose.material3.HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 12.dp),
+                                            color = M3Theme.colorScheme.outlineVariant,
+                                        )
+                                    }
+                                }
+                                if (moreReplies) {
+                                    Text(
+                                        text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
+                                        style = M3Theme.typography.labelLarge,
+                                        color = M3Theme.colorScheme.secondary,
+                                        modifier = Modifier.fillMaxWidth()
+                                            .clickable { onOpenSubPosts(0) }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
                                     )
                                 }
                             }
-                            if (post.sub_post_number > subPosts.size) {
-                                Text(
-                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                    style = M3Theme.typography.labelLarge,
-                                    color = M3Theme.colorScheme.primary,
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable { onOpenSubPosts(0) }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                )
-                            }
                         }
                     }
-                }
+                )
+            }
+        }
+        if (showFloorDivider && !immersiveMode && (!blocked || !hideBlockedContent)) {
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = M3Theme.colorScheme.outlineVariant,
             )
         }
     }
@@ -1952,30 +1981,49 @@ internal fun SubPostItem(
             onOpenSubPosts(subPostList.get { id })
         }
     ) {
+        val author = subPostList.get { author }
+        val displayName = StringUtil.getUsernameAnnotatedString(
+            context, author?.name.orEmpty(), author?.nameShow?.takeIf { it.isNotBlank() },
+        )
+        val hasAuthor = author != null && (displayName.isNotBlank() || author.portrait.isNotBlank() || author.id > 0)
+        val directed = remember(subPostContent) { subPostContent.splitDirectedReply() }
+        val body = directed?.body ?: subPostContent
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            val author = subPostList.get { author }
-            if (author != null && (author.name.isNotBlank() || author.nameShow.isNotBlank())) {
-                val authorLink = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
-                CommentAuthorName(
-                    userName = StringUtil.getUsernameAnnotatedString(
-                        context, author.name, author.nameShow.takeIf { it.isNotBlank() },
-                    ),
-                    isLz = threadAuthorId > 0 && author.id == threadAuthorId,
-                    modifier = authorLink,
-                )
+            if (hasAuthor && author != null) {
+                val profile = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
+                Row(
+                    modifier = profile,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CommentAvatar(
+                        name = displayName.text, portrait = author.portrait,
+                        authorId = author.id.takeIf { it > 0 }, size = 26.dp,
+                    )
+                    CommentAuthorName(
+                        userName = displayName,
+                        isLz = threadAuthorId > 0 && author.id == threadAuthorId,
+                    )
+                }
             }
-            CommentMetadata(time = subPostList.get { time.toLong() }, ipAddress = author?.ip_address)
-            if (subPostContent.isNotEmpty()) {
-                PbContentText(
-                    text = subPostContent,
-                    style = M3Theme.typography.bodyMedium,
-                    color = M3Theme.colorScheme.onSurface,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 4,
-                )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(start = if (hasAuthor) 34.dp else 0.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (directed != null) ReplyRecipient(directed)
+                CommentMetadata(time = subPostList.get { time.toLong() }, ipAddress = author?.ip_address)
+                if (body.isNotEmpty()) {
+                    PbContentText(
+                        text = body,
+                        style = M3Theme.typography.bodyMedium,
+                        color = M3Theme.colorScheme.onSurface,
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 4,
+                    )
+                }
             }
         }
     }

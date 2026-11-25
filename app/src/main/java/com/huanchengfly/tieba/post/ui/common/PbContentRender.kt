@@ -99,8 +99,7 @@ data class TextContentRender(
         ) {
             val lastRender = lastOrNull()
             if (lastRender is TextContentRender) {
-                removeLast()
-                add(lastRender + text)
+                this[lastIndex] = lastRender + text
             } else
                 add(TextContentRender(text))
         }
@@ -110,8 +109,7 @@ data class TextContentRender(
         ) {
             val lastRender = lastOrNull()
             if (lastRender is TextContentRender) {
-                removeLast()
-                add(lastRender + text)
+                this[lastIndex] = lastRender + text
             } else
                 add(TextContentRender(text))
         }
