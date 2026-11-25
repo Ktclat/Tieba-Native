@@ -6,8 +6,10 @@ import android.view.View
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.SideEffect
@@ -63,6 +65,7 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import java.io.File
 import kotlin.math.roundToInt
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotEquals
@@ -80,6 +83,7 @@ class CommentGroupingTest {
     @get:Rule(order = 0) val appContext = AppContextRule()
     @get:Rule(order = 1) val compose = createComposeRule()
     private var appSurface = 0
+    private var floorOutline = 0
     private lateinit var view: View
     private var opened by mutableStateOf<Pair<Long, Long>?>(null)
     private var replyTarget: Long? = null
@@ -121,7 +125,7 @@ class CommentGroupingTest {
     )
 
     @OptIn(ExperimentalFoundationApi::class)
-    private fun show(width: Int, scale: Float) {
+    private fun show(width: Int, scale: Float, posts: List<Post> = floors) {
         ThemeUtils.init(App.ThemeDelegate)
         compose.setContent {
             val currentView = LocalView.current
@@ -130,26 +134,33 @@ class CommentGroupingTest {
             CompositionLocalProvider(LocalWindowSizeClass provides window) {
                 TiebaLiteTheme {
                     val background = MaterialTheme.colorScheme.surface.toArgb()
-                    SideEffect { appSurface = background }
+                    val outline = MaterialTheme.colorScheme.outlineVariant.toArgb()
+                    SideEffect {
+                        appSurface = background
+                        floorOutline = outline
+                    }
                     val density = LocalDensity.current.density
                     CompositionLocalProvider(LocalDensity provides Density(density, scale)) {
                         ProvideNavigator(EmptyDestinationsNavigator) {
-                            val parent = floors.find { it.id == opened?.first }
+                            val parent = posts.find { it.id == opened?.first }
                             key(parent?.id) {
                                 MyLazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
                                     .testTag("comment-list")) {
                                     if (parent == null) {
-                                        items(floors, key = { it.id }) { post ->
+                                        itemsIndexed(posts, key = { _, post -> post.id }) { index, post ->
                                             Container(Modifier.testTag("floor-${post.id}")) {
-                                                PostCard(
-                                                    postHolder = post.wrapImmutable(),
-                                                    contentRenders = post.contentRenders,
-                                                    subPosts = post.subPosts,
-                                                    onAgree = { liked += post.id },
-                                                    onSubPostAgree = { liked += it.id },
-                                                    onUserClick = { profiles += it.id },
-                                                    onOpenSubPosts = { child -> opened = post.id to child },
-                                                )
+                                                Column {
+                                                    FloorDivider(posts.getOrNull(index - 1), post)
+                                                    PostCard(
+                                                        postHolder = post.wrapImmutable(),
+                                                        contentRenders = post.contentRenders,
+                                                        subPosts = post.subPosts,
+                                                        onAgree = { liked += post.id },
+                                                        onSubPostAgree = { liked += it.id },
+                                                        onUserClick = { profiles += it.id },
+                                                        onOpenSubPosts = { child -> opened = post.id to child },
+                                                    )
+                                                }
                                             }
                                         }
                                     } else {
@@ -157,7 +168,7 @@ class CommentGroupingTest {
                                         item {
                                             PostCard(
                                                 parent.wrapImmutable(), parent.contentRenders,
-                                                showSubPosts = false,
+                                                showSubPosts = false, discussionRole = DiscussionRole.ParentFloor,
                                             )
                                         }
                                         stickyHeader(key = "SubPostsHeader") {
@@ -200,6 +211,45 @@ class CommentGroupingTest {
         }
     }
 
+    @Test
+    @Config(qualifiers = "zh-rCN-w360dp-h800dp-xhdpi")
+    fun hairlinesMarkAuthorChangesAndKeepAnonymousFloorsIndependent() {
+        val first = floor(2, "北窗", "我走的是南门。", emptyList())
+        val next = floor(3, "北窗", "再补一句，入口处有路标。", emptyList()).copy(author = first.author)
+        val other = floor(4, "远舟", "我从北门上山。", emptyList())
+        val anonymous = User(id = 91, is_mask = 1, nameShow = "匿名吧友")
+        val hidden = floor(5, "", "石桥旁边有座凉亭。", emptyList()).copy(author = anonymous, author_id = 91)
+        val alsoHidden = floor(6, "", "下雨时石板路会比较滑。", emptyList()).copy(author = anonymous, author_id = 91)
+        val posts = listOf(first, next, other, hidden, alsoHidden)
+        show(360, 1f, posts)
+
+        text(alsoHidden.content.single().text).assertIsDisplayed()
+        val image = "floor-author-boundaries-xhdpi.png"
+        compose.captureReviewImage(view, image)
+        assertEquals(32, with(compose.density) { 16.dp.roundToPx() })
+        for ((post, hasDivider) in posts.zip(listOf(false, false, true, true, true))) {
+            val top = compose.onNodeWithTag("floor-${post.id}").fetchSemanticsNode().boundsInRoot.top
+            assertFloorBoundary(image, top, hasDivider)
+        }
+    }
+
+    @Test
+    fun onlyPositivePublicAuthorIdsJoinTwoFloors() {
+        val first = floors.first()
+        val second = floors[1]
+        val known = first.author!!
+        val matchingId = second.copy(author = null, author_id = known.id)
+        assertFalse(shouldSeparateFloors(first, matchingId))
+        assertFalse(shouldSeparateFloors(matchingId, first))
+        assertTrue(shouldSeparateFloors(first, second.copy(author = known.copy(id = known.id + 1))))
+
+        val unknown = known.copy(id = 0)
+        assertTrue(shouldSeparateFloors(first.copy(author = unknown), second.copy(author = unknown)))
+        assertTrue(shouldSeparateFloors(first.copy(author = null), second.copy(author = null)))
+        val hidden = known.copy(userhide = 1)
+        assertTrue(shouldSeparateFloors(first.copy(author = hidden, author_id = known.id), matchingId))
+    }
+
     private fun review(width: Int, scale: Float, suffix: String, checkDarkPanel: Boolean = false) {
         show(width, scale)
         val first = floors[0]
@@ -222,7 +272,7 @@ class CommentGroupingTest {
         }
         val threadImage = "adjacent-floors-$suffix.png"
         assertGlyphContrast(threadImage, "floor like" to floorLike, "preview like" to previewLikes.first(), minimum = 3.0)
-        assertWhitespace(threadImage, firstGroup.bottom, clearance = 8)
+        assertFloorBoundary(threadImage, firstGroup.bottom, hasDivider = true)
         val lastPreviewName = compose.onNodeWithText("听风", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val firstPreviewBody = text(previewChildren.first().content.last().text).fetchSemanticsNode().boundsInRoot
         assertTrue("Preview replies must have breathing room", lastPreviewName.top - firstPreviewBody.bottom >= 12f)
@@ -264,8 +314,10 @@ class CommentGroupingTest {
         val detailAuthor = compose.onNodeWithText(children.first().author!!.nameShow, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("Short author and recipient should share a row", detailAuthor.top < recipientBounds.bottom &&
             recipientBounds.top < detailAuthor.bottom && detailAuthor.right <= recipientBounds.left)
-        assertEquals("Expanded replies should use the full body column", parentBody.left, directedBody.left, 1f)
-        assertEquals("Sibling body alignment", directedBody.left, plainBody.left, 1f)
+        fun start(bounds: Rect) = if (view.layoutDirection == View.LAYOUT_DIRECTION_RTL) -bounds.right else bounds.left
+        val expectedIndent = with(compose.density) { 8.dp.toPx() }
+        assertEquals("Expanded replies share an 8dp inset from the parent floor", expectedIndent, start(directedBody) - start(parentBody), 1f)
+        assertEquals("Sibling body alignment", start(directedBody), start(plainBody), 1f)
         compose.onNodeWithText(App.INSTANCE.getString(R.string.hint_reply, "@小岚")).assertDoesNotExist()
         val firstReply = compose.onNodeWithTag("detail-${children.first().id}").fetchSemanticsNode().boundsInRoot
         val detailImage = "adjacent-subreplies-$suffix.png"
@@ -346,6 +398,26 @@ class CommentGroupingTest {
                 val surface = image.getPixel(0, y)
                 assertTrue("Expected a clear row at y=$y in $fileName",
                     (0 until image.width).all { x -> image.getPixel(x, y) == surface })
+            }
+        } finally {
+            image.recycle()
+        }
+    }
+
+    private fun assertFloorBoundary(fileName: String, junction: Float, hasDivider: Boolean) {
+        val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
+        try {
+            val top = junction.roundToInt()
+            val inset = with(compose.density) { 16.dp.roundToPx() }
+            assertNotEquals(appSurface, floorOutline)
+            for (y in maxOf(0, top - 2)..top + 2) {
+                for (x in 0 until image.width) {
+                    val onDivider = hasDivider && y == top && x in inset until image.width - inset
+                    val expected = if (onDivider) floorOutline else appSurface
+                    if (image.getPixel(x, y) != expected) {
+                        assertEquals("Floor boundary at ($x,$y), top=$top in $fileName", expected, image.getPixel(x, y))
+                    }
+                }
             }
         } finally {
             image.recycle()

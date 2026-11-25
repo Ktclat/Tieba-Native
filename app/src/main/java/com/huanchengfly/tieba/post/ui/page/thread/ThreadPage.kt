@@ -3,7 +3,6 @@
 package com.huanchengfly.tieba.post.ui.page.thread
 
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
-import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -33,10 +32,11 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,8 +81,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -100,6 +100,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,6 +119,7 @@ import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.plainText
+import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -179,10 +181,10 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlin.concurrent.thread
 import kotlin.math.max
 
 @Composable
@@ -194,6 +196,7 @@ fun PostAgreeBtn(
 ) {
     val animatedColor by animateColorAsState(
         targetValue = if (hasAgreed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "postAgreeBtnColor"
     )
     TextButton(
@@ -282,9 +285,8 @@ private fun ThreadLoadMoreIndicator(
     ) {
         Row(
             modifier = Modifier
-                .height(IntrinsicSize.Min)
                 .padding(10.dp)
-                .animateContentSize(),
+                .animateContentSize(MaterialTheme.motionScheme.fastSpatialSpec()),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ProvideTextStyle(value = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)) {
@@ -508,21 +510,11 @@ fun ThreadPage(
     )
     var waitLoadSuccessAndScrollToFirstReply by remember { mutableStateOf(scrollToReply) }
 
-    val lazyListState = rememberLazyListState()
+    val lazyListState = key(threadId) { rememberLazyListState() }
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val lastVisibilityPost by remember {
-        derivedStateOf {
-            data.firstOrNull { (post) ->
-                val lastPostKey = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull { info ->
-                    info.key is String && (info.key as String).startsWith("Post_")
-                }?.key as String?
-                lastPostKey?.endsWith(post.get { id }.toString()) == true
-            }?.post ?: firstPost
-        }
-    }
-    val lastVisibilityPostId by remember {
-        derivedStateOf { lastVisibilityPost?.get { id } ?: 0L }
+    val firstFloor = remember(firstPost) {
+        firstPost?.get { ThreadFloorKey(id, floor) }?.takeIf { it.postId > 0L }
     }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -533,19 +525,19 @@ fun ThreadPage(
     }
 
     viewModel.onEvent<ThreadUiEvent.ScrollToFirstReply> {
-        lazyListState.animateScrollToItem(1)
+        lazyListState.scrollToDiscussionItem(1)
     }
     viewModel.onEvent<ThreadUiEvent.ScrollToLatestReply> {
         if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
-            lazyListState.animateScrollToItem(2 + data.size)
+            lazyListState.scrollToDiscussionItem(2 + data.size)
         } else {
-            lazyListState.animateScrollToItem(1)
+            lazyListState.scrollToDiscussionItem(1)
         }
     }
     viewModel.onEvent<ThreadUiEvent.LoadSuccess> {
         if (it.page > 1 || waitLoadSuccessAndScrollToFirstReply) {
             waitLoadSuccessAndScrollToFirstReply = false
-            lazyListState.animateScrollToItem(1)
+            lazyListState.scrollToDiscussionItem(1)
         }
     }
     viewModel.onEvent<ThreadUiEvent.AddFavoriteSuccess> {
@@ -559,46 +551,30 @@ fun ThreadPage(
         )
     }
 
-    val updateCollectMarkDialogState = rememberDialogState()
-    var readFloorBeforeBack by remember {
-        mutableIntStateOf(1)
-    }
-    ConfirmDialog(
-        dialogState = updateCollectMarkDialogState,
-        onConfirm = {
-            coroutineScope.launch {
-                navigator.navigateUp()
-                if (lastVisibilityPostId != 0L) {
-                    TiebaApi.getInstance()
-                        .addStoreFlow(threadId, lastVisibilityPostId)
-                        .catch {
-                            context.toastShort(
-                                R.string.message_update_collect_mark_failed,
-                                it.getErrorMessage()
-                            )
-                        }
-                        .collect {
-                            context.toastShort(R.string.message_update_collect_mark_success)
-                        }
-                }
-            }
-        },
-        onCancel = {
-            navigator.navigateUp()
-        }
-    ) {
-        Text(text = stringResource(R.string.message_update_collect_mark, readFloorBeforeBack))
+    var markBeforeBack by rememberSaveable(threadId) { mutableStateOf<ThreadFloorKey?>(null) }
+    fun leaveThread() {
+        val position = if (isCollected) lazyListState.lastVisibleFloor(firstFloor) else null
+        if (position == null) navigator.navigateUp() else markBeforeBack = position
     }
     MyBackHandler(
         enabled = isCollected && !menuOpen,
-        currentScreen = ThreadPageDestination
-    ) {
-        readFloorBeforeBack = lastVisibilityPost?.get { floor } ?: 0
-        if (readFloorBeforeBack != 0) {
-            updateCollectMarkDialogState.show()
-        } else {
-            navigator.navigateUp()
-        }
+        currentScreen = ThreadPageDestination,
+        onBack = ::leaveThread,
+    )
+    markBeforeBack?.let { position ->
+        ThreadReadingMarkDialog(
+            position = position,
+            saveMark = { postIdToMark ->
+                val response = TiebaApi.getInstance().addStoreFlow(threadId, postIdToMark).first()
+                if (response.errorCode != 0) throw TiebaApiException(response)
+                context.toastShort(R.string.message_update_collect_mark_success)
+            },
+            onDismiss = { markBeforeBack = null },
+            onLeave = {
+                markBeforeBack = null
+                navigator.navigateUp()
+            },
+        )
     }
 
     val confirmDeleteDialogState = rememberDialogState()
@@ -691,37 +667,23 @@ fun ThreadPage(
         }
     }
 
-    var savedHistory by remember { mutableStateOf(false) }
-    LaunchedEffect(threadId, threadTitle, author, lastVisibilityPostId) {
-        val saveHistory = {
-            thread {
-                runCatching {
-                    if (threadTitle.isNotBlank()) {
-                        HistoryUtil.saveHistory(
-                            History(
-                                title = threadTitle,
-                                data = threadId.toString(),
-                                type = HistoryUtil.TYPE_THREAD,
-                                extras = ThreadHistoryInfoBean(
-                                    isSeeLz = isSeeLz,
-                                    pid = lastVisibilityPostId.toString(),
-                                    forumName = forum?.get { name },
-                                    floor = lastVisibilityPost?.get { floor }?.toString()
-                                ).toJson(),
-                                avatar = StringUtil.getAvatarUrl(author?.get { displayPortrait }),
-                                username = author?.get { nameShow }
-                            ),
-                            async = true
-                        )
-                        savedHistory = true
-                        Log.i("ThreadPage", "saveHistory $lastVisibilityPostId")
-                    }
-                }
-            }
-        }
-
-        if (!savedHistory || lastVisibilityPostId != 0L) {
-            saveHistory()
+    if (threadTitle.isNotBlank()) {
+        TrackThreadReadingPosition(threadId, lazyListState, firstFloor, onlyAuthor = isSeeLz) { position ->
+            HistoryUtil.saveHistory(
+                History(
+                    title = threadTitle,
+                    data = threadId.toString(),
+                    type = HistoryUtil.TYPE_THREAD,
+                    extras = ThreadHistoryInfoBean(
+                        isSeeLz = isSeeLz,
+                        pid = position.postId.toString(),
+                        forumName = curForumName,
+                        floor = position.floor.toString(),
+                    ).toJson(),
+                    avatar = StringUtil.getAvatarUrl(author?.get { commentAvatarPortrait }),
+                    username = author?.get { commentDisplayName(context) },
+                ),
+            )
         }
     }
 
@@ -785,9 +747,8 @@ fun ThreadPage(
                         threadId = threadId,
                         postId = it.id,
                         replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
-                        replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
-                            ?: it.author?.name,
-                        replyUserPortrait = it.author?.portrait,
+                        replyUserName = it.author?.commentDisplayName(context),
+                        replyUserPortrait = it.author?.commentMentionPortrait,
                     )
                 )
             },
@@ -800,9 +761,8 @@ fun ThreadPage(
                         postId = post.id,
                         subPostId = subPost.id,
                         replyUserId = subPost.author?.id?.takeIf { id -> id > 0L } ?: subPost.author_id.takeIf { id -> id > 0L },
-                        replyUserName = subPost.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
-                            ?: subPost.author?.name,
-                        replyUserPortrait = subPost.author?.portrait,
+                        replyUserName = subPost.author?.commentDisplayName(context),
+                        replyUserPortrait = subPost.author?.commentMentionPortrait,
                     )
                 )
             },
@@ -856,6 +816,21 @@ fun ThreadPage(
         )
     }
 
+    fun LazyListScope.replyFloors(posts: ImmutableList<PostItemData>, latest: Boolean = false) {
+        itemsIndexed(
+            items = posts,
+            key = { _, item -> item.post.get { ThreadFloorKey(id, floor, latest) } },
+            contentType = { _, _ -> "reply-floor" },
+        ) { index, (post, blocked, renders, replies) ->
+            Container {
+                Column {
+                    FloorDivider(posts.getOrNull(index - 1)?.post?.get(), post.get())
+                    PostCard(post, renders, replies, blocked)
+                }
+            }
+        }
+    }
+
     fun LazyListScope.latestPosts(desc: Boolean) {
         if (latestPosts.isNotEmpty()) {
             if (!desc) {
@@ -871,19 +846,7 @@ fun ThreadPage(
                     }
                 }
             }
-            items(
-                items = latestPosts,
-                key = { (item) -> "LatestPost_${item.get { id }}" }
-            ) { (item, blocked, renders, subPosts) ->
-                Container {
-                    PostCard(
-                        item,
-                        renders,
-                        subPosts,
-                        blocked
-                    )
-                }
-            }
+            replyFloors(latestPosts, latest = true)
             if (desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -930,7 +893,7 @@ fun ThreadPage(
                 topBar = {
                     TopBar(
                         forum = forum,
-                        onBack = { navigator.navigateUp() },
+                        onBack = ::leaveThread,
                         onForumClick = {
                             val forumName = forum?.get { name }
                             if (forumName != null) navigator.navigate(
@@ -1009,13 +972,13 @@ fun ThreadPage(
                                         )
                                     }
                                 } else {
-                                    val readItem = lastVisibilityPost
+                                    val readItem = lazyListState.lastVisibleFloor(firstFloor)
                                     if (readItem != null) {
                                         viewModel.send(
                                             ThreadUiIntent.AddFavorite(
                                                 threadId,
-                                                readItem.get { id },
-                                                readItem.get { floor }
+                                                readItem.postId,
+                                                readItem.floor
                                             )
                                         )
                                     }
@@ -1139,13 +1102,15 @@ fun ThreadPage(
                             state = lazyListState,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            item(key = "FirstPost") {
+                            item(key = FirstPostKey, contentType = "thread-topic") {
                                 if (firstPost != null) {
                                     Container {
-                                        Column {
+                                        TopicSurface {
                                             PostCard(
                                                 postHolder = firstPost!!,
                                                 contentRenders = firstPostContentRenders,
+                                                discussionRole = DiscussionRole.Topic,
+                                                threadTitle = threadTitle,
                                                 threadAuthorId = author?.get { id } ?: 0L,
                                                 canDelete = { it.author_id == user.get { id } },
                                                 immersiveMode = isImmersiveMode,
@@ -1212,6 +1177,22 @@ fun ThreadPage(
                                                     )
                                                 }
 
+                                        }
+                                    }
+                                } else if (threadTitle.isNotBlank()) {
+                                    Container {
+                                        TopicSurface {
+                                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                TopicHeadline(threadTitle)
+                                                if (!isImmersiveMode && author != null) {
+                                                    CommentHeader(
+                                                        author = author?.get(), threadAuthorId = author?.get { id },
+                                                        time = thread?.get { createTime.toLong() }, onUserClick = {
+                                                            navigator.navigate(UserProfilePageDestination(it.id))
+                                                        },
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1306,19 +1287,7 @@ fun ThreadPage(
                                     }
                                 }
                             } else {
-                                items(
-                                    items = data,
-                                    key = { (item) -> "Post_${item.get { id }}" }
-                                ) { (item, blocked, renders, subPosts) ->
-                                    Container {
-                                        PostCard(
-                                            item,
-                                            renders,
-                                            subPosts,
-                                            blocked
-                                        )
-                                    }
-                                }
+                                replyFloors(data)
                             }
                             if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
                                 latestPosts(false)
@@ -1474,8 +1443,74 @@ internal fun ThreadBottomBar(
     }
 }
 
+internal enum class DiscussionRole { Topic, Reply, ParentFloor }
+
 @Composable
-fun PostCard(
+internal fun ThreadReadingMarkDialog(
+    position: ThreadFloorKey,
+    saveMark: suspend (Long) -> Unit,
+    onDismiss: () -> Unit,
+    onLeave: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var saving by remember(position) { mutableStateOf(false) }
+    var error by remember(position) { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = { if (!saving) onDismiss() },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.message_update_collect_mark, position.floor))
+                error?.let { Text(stringResource(R.string.message_update_collect_mark_failed, it), color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !saving, onClick = {
+                if (saving) return@TextButton
+                saving = true
+                error = null
+                scope.launch {
+                    try {
+                        saveMark(position.postId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (exception: Exception) {
+                        error = exception.getErrorMessage()
+                        saving = false
+                        return@launch
+                    }
+                    onLeave()
+                }
+            }) {
+                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Text(stringResource(R.string.save_reading_mark_and_return))
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !saving, onClick = onLeave) {
+                Text(stringResource(R.string.return_without_saving_reading_mark))
+            }
+        },
+    )
+}
+
+@Composable
+internal fun TopicSurface(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).background(MaterialTheme.colorScheme.surfaceContainerLow),
+        content = content,
+    )
+}
+
+@Composable
+private fun TopicHeadline(title: String) {
+    Text(
+        title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.semantics { heading() },
+    )
+}
+
+@Composable
+internal fun PostCard(
     postHolder: ImmutableHolder<Post>,
     contentRenders: ImmutableList<PbContentRender>,
     subPosts: ImmutableList<SubPostItemData> = persistentListOf(),
@@ -1493,15 +1528,19 @@ fun PostCard(
     onOpenSubPosts: (subPostId: Long) -> Unit = {},
     onMenuCopyClick: ((String) -> Unit)? = null,
     onMenuFavoriteClick: ((Post) -> Unit)? = null,
+    discussionRole: DiscussionRole = DiscussionRole.Reply,
+    threadTitle: String? = null,
     onMenuDeleteClick: ((Post) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val post = remember(postHolder) { postHolder.get() }
-    val showTitle = remember(postHolder) {
-        post.title.isNotBlank() && post.floor <= 1 && post.is_ntitle != 1
-    }
+    val topicTitle = if (discussionRole == DiscussionRole.Topic && post.is_ntitle != 1) {
+        threadTitle?.takeIf { it.isNotBlank() } ?: post.title.takeIf { it.isNotBlank() }
+    } else null
+    val isContext = discussionRole != DiscussionRole.Reply
+    val backdrop = if (isContext) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surface
     val hasAgreed = remember(postHolder) {
         post.agree?.hasAgree == 1
     }
@@ -1585,14 +1624,19 @@ fun PostCard(
             }
         ) {
             CommentLayout(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().background(backdrop)
+                    .padding(horizontal = 16.dp, vertical = if (isContext) 16.dp else 12.dp),
+                background = backdrop,
                 header = {
+                    if (topicTitle != null) TopicHeadline(topicTitle)
                     if (!immersiveMode) {
                         CommentHeader(
                             author = post.author,
                             threadAuthorId = threadAuthorId,
                             time = post.time.toLong(),
                             floor = post.floor,
+                            nameStyle = MaterialTheme.typography.titleMedium,
+                            authorHeading = topicTitle == null,
                             onUserClick = onUserClick,
                             action = if (post.floor > 1 && post.id > 0) {
                                 { PostAgreeBtn(hasAgreed = hasAgreed, agreeNum = agreeNum, onClick = onAgree) }
@@ -1601,14 +1645,6 @@ fun PostCard(
                     }
                 },
                 content = {
-                    if (showTitle) {
-                        Text(
-                            text = post.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
                     if (isCollected(post)) {
                         Chip(
                             text = stringResource(id = R.string.title_collected_floor),
@@ -1671,8 +1707,9 @@ fun PostCard(
 
 @Composable
 private fun ReplyPreviewGroup(content: @Composable ColumnScope.() -> Unit) {
-    val background = MaterialTheme.colorScheme.surfaceContainerLow
-    Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = background) {
+    val background = MaterialTheme.colorScheme.surfaceContainer
+    Surface(modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
+        shape = MaterialTheme.shapes.medium, color = background) {
         ProvideCommentLinkColor(background) { Column(content = content) }
     }
 }
@@ -1729,9 +1766,6 @@ internal fun SubPostItem(
         }
     ) {
         val author = subPostList.get { author }
-        val displayName = StringUtil.getUsernameAnnotatedString(
-            context, author?.name.orEmpty(), author?.nameShow?.takeIf { it.isNotBlank() },
-        )
         val directed = remember(subPostContent) { subPostContent.splitDirectedReply() }
         val body = directed?.body ?: subPostContent
         val reply = subPostList.get()
@@ -1741,11 +1775,8 @@ internal fun SubPostItem(
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             CommentHeader(
-                name = displayName, portrait = author?.displayPortrait,
-                authorId = author?.id, avatarSize = Sizes.Tiny,
-                isLz = threadAuthorId > 0 && threadAuthorId == author?.id,
-                onAuthorClick = if (author != null && author.id > 0) { { onUserClick(author) } } else null,
-                time = null, showMetadata = false,
+                author = author, threadAuthorId = threadAuthorId, onUserClick = onUserClick,
+                compact = true, time = null, showMetadata = false,
                 recipient = directed?.let { { ReplyRecipient(it) } },
                 action = if (reply.id > 0 && agree != null && onAgree != null) {
                     { PostAgreeBtn(agree.hasAgree == 1, agree.diffAgreeNum, onClick = { onAgree(reply) }) }

@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.thread
 
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,12 +22,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
@@ -36,13 +43,46 @@ import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.Util
 
+private val User.hidesCommentIdentity: Boolean get() = userhide != 0 || is_mask != 0
+
+private fun Post.visibleFloorAuthorId(): Long? {
+    if (author?.hidesCommentIdentity == true) return null
+    return author?.id?.takeIf { it > 0 } ?: author_id.takeIf { it > 0 }
+}
+
+internal fun shouldSeparateFloors(previous: Post, current: Post): Boolean {
+    val previousId = previous.visibleFloorAuthorId() ?: return true
+    return previousId != current.visibleFloorAuthorId()
+}
+
+@Composable
+internal fun FloorDivider(previous: Post?, current: Post) {
+    if (previous != null && shouldSeparateFloors(previous, current)) {
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = with(LocalDensity.current) { 1.toDp() },
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
+
+internal fun User.commentDisplayName(context: Context): String? =
+    nameShow.trim().takeIf { it.isNotEmpty() }
+        ?: if (hidesCommentIdentity) context.getString(R.string.comment_anonymous_user)
+        else name.trim().takeIf { it.isNotEmpty() }
+
+internal val User.commentAvatarPortrait: String? get() = displayPortrait.takeUnless { hidesCommentIdentity }
+
+internal val User.commentMentionPortrait: String? get() = portrait.takeUnless { hidesCommentIdentity }
+
 @Composable
 internal fun CommentLayout(
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
+    background: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ProvideCommentLinkColor(MaterialTheme.colorScheme.surface) {
+    ProvideCommentLinkColor(background) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             header?.invoke()
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) { content() }
@@ -72,30 +112,36 @@ internal fun CommentHeader(
     time: Long?,
     floor: Int? = null,
     showMetadata: Boolean = true,
+    authorHeading: Boolean = false,
+    nameStyle: TextStyle = MaterialTheme.typography.titleSmall,
+    compact: Boolean = false,
     recipient: (@Composable () -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
     onUserClick: (User) -> Unit,
 ) {
-    val authorId = author?.id ?: 0L
-    val isThreadAuthor = authorId > 0 && authorId == threadAuthorId
-    val openProfile: (() -> Unit)? = if (author != null && authorId > 0) {
+    val hidden = author?.hidesCommentIdentity == true
+    val authorId = author?.id?.takeIf { it > 0L && !hidden }
+    val isThreadAuthor = authorId != null && authorId == threadAuthorId
+    val openProfile: (() -> Unit)? = if (author != null && authorId != null) {
         { onUserClick(author) }
     } else null
-    val name = StringUtil.getUsernameAnnotatedString(
-        LocalContext.current,
-        author?.name.orEmpty().trim(),
-        author?.nameShow?.trim()?.takeIf { it.isNotEmpty() },
-    )
+    val context = LocalContext.current
+    val name = if (hidden) AnnotatedString(author?.commentDisplayName(context).orEmpty()) else
+        StringUtil.getUsernameAnnotatedString(context, author?.name.orEmpty().trim(), author?.nameShow?.trim()?.takeIf { it.isNotEmpty() })
     CommentHeader(
         name = name,
-        portrait = author?.displayPortrait,
+        showUnnamed = true,
+        nameStyle = nameStyle,
+        avatarSize = if (compact) Sizes.Tiny else Sizes.Small,
+        authorHeading = authorHeading,
+        portrait = author?.commentAvatarPortrait,
         time = time,
         onAuthorClick = openProfile,
         floor = floor,
         ipAddress = author?.ip_address,
-        userLevel = author?.level_id ?: 0,
+        userLevel = if (compact) 0 else author?.level_id ?: 0,
         isLz = isThreadAuthor,
-        bawuType = author?.bawuType,
+        bawuType = author?.bawuType?.takeUnless { compact },
         authorId = authorId,
         recipient = recipient,
         action = action,
@@ -120,8 +166,11 @@ internal fun CommentHeader(
     action: (@Composable () -> Unit)? = null,
     showMetadata: Boolean = true,
     avatarSize: Dp = Sizes.Small,
+    showUnnamed: Boolean = false,
+    authorHeading: Boolean = false,
+    nameStyle: TextStyle = MaterialTheme.typography.titleSmall,
 ) {
-    val hasAuthor = name.isNotBlank() || !portrait.isNullOrBlank() || onAuthorClick != null ||
+    val hasAuthor = showUnnamed || name.isNotBlank() || !portrait.isNullOrBlank() || onAuthorClick != null ||
         userLevel > 0 || isLz || !bawuType.isNullOrBlank()
     if (!hasAuthor && recipient == null) {
         CommentAuthorRow(action) { if (showMetadata) CommentMetadata(time, floor, ipAddress) }
@@ -144,7 +193,11 @@ internal fun CommentHeader(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         CommentAvatar(name = name.text, portrait = portrait, authorId = authorId, size = avatarSize)
-                        CommentAuthorName(name, userLevel, isLz = isLz, bawuType = bawuType)
+                        CommentAuthorName(
+                            if (showUnnamed && name.isBlank()) AnnotatedString(stringResource(R.string.user)) else name,
+                            userLevel = userLevel, isLz = isLz, bawuType = bawuType,
+                            nameStyle = nameStyle, authorHeading = authorHeading,
+                        )
                     }
                 }
                 if (recipient != null) Box(Modifier.align(Alignment.CenterVertically)) { recipient() }
@@ -189,6 +242,8 @@ internal fun CommentAuthorName(
     modifier: Modifier = Modifier,
     isLz: Boolean = false,
     bawuType: String? = null,
+    nameStyle: TextStyle = MaterialTheme.typography.titleSmall,
+    authorHeading: Boolean = false,
 ) {
     val bawu = bawuType?.trim().orEmpty()
     if (userName.isBlank() && userLevel <= 0 && !isLz && bawu.isEmpty()) return
@@ -202,8 +257,11 @@ internal fun CommentAuthorName(
     ) {
         if (userName.isNotBlank()) {
             Text(
-                userName, modifier = Modifier.align(Alignment.CenterVertically),
-                style = MaterialTheme.typography.titleSmall, color = textColor,
+                userName,
+                modifier = Modifier.align(Alignment.CenterVertically).then(
+                    if (authorHeading) Modifier.semantics { heading() } else Modifier
+                ),
+                style = nameStyle, color = textColor,
             )
         }
         if (userLevel > 0) {
@@ -213,14 +271,17 @@ internal fun CommentAuthorName(
                 textColor,
             )
         }
-        if (bawu.isNotEmpty()) {
+        val authorLabel = stringResource(R.string.tip_lz)
+        if (bawu.isNotEmpty() && !(isLz && bawu == authorLabel)) {
             CommentBadge(bawu, scheme.primary, textColor)
         }
         if (isLz) {
-            CommentBadge(
-                stringResource(R.string.tip_lz),
-                scheme.secondary,
-                textColor,
+            Text(
+                authorLabel,
+                modifier = Modifier.background(scheme.tertiaryContainer, MaterialTheme.shapes.extraSmall)
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                color = scheme.onTertiaryContainer,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
