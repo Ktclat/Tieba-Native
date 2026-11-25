@@ -63,7 +63,10 @@ import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestinati
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
 import com.huanchengfly.tieba.post.ui.page.thread.PostCard
+import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
+import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
 import com.huanchengfly.tieba.post.ui.page.thread.CommentMetadata
@@ -129,6 +132,7 @@ internal fun SubPostsContent(
 ) {
     val navigator = LocalNavigator.current
     val account = LocalAccount.current
+    val context = LocalContext.current
 
     LazyLoad(key = viewModel, loaded = viewModel.initialized) {
         viewModel.send(
@@ -322,8 +326,8 @@ internal fun SubPostsContent(
                                                     threadId = threadId,
                                                     postId = parentId,
                                                     replyUserId = post?.get { author?.id?.takeIf { it > 0L } ?: author_id },
-                                                    replyUserName = post?.get { author?.nameShow?.ifBlank { null } ?: author?.name },
-                                                    replyUserPortrait = post?.get { author?.portrait },
+                                                    replyUserName = post?.get { author?.commentDisplayName(context) },
+                                                    replyUserPortrait = post?.get { author?.commentMentionPortrait },
                                                 )
                                             )
                                         }
@@ -377,6 +381,7 @@ internal fun SubPostsContent(
                                 PostCard(
                                     postHolder = it,
                                     contentRenders = postContentRenders,
+                                    discussionRole = DiscussionRole.ParentFloor,
                                     threadAuthorId = thread?.get { author?.id } ?: 0L,
                                     canDelete = { it.author_id == account?.uid?.toLongOrNull() },
                                     showSubPosts = false,
@@ -402,9 +407,8 @@ internal fun SubPostsContent(
                                                 threadId = threadId,
                                                 postId = parentId,
                                                 replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
-                                                replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
-                                                    ?: it.author?.name,
-                                                replyUserPortrait = it.author?.portrait,
+                                                replyUserName = it.author?.commentDisplayName(context),
+                                                replyUserPortrait = it.author?.commentMentionPortrait,
                                             )
                                         )
                                     },
@@ -452,9 +456,8 @@ internal fun SubPostsContent(
                                         postId = parentId,
                                         subPostId = it.id,
                                         replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
-                                        replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
-                                            ?: it.author?.name,
-                                        replyUserPortrait = it.author?.portrait,
+                                        replyUserName = it.author?.commentDisplayName(context),
+                                        replyUserPortrait = it.author?.commentMentionPortrait,
                                     )
                                 )
                             },
@@ -479,10 +482,10 @@ internal fun SubPostsContent(
 @Composable
 internal fun SubPostsHeading(totalCount: Int) {
     val colors = MaterialTheme.colorScheme
-    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surfaceContainerLow) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
         Text(
             text = stringResource(R.string.title_sub_posts_header, totalCount),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleMedium,
             color = colors.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).semantics { heading() },
         )
@@ -531,7 +534,7 @@ internal fun SubPostItem(
     val directed = remember(contentRenders) {
         (contentRenders.firstOrNull() as? TextContentRender)?.text?.splitDirectedReply()
     }
-    val rowPadding = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+    val rowPadding = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
     BlockableContent(
         blocked = blocked,
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },

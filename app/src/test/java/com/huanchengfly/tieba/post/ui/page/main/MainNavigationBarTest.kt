@@ -2,6 +2,10 @@
 
 package com.huanchengfly.tieba.post.ui.page.main
 
+import androidx.activity.BackEventCompat
+import androidx.compose.animation.core.Animatable
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import android.app.Application
 import android.graphics.BitmapFactory
 import android.view.View
@@ -13,6 +17,7 @@ import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,10 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,13 +45,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.*
@@ -97,29 +101,27 @@ class MainNavigationBarTest {
     private val tabLifecycles = mutableMapOf<Int, LifecycleOwner>()
     private lateinit var backDispatcher: OnBackPressedDispatcher
     private val measuredAtActivation = mutableListOf<Boolean>()
-    private var hideFraction by mutableFloatStateOf(0f)
+    private lateinit var navScroll: MainNavigationScrollState
+    private val hideFraction: Float get() = navScroll.hiddenFraction
+    private var bottomBarCompositions = 0
+    private var originalViewportMeasures = 0
     private val refreshedPages = mutableListOf<Int>()
     private val titles = listOf("首页", "动态", "消息", "我")
     private val rowLabels = listOf("帖子", "动态", "消息", "收藏")
 
     @OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalFoundationApi::class)
-    private fun show(layoutDirection: LayoutDirection = LayoutDirection.Ltr) {
+    private fun show(layoutDirection: LayoutDirection = LayoutDirection.Ltr, compareOriginalViewport: Boolean = false) {
         compose.setContent {
             val currentView = LocalView.current
             SideEffect { view = currentView }
             val distance = with(LocalDensity.current) { 132.dp.toPx() }
-            val observer = remember(distance) {
-                object : NestedScrollConnection {
-                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                        hideFraction = updateNavigationHideFraction(hideFraction, consumed.y, distance)
-                        return Offset.Zero
-                    }
-                }
-            }
             val selection = rememberMainTabSelection("0")
-            SideEffect { tabSelection = selection }
+            val scroll = remember(selection.id, distance) { MainNavigationScrollState(distance) }
+            SideEffect {
+                tabSelection = selection
+                navScroll = scroll
+            }
             backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
-            LaunchedEffect(selection.id) { hideFraction = 0f }
             val items = remember {
                 listOf(
                     R.string.title_main to R.drawable.ic_animated_rounded_inventory_2,
@@ -144,12 +146,12 @@ class MainNavigationBarTest {
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 MaterialExpressiveTheme {
                     MyScaffold(
-                        modifier = Modifier.fillMaxSize().nestedScroll(observer).testTag("window"),
+                        modifier = Modifier.fillMaxSize().nestedScroll(scroll).observeNavigationTouch(scroll).testTag("window"),
                         backgroundColor = MaterialTheme.colorScheme.surface,
                         bottomBar = {
-                            val visible = 1f - hideFraction
+                            SideEffect { bottomBarCompositions++ }
                             MainNavigationBarSlot(
-                                visibleFraction = visible,
+                                state = scroll,
                                 navigationInsets = WindowInsets(bottom = 24.dp),
                             ) {
                                 MainNavigationBar(
@@ -161,11 +163,24 @@ class MainNavigationBarTest {
                             }
                         },
                     ) { padding ->
-                        MainTabHost(
-                            selectedId = selection.id,
-                            navigationItems = items,
-                            modifier = Modifier.fillMaxSize().padding(padding),
-                        )
+                        Box(Modifier.fillMaxSize()) {
+                            if (compareOriginalViewport) {
+                                // Before the change, every distinct Scaffold bottom inset constrained the page.
+                                Column(Modifier.fillMaxSize().padding(padding).clearAndSetSemantics { }
+                                    .drawWithContent { }.layout { child, constraints ->
+                                        originalViewportMeasures++
+                                        val page = child.measure(constraints)
+                                        layout(page.width, page.height) { page.place(0, 0) }
+                                    }) {
+                                    FeedRows(selection.id.toInt(), tag = "original-feed")
+                                }
+                            }
+                            MainTabHost(
+                                selectedId = selection.id,
+                                navigationItems = items,
+                                modifier = Modifier.fillMaxSize().mainTabViewport(padding, scroll),
+                            )
+                        }
                     }
                 }
             }
@@ -194,16 +209,21 @@ class MainNavigationBarTest {
             layout(child.width, child.height) { child.place(0, 0) }
         }.testTag("page-$index").focusRequester(requester)
             .onFocusChanged { pageFocus[index] = it.isFocused }.focusable()) {
-            Text(titles[index], Modifier.padding(16.dp), style = MaterialTheme.typography.headlineMedium)
-            HorizontalDivider()
-            LazyColumn(Modifier.fillMaxSize().testTag("feed")) {
-                items(50) { row ->
-                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text("${rowLabels[index]} ${row + 1}", style = MaterialTheme.typography.titleMedium)
-                        Text("贴吧讨论", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    HorizontalDivider()
+            FeedRows(index, tag = "feed")
+        }
+    }
+
+    @Composable
+    private fun FeedRows(index: Int, tag: String) {
+        Text(titles[index], Modifier.padding(16.dp), style = MaterialTheme.typography.headlineMedium)
+        HorizontalDivider()
+        LazyColumn(Modifier.fillMaxSize().testTag(tag)) {
+            items(50) { row ->
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("${rowLabels[index]} ${row + 1}", style = MaterialTheme.typography.titleMedium)
+                    Text("贴吧讨论", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                HorizontalDivider()
             }
         }
     }
@@ -262,6 +282,71 @@ class MainNavigationBarTest {
         compose.captureReviewImage(view, "nav-revealed.png")
     }
 
+    private fun scrollBy(dy: Float) {
+        assertEquals(Offset.Zero, navScroll.onPostScroll(Offset(0f, dy), Offset.Zero, NestedScrollSource.UserInput))
+    }
+
+    @Test fun dragChangesTheClipEveryFrameWithoutRemeasuringTheFeedEveryFrame() {
+        show(compareOriginalViewport = true)
+        val feed = compose.onNodeWithTag("feed")
+        val bar = compose.onNodeWithTag("navigation-bar")
+        val start = compose.runOnIdle { Triple(measures.getValue(0), originalViewportMeasures, bottomBarCompositions) }
+        val visibleEdges = mutableListOf<Int>()
+        feed.performTouchInput { down(center) }
+        repeat(12) {
+            compose.runOnIdle { scrollBy(-6f) }
+            val top = bar.getUnclippedBoundsInRoot().top.value
+            val clippedBottom = feed.fetchSemanticsNode().boundsInRoot.bottom
+            assertEquals(top, clippedBottom, 1f)
+            visibleEdges += clippedBottom.toInt()
+        }
+        compose.runOnIdle {
+            val previousMeasures = originalViewportMeasures - start.second
+            val activeMeasures = measures.getValue(0) - start.first
+            println("12 navigation offsets: previous page measures=$previousMeasures, buffered page measures=$activeMeasures, bottom bar compositions=${bottomBarCompositions - start.third}")
+            assertEquals(12, visibleEdges.distinct().size)
+            assertTrue("The original viewport should remeasure at every offset", previousMeasures >= 12)
+            assertTrue("Only the first partial offset should enlarge the page", activeMeasures <= 1)
+            assertEquals("The bottom bar composable must not observe individual scroll pixels", start.third, bottomBarCompositions)
+        }
+        feed.performTouchInput { up() }
+        // A partial stop commits the exact viewport, so the last item and accessibility bounds remain reachable.
+        assertEquals(bar.getUnclippedBoundsInRoot().top, feed.getUnclippedBoundsInRoot().bottom)
+        feed.performScrollToIndex(49)
+        compose.onNodeWithText("帖子 50").assertIsDisplayed()
+    }
+
+    @Test fun reducedMotionDoesNotTransformThePageAndConfirmNeverScalesTheDestination() = runBlocking {
+        for (animate in listOf(true, false)) {
+            val preview = Animatable(0f)
+            var confirmations = 0
+            val events = flow {
+                emit(BackEventCompat(0f, 0f, 0.75f, BackEventCompat.EDGE_LEFT))
+                assertEquals(if (animate) 0.75f else 0f, preview.value)
+            }
+            handleMainTabBack(events, preview, animate) {
+                assertEquals(0f, preview.value)
+                confirmations++
+            }
+            assertEquals(1, confirmations)
+        }
+    }
+
+    @Test fun flingUsesTheBufferedPageUntilTheListHitsAnEdgeOrFlingEnds() = runBlocking {
+        val scroll = MainNavigationScrollState(100f)
+        scroll.measuredBarHeightPx = 64
+        scroll.onPreFling(androidx.compose.ui.unit.Velocity(0f, -500f))
+        scroll.onPostScroll(Offset(0f, -25f), Offset.Zero, NestedScrollSource.SideEffect)
+        assertEquals(48, scroll.bufferedHeightPx)
+        scroll.onPostScroll(Offset.Zero, Offset(0f, -2f), NestedScrollSource.SideEffect)
+        assertEquals(0, scroll.bufferedHeightPx)
+        scroll.onPostScroll(Offset(0f, -25f), Offset.Zero, NestedScrollSource.SideEffect)
+        assertEquals(32, scroll.bufferedHeightPx)
+        scroll.onPostFling(androidx.compose.ui.unit.Velocity.Zero, androidx.compose.ui.unit.Velocity.Zero)
+        assertEquals(0, scroll.bufferedHeightPx)
+        assertEquals(0.5f, scroll.hiddenFraction)
+    }
+
     private fun screenshotPixel(name: String, x: Int, y: Int): Int {
         val path = File("build/reports/ui-screenshots", name)
         val bitmap = BitmapFactory.decodeFile(path.absolutePath)
@@ -307,11 +392,11 @@ class MainNavigationBarTest {
         compose.onNodeWithText("收藏 1").assertIsDisplayed()
         compose.onNodeWithText("帖子 13").assertDoesNotExist()
         val measurements = compose.runOnIdle { measures.toMap() }
-        compose.runOnIdle { hideFraction = 0.25f }
+        compose.runOnIdle { scrollBy(-33f) }
         compose.runOnIdle {
             assertEquals(measurements[0], measures[0])
             assertTrue(measures.getValue(3) > measurements.getValue(3))
-            hideFraction = 0f
+            scrollBy(132f)
         }
         compose.runOnIdle {
             assertEquals(Lifecycle.State.CREATED, tabLifecycles.getValue(0).lifecycle.currentState)

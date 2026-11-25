@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -108,6 +109,7 @@ class ThreadDiscussionLayoutTest {
         ),
         reply(204, User(id = 50, name = "春山", nameShow = "春山"), null, "回复 岸上风 :雨天过桥小心。"),
     )
+    private val topicTitle = "北岸步道周末路线"
     private val topic = Post(
         id = 1, floor = 1, time = 1695370100,
         author = User(id = 10, name = "溪口", nameShow = "溪口"),
@@ -140,7 +142,13 @@ class ThreadDiscussionLayoutTest {
     }
 
     @OptIn(ExperimentalFoundationApi::class)
-    private fun show(width: Int, font: Float) {
+    private fun show(
+        width: Int,
+        font: Float,
+        topicPost: Post = topic,
+        threadTitle: String? = topicTitle,
+        immersiveMode: Boolean = false,
+    ) {
         val topMedia = picture("trail-map")
         val replyMedia = picture("trail-profile")
         val navigator = object : DestinationsNavigator by EmptyDestinationsNavigator {
@@ -177,8 +185,15 @@ class ThreadDiscussionLayoutTest {
                                         .padding(padding).testTag("discussion"), state = state) {
                                         if (opened == null) {
                                             item {
-                                                PostCard(topic.wrapImmutable(), (topic.contentRenders + topMedia).toImmutableList(),
-                                                    threadAuthorId = topic.author!!.id, showSubPosts = false)
+                                                TopicSurface {
+                                                    PostCard(
+                                                        postHolder = topicPost.wrapImmutable(),
+                                                        contentRenders = (topicPost.contentRenders + topMedia).toImmutableList(),
+                                                        threadAuthorId = topicPost.author?.id ?: 0L, showSubPosts = false,
+                                                        discussionRole = DiscussionRole.Topic, threadTitle = threadTitle,
+                                                        immersiveMode = immersiveMode, onUserClick = { accounts += it.id },
+                                                    )
+                                                }
                                             }
                                             stickyHeader {
                                                 Box(Modifier.testTag("reply-controls")) {
@@ -188,13 +203,19 @@ class ThreadDiscussionLayoutTest {
                                             if (!filter) item {
                                                 PostCard(
                                                     floor.wrapImmutable(), (floor.contentRenders + replyMedia).toImmutableList(), floor.subPosts,
-                                                    threadAuthorId = topic.author!!.id, onAgree = { liked += floor.id },
+                                                    threadAuthorId = topicPost.author?.id ?: 0L, onAgree = { liked += floor.id },
+                                                    immersiveMode = immersiveMode,
                                                     onSubPostAgree = { liked += it.id }, onUserClick = { accounts += it.id },
                                                     onOpenSubPosts = { opened = it }, onMenuCopyClick = { copied = it },
                                                 )
                                             }
                                         } else {
-                                            item { PostCard(floor.wrapImmutable(), (floor.contentRenders + replyMedia).toImmutableList(), showSubPosts = false) }
+                                            item {
+                                                PostCard(
+                                                    floor.wrapImmutable(), (floor.contentRenders + replyMedia).toImmutableList(),
+                                                    showSubPosts = false, discussionRole = DiscussionRole.ParentFloor,
+                                                )
+                                            }
                                             stickyHeader { SubPostsHeading(children.size) }
                                             items(children, key = { it.id }) { child ->
                                                 DetailReply(DetailData(child), onAgree = { liked += it.id }, onUserClick = { accounts += it.id },
@@ -227,15 +248,54 @@ class ThreadDiscussionLayoutTest {
         }
     }
 
+    @Test fun titlelessAnonymousTopicKeepsItsBodyOnceWithoutExposingAProfile() {
+        ThemeUtils.init(App.ThemeDelegate)
+        val body = topic.content.single().text
+        val anonymous = User(id = 28, is_mask = 1, name = "内部账号", nameShow = "匿名吧友", portrait = "profile-28")
+        val withoutAlias = anonymous.copy(nameShow = "")
+        assertEquals(resource(R.string.comment_anonymous_user), withoutAlias.commentDisplayName(App.INSTANCE))
+        assertNull(anonymous.commentAvatarPortrait)
+        assertNull(anonymous.commentMentionPortrait)
+        val publicAuthor = withoutAlias.copy(is_mask = 0)
+        assertEquals("内部账号", publicAuthor.commentDisplayName(App.INSTANCE))
+        assertEquals("profile-28", publicAuthor.commentAvatarPortrait)
+        assertEquals("profile-28", publicAuthor.commentMentionPortrait)
+        show(360, 1f, topicPost = topic.copy(author = anonymous, title = body, is_ntitle = 1), threadTitle = body)
+        compose.onAllNodesWithText(body, useUnmergedTree = true).assertCountEquals(1)
+        node(body).assert(!SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        node("匿名吧友").assertIsDisplayed().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            .performTouchInput { click() }
+        compose.runOnIdle { assertTrue(accounts.isEmpty()) }
+        node("内部账号").assertDoesNotExist()
+        node(resource(R.string.tip_lz)).assertDoesNotExist()
+    }
+
+    @Test fun immersiveTopicKeepsTheTitleAndTextWithoutItsAuthorOrNestedConversation() {
+        ThemeUtils.init(App.ThemeDelegate)
+        show(360, 1f, topicPost = topic.copy(title = topicTitle), threadTitle = null, immersiveMode = true)
+        node(topicTitle).assertIsDisplayed().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        node(topic.content.single().text).assertIsDisplayed()
+        node("溪口").assertDoesNotExist()
+        node(resource(R.string.tip_lz)).assertDoesNotExist()
+        node("远舟").assertDoesNotExist()
+        node(floor.content.single().text).assertIsDisplayed()
+        node(children.first().content.last().text).assertDoesNotExist()
+    }
+
     private fun review(width: Int, font: Float, suffix: String) {
         ThemeUtils.init(App.ThemeDelegate)
         show(width, font)
         awaitImage("trail-map")
-        awaitImage("trail-profile")
-        node(App.INSTANCE.getString(R.string.title_thread_header, "269")).assertIsDisplayed()
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        val title = node(topicTitle).assertIsDisplayed().assert(heading).fetchSemanticsNode().boundsInRoot
+        val byline = node(topic.author!!.nameShow).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val body = node(topic.content.single().text).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("The title, author and body must remain distinct", title.bottom <= byline.top && byline.bottom <= body.top)
+        compose.onAllNodesWithText(resource(R.string.tip_lz), useUnmergedTree = true).assertCountEquals(1)
+        node(App.INSTANCE.getString(R.string.title_thread_header, "269")).assertIsDisplayed().assert(heading)
         compose.onNode(hasClickAction() and hasText(resource(R.string.text_all))).assertIsSelected()
         compose.captureReviewImage(view, "discussion-topic-$suffix.png")
-        assertNoTopicDivider("discussion-topic-$suffix.png")
+        assertTopicSurfaceAndTransition("discussion-topic-$suffix.png")
         val like = hasClickAction() and hasContentDescription(resource(R.string.title_agree))
         compose.onNode(like and hasText("404")).performTouchInput { click() }
         node(resource(R.string.title_see_lz)).performTouchInput { click() }
@@ -247,9 +307,12 @@ class ThreadDiscussionLayoutTest {
         node(resource(R.string.title_sort)).performTouchInput { click() }
         compose.runOnIdle { assertTrue(desc); assertFalse(menu) }
 
+        compose.runOnIdle { scroll(1, 0) }
         awaitImage("trail-profile")
-        compose.runOnIdle { scroll(2, 140) }
-        node(children[0].content.last().text).assertIsDisplayed()
+        val mainBody = node(floor.content.single().text).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val nestedBody = node(children[0].content.last().text).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("A reply preview must be indented under its parent", nestedBody.left > mainBody.left)
+        node(App.INSTANCE.getString(R.string.tip_post_floor, floor.floor)).assertIsDisplayed()
         compose.captureReviewImage(view, "discussion-preview-$suffix.png")
         val firstRecipient = App.INSTANCE.getString(R.string.hint_reply, "@青禾")
         val secondRecipient = App.INSTANCE.getString(R.string.hint_reply, "@林间月")
@@ -267,8 +330,14 @@ class ThreadDiscussionLayoutTest {
         node(children[0].content.last().text).performTouchInput { click() }
         compose.runOnIdle { assertEquals(201L, opened) }
         awaitImage("trail-profile")
-        compose.runOnIdle { scroll(2, 0) }
+        node(floor.author!!.nameShow).assertIsDisplayed()
+        node(App.INSTANCE.getString(R.string.tip_post_floor, floor.floor)).assertIsDisplayed()
+        val replyHeading = node(App.INSTANCE.getString(R.string.title_sub_posts_header, children.size))
+            .assertIsDisplayed().assert(heading).fetchSemanticsNode().boundsInRoot
+        val parentMedia = compose.onNodeWithTag("trail-profile", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("The detail screen must identify the parent before its replies", parentMedia.bottom <= replyHeading.top)
         compose.captureReviewImage(view, "discussion-expanded-$suffix.png")
+        compose.runOnIdle { scroll(2, 0) }
         compose.onNode(like and hasText("2")).performTouchInput { click() }
         node(secondRecipient).assertIsDisplayed().performTouchInput { click() }
         node(children[1].content.last().text).performTouchInput { longClick() }
@@ -298,18 +367,25 @@ class ThreadDiscussionLayoutTest {
         }
     }
 
-    private fun assertNoTopicDivider(name: String) {
+    private fun assertTopicSurfaceAndTransition(name: String) {
         val media = compose.onNodeWithTag("trail-map", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val controls = compose.onNodeWithTag("reply-controls").fetchSemanticsNode().boundsInRoot
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", name).absolutePath)
         try {
             val gap = media.bottom.toInt() + 1 until controls.top.toInt()
             assertTrue("The media and reply controls need breathing room", gap.count() >= 4)
-            val background = image.getPixel(0, gap.first)
-            for (y in gap) {
-                assertTrue("Unexpected rule between the topic and its replies", (20 until image.width - 20 step 4).all { x ->
-                    image.getPixel(x, y) == background
-                })
+            val title = node(topicTitle).fetchSemanticsNode().boundsInRoot
+            val reply = node(floor.content.single().text).fetchSemanticsNode().boundsInRoot
+            val topicColor = image.getPixel(title.left.toInt() - 2, title.center.y.roundToInt())
+            val replyColor = image.getPixel(reply.left.toInt() - 2, reply.center.y.roundToInt())
+            assertNotEquals("Main post and reply must have distinguishable surfaces", topicColor, replyColor)
+            // A full-width flat color transition is expected. A one- or two-pixel rule between the surfaces is not.
+            val colors = gap.map { image.getPixel(image.width / 2, it) }
+            for (index in 1 until colors.lastIndex) {
+                if (colors[index] != colors[index - 1] && colors[index] != colors.last()) {
+                    val count = colors.drop(index).takeWhile { it == colors[index] }.size
+                    assertTrue("Unexpected hairline between the topic and its replies", count > 2)
+                }
             }
         } finally { image.recycle() }
     }

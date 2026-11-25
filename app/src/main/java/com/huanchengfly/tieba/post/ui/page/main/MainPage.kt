@@ -1,7 +1,10 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
+import android.animation.ValueAnimator
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -21,14 +24,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -40,6 +39,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import com.huanchengfly.tieba.post.LocalDevicePosture
 import com.huanchengfly.tieba.post.LocalNotificationCountFlow
@@ -232,31 +232,10 @@ fun MainPage(
             }
         }
     }
-    // Observes child scroll, consuming none of its distance.
-    // The Scaffold bottom bar owns layout height, never overlays page content.
-    val navHideFraction = remember(selectedId, navigationType) { mutableFloatStateOf(0f) }
+    val compact = navigationType == MainNavigationType.BOTTOM_NAVIGATION
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
-    val navScrollObserver = remember(navigationType, navScrollRangePx, navHideFraction) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (navigationType == MainNavigationType.BOTTOM_NAVIGATION &&
-                    (source == NestedScrollSource.Drag || source == NestedScrollSource.Fling)
-                ) {
-                    navHideFraction.floatValue = updateNavigationHideFraction(
-                        current = navHideFraction.floatValue,
-                        consumedDyPx = consumed.y,
-                        distancePx = navScrollRangePx,
-                    )
-                }
-                return Offset.Zero
-            }
-        }
-    }
-    val predictiveProgress = remember { Animatable(0f) }
+    val navScroll = remember(selectedId, navigationType, navScrollRangePx) { MainNavigationScrollState(navScrollRangePx) }
+    val predictiveProgress = remember(selectedId) { Animatable(0f) }
     val predictTabBack by context.dataStore.collectPreferenceAsState(
         key = booleanPreferencesKey("enablePredictiveTabBack"),
         defaultValue = true,
@@ -278,10 +257,10 @@ fun MainPage(
         ) {
             MyScaffold(
                 backgroundColor = Color.Transparent,
-                modifier = Modifier.fillMaxSize().nestedScroll(navScrollObserver),
+                modifier = Modifier.fillMaxSize().then(if (compact) Modifier.nestedScroll(navScroll).observeNavigationTouch(navScroll) else Modifier),
                 bottomBar = {
-                    if (navigationType == MainNavigationType.BOTTOM_NAVIGATION) {
-                        MainNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
+                    if (compact) {
+                        MainNavigationBarSlot(navScroll) {
                             MainNavigationBar(
                                 currentPosition = selectedIndex,
                                 onSelect = onSelect,
@@ -295,7 +274,9 @@ fun MainPage(
                     MainTabHost(
                         selectedId = selectedId,
                         navigationItems = navigationItems,
-                        modifier = Modifier.fillMaxSize().padding(paddingValues).graphicsLayer {
+                        modifier = Modifier.fillMaxSize().then(
+                            if (compact) Modifier.mainTabViewport(paddingValues, navScroll) else Modifier.padding(paddingValues)
+                        ).graphicsLayer {
                             val preview = predictiveProgress.value
                             scaleX = 1f - preview * 0.055f
                             scaleY = 1f - preview * 0.045f
@@ -309,18 +290,8 @@ fun MainPage(
     // Only tabs intercept predictive back. Root activity can still use the
     // system's native predictive back-to-home animation.
     PredictiveBackHandler(enabled = selectedIndex != 0 && predictTabBack) { progress ->
-        try {
-            progress.collect { event ->
-                predictiveProgress.snapTo(event.progress.coerceIn(0f, 1f))
-            }
+        handleMainTabBack(progress, predictiveProgress, ValueAnimator.areAnimatorsEnabled()) {
             selection.select("home")
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } finally {
-            // A cancelled swipe restores the original tab without navigating.
-            withContext(NonCancellable) {
-                predictiveProgress.animateTo(0f, spring(stiffness = Spring.StiffnessMedium))
-            }
         }
     }
     BackHandler(enabled = selectedIndex != 0 && !predictTabBack) {
@@ -328,3 +299,25 @@ fun MainPage(
     }
 }
 
+/** A confirmed back switches immediately. Only a cancelled gesture animates the old page back. */
+internal suspend fun handleMainTabBack(
+    events: Flow<BackEventCompat>,
+    preview: Animatable<Float, AnimationVector1D>,
+    animationsEnabled: Boolean,
+    onConfirmed: () -> Unit,
+) {
+    try {
+        events.collect { event ->
+            if (animationsEnabled) preview.snapTo(event.progress.coerceIn(0f, 1f))
+        }
+        preview.snapTo(0f)
+        onConfirmed()
+    } catch (cancelled: CancellationException) {
+        withContext(NonCancellable) {
+            if (animationsEnabled && preview.value != 0f) {
+                preview.animateTo(0f, spring(stiffness = Spring.StiffnessMedium))
+            } else preview.snapTo(0f)
+        }
+        throw cancelled
+    }
+}

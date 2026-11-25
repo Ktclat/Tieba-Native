@@ -157,7 +157,7 @@ class CommentGroupingTest {
                                         item {
                                             PostCard(
                                                 parent.wrapImmutable(), parent.contentRenders,
-                                                showSubPosts = false,
+                                                showSubPosts = false, discussionRole = DiscussionRole.ParentFloor,
                                             )
                                         }
                                         stickyHeader(key = "SubPostsHeader") {
@@ -264,8 +264,10 @@ class CommentGroupingTest {
         val detailAuthor = compose.onNodeWithText(children.first().author!!.nameShow, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("Short author and recipient should share a row", detailAuthor.top < recipientBounds.bottom &&
             recipientBounds.top < detailAuthor.bottom && detailAuthor.right <= recipientBounds.left)
-        assertEquals("Expanded replies should use the full body column", parentBody.left, directedBody.left, 1f)
-        assertEquals("Sibling body alignment", directedBody.left, plainBody.left, 1f)
+        fun start(bounds: Rect) = if (view.layoutDirection == View.LAYOUT_DIRECTION_RTL) -bounds.right else bounds.left
+        val expectedIndent = with(compose.density) { 8.dp.toPx() }
+        assertEquals("Expanded replies share an 8dp inset from the parent floor", expectedIndent, start(directedBody) - start(parentBody), 1f)
+        assertEquals("Sibling body alignment", start(directedBody), start(plainBody), 1f)
         compose.onNodeWithText(App.INSTANCE.getString(R.string.hint_reply, "@小岚")).assertDoesNotExist()
         val firstReply = compose.onNodeWithTag("detail-${children.first().id}").fetchSemanticsNode().boundsInRoot
         val detailImage = "adjacent-subreplies-$suffix.png"
