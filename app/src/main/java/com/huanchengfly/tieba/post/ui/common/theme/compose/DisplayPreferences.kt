@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.map
 @Immutable
 internal data class DisplayPreferences(
     val customSeed: Color? = null,
+    val accentPalette: String? = null,
+    val previousDayPalette: String? = null,
     val wallpaperSeed: Color? = null,
     val translucentDark: Boolean = false,
     val dynamicColor: Boolean = false,
@@ -52,6 +54,8 @@ internal fun rememberDisplayPreferences(): State<DisplayPreferences> {
     val values = remember(store) {
         store.data.map {
             DisplayPreferences(
+                previousDayPalette = it[stringPreferencesKey(ThemeUtil.KEY_OLD_THEME)],
+                accentPalette = it[stringPreferencesKey(ThemeUtil.KEY_ACCENT_PALETTE)],
                 customSeed = it[customSeedKey].toThemeColor(),
                 wallpaperSeed = it[wallpaperSeedKey].toThemeColor(),
                 translucentDark = it[translucentThemeKey] == ThemeUtil.TRANSLUCENT_THEME_DARK,

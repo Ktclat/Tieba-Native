@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
@@ -112,7 +113,7 @@ private fun UserHeader(
     UserHeader(
         avatar = {
             Avatar(
-                data = user.get { StringUtil.getAvatarUrl(portrait) },
+                data = user.get { StringUtil.getAvatarUrl(displayPortrait) },
                 size = Sizes.Small,
                 contentDescription = null
             )

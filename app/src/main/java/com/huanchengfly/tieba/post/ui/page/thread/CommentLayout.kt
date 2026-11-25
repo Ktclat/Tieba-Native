@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.thread
 
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,7 +88,7 @@ internal fun CommentHeader(
     )
     CommentHeader(
         name = name,
-        portrait = author?.portrait,
+        portrait = author?.displayPortrait,
         time = time,
         onAuthorClick = openProfile,
         floor = floor,

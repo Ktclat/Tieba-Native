@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.user
 
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -732,7 +733,7 @@ private fun ToolbarUserTitle(
     UserHeader(
         avatar = {
             Avatar(
-                data = StringUtil.getAvatarUrl(user.get { portrait }),
+                data = StringUtil.getAvatarUrl(user.get { displayPortrait }),
                 size = Sizes.Small,
                 contentDescription = null
             )
@@ -770,7 +771,7 @@ private fun UserProfileDetail(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Avatar(
-                data = StringUtil.getBigAvatarUrl(user.get { portrait }),
+                data = StringUtil.getBigAvatarUrl(user.get { portraith.ifBlank { portrait } }),
                 size = 96.dp,
                 contentDescription = null,
                 modifier = Modifier.padding(bottom = 16.dp)

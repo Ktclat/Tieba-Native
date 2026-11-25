@@ -1,9 +1,17 @@
 package com.huanchengfly.tieba.post.ui.page.settings.theme
 
 import android.os.Build
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.runtime.rememberCoroutineScope
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.appColorScheme
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +21,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -21,6 +28,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -36,7 +44,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,18 +56,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.github.panpf.sketch.compose.AsyncImage
 import com.github.panpf.sketch.fetch.newFileUri
 import com.github.panpf.sketch.fetch.newResourceUri
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.TranslucentThemeActivity
 import com.huanchengfly.tieba.post.collectPreferenceAsState
@@ -70,7 +74,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.utils.ThemeUtil
-import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import java.util.Locale
@@ -80,30 +83,33 @@ import kotlin.math.roundToInt
 @Composable
 fun AppThemePage(navigator: DestinationsNavigator) {
     val context = LocalContext.current
-    val themeValues = stringArrayResource(R.array.theme_values)
-    val themeNames = stringArrayResource(R.array.themeNames)
     val currentTheme by ThemeUtil.themeState
-    val dynamic by context.dataStore.collectPreferenceAsState(booleanPreferencesKey("useDynamicColorTheme"), false)
-    val backgroundPath by context.dataStore.collectPreferenceAsState(stringPreferencesKey("translucent_theme_background_path"), "")
-    var showEditor by rememberSaveable { mutableStateOf(false) }
-    var customColor by remember {
-        mutableIntStateOf(App.ThemeDelegate.getColorByAttr(context, R.attr.colorPrimary, ThemeUtil.THEME_CUSTOM))
+    val prefs = LocalDisplayPreferences.current
+    val dark = LocalAppDarkTheme.current
+    val dynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && prefs.dynamicColor
+    val storedPalette = ThemeUtil.paletteForTheme(currentTheme, prefs.accentPalette, prefs.previousDayPalette)
+    val selectedPalette = when (storedPalette) {
+        ThemeUtil.THEME_BLUE_DARK -> ThemeUtil.THEME_BLUE
+        ThemeUtil.THEME_GREY_DARK, ThemeUtil.THEME_AMOLED_DARK -> ThemeUtil.THEME_DEFAULT
+        else -> storedPalette
     }
+    val backgroundPath by context.dataStore.collectPreferenceAsState(stringPreferencesKey(ThemeUtil.KEY_TRANSLUCENT_THEME_BACKGROUND_PATH), "")
+    val scope = rememberCoroutineScope()
+    var showEditor by rememberSaveable { mutableStateOf(false) }
+    val customColor = prefs.customSeed ?: Color(context.getColor(R.color.tieba))
+    val translucent = ThemeUtil.isTranslucentTheme(currentTheme)
 
     if (showEditor) {
         CustomColorDialog(
-            initialColor = customColor,
-            initialToolbar = context.appPreferences.toolbarPrimaryColor,
-            initialDarkIcons = context.appPreferences.customStatusBarFontDark,
+            initialColor = customColor.toArgb(),
+            initialToolbar = prefs.toolbarPrimaryColor,
+            initialDarkIcons = prefs.customDarkStatusIcons,
             dismiss = { showEditor = false },
             save = { argb, toolbar, darkIcons ->
-                customColor = argb
-                context.appPreferences.customPrimaryColor = String.format(Locale.ROOT, "#%08x", argb)
-                context.appPreferences.toolbarPrimaryColor = toolbar
-                context.appPreferences.customStatusBarFontDark = darkIcons || !toolbar
-                ThemeUtil.setUseDynamicTheme(false)
-                ThemeUtil.switchTheme(ThemeUtil.THEME_CUSTOM)
-                showEditor = false
+                scope.launch {
+                    ThemeUtil.selectPalette(ThemeUtil.THEME_CUSTOM, argb, toolbar, darkIcons)
+                    showEditor = false
+                }
             },
         )
     }
@@ -114,24 +120,56 @@ fun AppThemePage(navigator: DestinationsNavigator) {
             navigationIcon = { BackNavigationIcon(onBackPressed = { navigator.navigateUp() }) },
         )
     }) { padding ->
-        LazyColumn(Modifier.padding(padding).selectableGroup()) {
+        LazyColumn(Modifier.padding(padding)) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 item {
-                    val scheme = dynamicLightColorScheme(context)
-                    ThemeOption(
-                        name = stringResource(R.string.title_dynamic_theme),
-                        selected = dynamic,
-                        onClick = { ThemeUtil.setUseDynamicTheme(true) },
-                        swatch = { ColorSwatch(scheme.primary, scheme.tertiary) },
+                    val colors = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                    ListItem(
+                        modifier = Modifier.toggleable(dynamic, role = Role.Switch) { enabled ->
+                            scope.launch { ThemeUtil.setWallpaperColors(enabled) }
+                        },
+                        headlineContent = { Text(stringResource(R.string.theme_follow_wallpaper)) },
+                        supportingContent = { Text(stringResource(R.string.theme_wallpaper_summary)) },
+                        leadingContent = { ColorSwatch(colors.primary, colors.tertiary) },
+                        trailingContent = { Switch(checked = dynamic, onCheckedChange = null) },
                     )
                 }
             }
             item {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.theme_app_palette), style = MaterialTheme.typography.titleSmall)
+                    FlowRow(
+                        modifier = Modifier.selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        paletteOptions.forEach { (palette, label) ->
+                            val scheme = remember(context, palette, dark) {
+                                appColorScheme(context, palette, dark, false, customSeed = null)
+                            }
+                            val selected = !dynamic && !translucent && selectedPalette == palette
+                            FilterChip(
+                                selected = selected,
+                                onClick = { scope.launch { ThemeUtil.selectPalette(palette) } },
+                                label = { Text(stringResource(label)) },
+                                leadingIcon = {
+                                    Box(Modifier.size(18.dp).clip(CircleShape).background(scheme.primary), contentAlignment = Alignment.Center) {
+                                        if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(14.dp), tint = scheme.onPrimary)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
                 ThemeOption(
-                    name = stringResource(R.string.title_custom_color),
-                    selected = !dynamic && currentTheme == ThemeUtil.THEME_CUSTOM,
+                    name = stringResource(R.string.theme_custom_color),
+                    selected = !dynamic && !translucent && selectedPalette == ThemeUtil.THEME_CUSTOM,
                     onClick = { showEditor = true },
-                    swatch = { ColorSwatch(Color(customColor)) },
+                    swatch = { ColorSwatch(customColor) },
                     opensEditor = true,
                 )
             }
@@ -151,24 +189,20 @@ fun AppThemePage(navigator: DestinationsNavigator) {
                     opensEditor = true,
                 )
             }
-            itemsIndexed(themeValues.toList(), key = { _, value -> value }) { index, theme ->
-                val tint = remember(theme, context) {
-                    val attr = if (ThemeUtil.isNightMode(theme)) R.attr.colorBackground else R.attr.colorNewPrimary
-                    Color(App.ThemeDelegate.getColorByAttr(context, attr, theme))
-                }
-                ThemeOption(
-                    name = themeNames[index],
-                    selected = !dynamic && currentTheme == theme,
-                    onClick = {
-                        ThemeUtil.switchTheme(theme)
-                        ThemeUtil.setUseDynamicTheme(false)
-                    },
-                    swatch = { ColorSwatch(tint) },
-                )
-            }
         }
     }
 }
+
+private val paletteOptions = listOf(
+    ThemeUtil.THEME_DEFAULT to R.string.theme_expressive,
+    ThemeUtil.THEME_BLUE to R.string.theme_tieba_blue,
+    ThemeUtil.THEME_GREEN to R.string.theme_forest,
+    ThemeUtil.THEME_AMBER to R.string.theme_amber,
+    ThemeUtil.THEME_PINK to R.string.theme_pink,
+    ThemeUtil.THEME_RED to R.string.theme_red,
+    ThemeUtil.THEME_PURPLE to R.string.theme_purple,
+    ThemeUtil.THEME_BLACK to R.string.theme_graphite,
+)
 
 @Composable
 private fun ColorSwatch(color: Color, endColor: Color = color) {
@@ -188,8 +222,7 @@ private fun ThemeOption(
     opensEditor: Boolean = false,
 ) {
     ListItem(
-        modifier = if (opensEditor) Modifier.clickable(onClick = onClick)
-                   else Modifier.selectable(selected, role = Role.RadioButton, onClick = onClick),
+        modifier = Modifier.selectable(selected, role = Role.RadioButton, onClick = onClick),
         headlineContent = { Text(name) },
         leadingContent = swatch,
         trailingContent = {

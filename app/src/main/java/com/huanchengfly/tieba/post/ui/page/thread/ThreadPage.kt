@@ -2,6 +2,7 @@
 
 package com.huanchengfly.tieba.post.ui.page.thread
 
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -136,7 +137,9 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
-import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
+import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
+import com.huanchengfly.tieba.post.ui.page.reply.openReply
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
@@ -494,10 +497,15 @@ fun ThreadPage(
         thread?.get { title } ?: ""
     }
     val curForumId = remember(forumId, forum) {
-        forumId ?: forum?.get { id }
+        forum?.get { id }?.takeIf { it > 0 } ?: forumId?.takeIf { it > 0 }
     }
     val curForumName = remember(forum) { forum?.get { name } }
     val curTbs = remember(anti) { anti?.get { tbs } }
+    val currentAccount = LocalAccount.current
+    fun openReply(args: ReplyArgs) = navigator.openReply(
+        args.copy(tbs = curTbs.takeIf { user.get { id }.toString() == currentAccount?.uid }),
+        currentAccount?.uid,
+    )
     var waitLoadSuccessAndScrollToFirstReply by remember { mutableStateOf(scrollToReply) }
 
     val lazyListState = rememberLazyListState()
@@ -548,25 +556,6 @@ fun ThreadPage(
     viewModel.onEvent<ThreadUiEvent.RemoveFavoriteSuccess> {
         snackbarHostState.showSnackbar(
             context.getString(R.string.message_remove_favorite_success)
-        )
-    }
-
-    onGlobalEvent<GlobalEvent.ReplySuccess>(
-        filter = { it.threadId == threadId }
-    ) { event ->
-        viewModel.send(
-            ThreadUiIntent.LoadMyLatestReply(
-                threadId = threadId,
-                postId = event.newPostId,
-                forumId = curForumId,
-                isDesc = curSortType == ThreadSortType.SORT_TYPE_DESC,
-                curLatestPostFloor = if (curSortType == ThreadSortType.SORT_TYPE_DESC) {
-                    data.firstOrNull()?.post?.get { floor } ?: 1
-                } else {
-                    data.lastOrNull()?.post?.get { floor } ?: 1
-                },
-                curPostIds = data.map { it.post.get { id } },
-            )
         )
     }
 
@@ -719,7 +708,7 @@ fun ThreadPage(
                                     forumName = forum?.get { name },
                                     floor = lastVisibilityPost?.get { floor }?.toString()
                                 ).toJson(),
-                                avatar = StringUtil.getAvatarUrl(author?.get { portrait }),
+                                avatar = StringUtil.getAvatarUrl(author?.get { displayPortrait }),
                                 username = author?.get { nameShow }
                             ),
                             async = true
@@ -789,8 +778,8 @@ fun ThreadPage(
                 )
             },
             onReplyClick = {
-                navigator.navigate(
-                    ReplyPageDestination(
+                openReply(
+                    ReplyArgs(
                         forumId = curForumId ?: 0,
                         forumName = forum?.get { name } ?: "",
                         threadId = threadId,
@@ -803,8 +792,8 @@ fun ThreadPage(
                 )
             },
             onSubPostReplyClick = { post, subPost ->
-                navigator.navigate(
-                    ReplyPageDestination(
+                openReply(
+                    ReplyArgs(
                         forumId = curForumId ?: 0,
                         forumName = forum?.get { name } ?: "",
                         threadId = threadId,
@@ -955,9 +944,10 @@ fun ThreadPage(
                 bottomBar = {
                     ThreadBottomBar(
                         user = user,
+                        signedIn = currentAccount != null,
                         onClickReply = {
-                            navigator.navigate(
-                                ReplyPageDestination(
+                            openReply(
+                                ReplyArgs(
                                     forumId = curForumId ?: 0,
                                     forumName = forum?.get { name }.orEmpty(),
                                     threadId = threadId,
@@ -1172,8 +1162,8 @@ fun ThreadPage(
                                                     )
                                                 },
                                                 onReplyClick = {
-                                                    navigator.navigate(
-                                                        ReplyPageDestination(
+                                                    openReply(
+                                                        ReplyArgs(
                                                             forumId = curForumId ?: 0,
                                                             forumName = forum?.get { name }
                                                                 .orEmpty(),
@@ -1443,6 +1433,7 @@ internal fun ThreadBottomBar(
     modifier: Modifier = Modifier,
     hasAgreed: Boolean = false,
     agreeNum: Long = 0,
+    signedIn: Boolean = user.get { is_login } == 1,
 ) {
     Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
@@ -1451,18 +1442,20 @@ internal fun ThreadBottomBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                if (user.get { is_login } == 1 && !LocalContext.current.appPreferences.hideReply) {
+                if (!LocalContext.current.appPreferences.hideReply) {
                     FilledTonalButton(
                         onClick = onClickReply,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     ) {
-                        Avatar(
-                            data = StringUtil.getAvatarUrl(user.get { portrait }),
-                            size = Sizes.Tiny, contentDescription = null,
-                        )
+                        if (signedIn) {
+                            Avatar(
+                                data = StringUtil.getAvatarUrl(user.get { displayPortrait }),
+                                size = Sizes.Tiny, contentDescription = null,
+                            )
+                        }
                         Text(
-                            text = stringResource(R.string.tip_reply_thread),
+                            text = stringResource(if (signedIn) R.string.tip_reply_thread else R.string.login_to_reply),
                             modifier = Modifier.weight(1f).padding(start = 8.dp),
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -1748,7 +1741,7 @@ internal fun SubPostItem(
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             CommentHeader(
-                name = displayName, portrait = author?.portrait,
+                name = displayName, portrait = author?.displayPortrait,
                 authorId = author?.id, avatarSize = Sizes.Tiny,
                 isLz = threadAuthorId > 0 && threadAuthorId == author?.id,
                 onAuthorClick = if (author != null && author.id > 0) { { onUserClick(author) } } else null,

@@ -215,12 +215,16 @@ class App : Application(), SketchFactory {
             val translucent = ThemeUtil.isTranslucentTheme(name)
             val dark = ThemeUtil.isNightMode(name) || name == ThemeUtil.THEME_TRANSLUCENT_DARK
             val prefs = context.appPreferences
+            val palette = ThemeUtil.paletteForTheme(
+                name, context.dataStore.getString(ThemeUtil.KEY_ACCENT_PALETTE),
+                if (dark) prefs.oldTheme else null,
+            )
             val userSeed = when {
                 translucent -> prefs.translucentPrimaryColor.toThemeColor()
-                name == ThemeUtil.THEME_CUSTOM -> prefs.customPrimaryColor.toThemeColor()
+                palette == ThemeUtil.THEME_CUSTOM -> prefs.customPrimaryColor.toThemeColor()
                 else -> null
             }
-            val scheme = appColorScheme(context, name, dark, ThemeUtil.isDynamicTheme(theme) && !translucent, userSeed)
+            val scheme = appColorScheme(context, name, dark, ThemeUtil.isDynamicTheme(theme) && !translucent, userSeed, palette)
             val color = when (attrId) {
                 R.attr.colorPrimary, R.attr.colorNewPrimary, R.attr.colorAccent,
                 R.attr.colorToolbarItemActive -> scheme.primary

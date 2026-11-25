@@ -40,15 +40,8 @@ internal fun commentAvatarMonogram(name: String): String {
     return trimmed.substring(0, characters.next())
 }
 
-internal fun commentPortraitUrl(portrait: String?): String? {
-    val value = portrait?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-    if (value.startsWith("//")) return "https:$value"
-    if (value.startsWith("https://", ignoreCase = true)) {
-        return "https://" + value.substringAfter("://")
-    }
-    if (value.startsWith("http://", ignoreCase = true)) return "http://" + value.substringAfter("://")
-    return StringUtil.getAvatarUrl(value).replaceFirst("http://", "https://")
-}
+internal fun commentPortraitUrl(portrait: String?): String? =
+    StringUtil.getAvatarUrl(portrait).ifEmpty { null }
 
 internal fun commentAvatarPaletteIndex(name: String, imageUrl: String?, authorId: Long?): Int {
     val identity = authorId?.takeIf { it > 0 }?.toString() ?: imageUrl ?: name.trim()

@@ -53,6 +53,7 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
 
     private var mTintToolbar: TintToolbar? = null
     private var oldTheme: String = ""
+    private var oldPrimaryColor = 0
 
     private var isActivityRunning = true
     private var customStatusColor = -1
@@ -125,7 +126,8 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
         getDeviceDensity()
         INSTANCE.addActivity(this)
         if (isNeedSetTheme) ThemeUtil.setTheme(this)
-        oldTheme = ThemeUtil.getRawTheme()
+        oldTheme = ThemeUtil.getCurrentTheme(checkDynamic = true)
+        oldPrimaryColor = App.ThemeDelegate.getColorByAttr(this, R.attr.colorPrimary)
         if (isNeedImmersionBar) {
             refreshStatusBarColor()
         }
@@ -147,10 +149,17 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
     }
 
     fun refreshUIIfNeed() {
-        if (TextUtils.equals(oldTheme, ThemeUtil.getRawTheme()) &&
+        val current = ThemeUtil.getCurrentTheme(checkDynamic = true)
+        val paletteChanged = oldPrimaryColor != App.ThemeDelegate.getColorByAttr(this, R.attr.colorPrimary)
+        if (TextUtils.equals(oldTheme, current) && !paletteChanged &&
             ThemeUtil.THEME_CUSTOM != ThemeUtil.getRawTheme() &&
             !ThemeUtil.isTranslucentTheme()
         ) {
+            return
+        }
+        if (this !is com.huanchengfly.tieba.post.arch.BaseComposeActivity &&
+            (paletteChanged || ThemeUtil.isDynamicTheme(oldTheme) != ThemeUtil.isDynamicTheme(current))) {
+            recreate()
             return
         }
         if (recreateIfNeed()) {
@@ -297,13 +306,12 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
         if (isNeedImmersionBar) {
             refreshStatusBarColor()
         }
-        oldTheme = ThemeUtil.getRawTheme()
+        oldTheme = ThemeUtil.getCurrentTheme(checkDynamic = true)
+        oldPrimaryColor = App.ThemeDelegate.getColorByAttr(this, R.attr.colorPrimary)
     }
 
     private fun recreateIfNeed(): Boolean {
-        if (ThemeUtil.isNightMode() && !ThemeUtil.isNightMode(oldTheme) ||
-            !ThemeUtil.isNightMode() && ThemeUtil.isNightMode(oldTheme)
-        ) {
+        if (ThemeUtil.isNightMode(ThemeUtil.getCurrentTheme()) != ThemeUtil.isNightMode(oldTheme)) {
             recreate()
             return true
         }

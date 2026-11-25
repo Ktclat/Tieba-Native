@@ -54,11 +54,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Button
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.key
+import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
+import com.huanchengfly.tieba.post.repository.ReplyRequest
+import com.huanchengfly.tieba.post.repository.ReplySubmissionState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
@@ -88,9 +91,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.addTextChangedListener
@@ -101,10 +102,8 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.emitGlobalEvent
-import com.huanchengfly.tieba.post.arch.onEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.models.database.Draft
 import com.huanchengfly.tieba.post.pxToDpFloat
 import com.huanchengfly.tieba.post.toMD5
 import com.huanchengfly.tieba.post.toastShort
@@ -116,7 +115,6 @@ import com.huanchengfly.tieba.post.ui.utils.imeNestedScroll
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogPositiveButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.DialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.edittext.widget.UndoableEditText
@@ -133,16 +131,12 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
-import org.litepal.LitePal
 import org.litepal.extension.deleteAllAsync
 import org.litepal.extension.findFirstAsync
 import java.util.UUID
-import kotlin.concurrent.thread
 import kotlin.math.max
 
 data class ReplyArgs(
@@ -157,35 +151,14 @@ data class ReplyArgs(
     val tbs: String? = null,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ReplyDialog(
-    args: ReplyArgs,
-    state: DialogState = rememberDialogState(),
-) {
-    if (state.show) {
-        val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            sheetState = sheet,
-            onDismissRequest = { state.show = false },
-            contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-        ) {
-            ReplyPageContent(
-                viewModel = pageViewModel(),
-                onBack = { state.show = false },
-                forumId = args.forumId,
-                forumName = args.forumName,
-                threadId = args.threadId,
-                postId = args.postId,
-                subPostId = args.subPostId,
-                replyUserId = args.replyUserId,
-                replyUserName = args.replyUserName,
-                replyUserPortrait = args.replyUserPortrait,
-                tbs = args.tbs,
-                isDialog = true
-            )
-        }
-    }
+internal fun DestinationsNavigator.openReply(args: ReplyArgs, accountId: String?) {
+    navigate(ReplyPageDestination(
+        forumId = args.forumId, forumName = args.forumName, threadId = args.threadId,
+        postId = args.postId, subPostId = args.subPostId, replyUserId = args.replyUserId,
+        replyUserName = args.replyUserName, replyUserPortrait = args.replyUserPortrait,
+        tbs = args.tbs.takeIf { accountId != null }, tbsAccountId = accountId,
+    ))
+    if (accountId == null) navigate(LoginPageDestination)
 }
 
 @OptIn(
@@ -206,28 +179,15 @@ internal fun ReplyPageContent(
     replyUserName: String? = null,
     replyUserPortrait: String? = null,
     tbs: String? = null,
-    isDialog: Boolean = false,
+    accountId: String,
 ) {
-    val hash = remember(forumId, threadId, postId, subPostId) {
-        "${threadId}_${postId}_${subPostId}".toMD5()
+    val draft = remember(accountId, threadId, postId, subPostId) {
+        ReplyDrafts.target(accountId, threadId, postId, subPostId)
     }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val curTbs = remember(tbs) { tbs ?: AccountUtil.getAccountInfo { this.tbs }.orEmpty() }
-
-    val isUploading by viewModel.uiState.collectPartialAsState(
-        prop1 = ReplyUiState::isUploading,
-        initial = false
-    )
-    val isSending by viewModel.uiState.collectPartialAsState(
-        prop1 = ReplyUiState::isSending,
-        initial = false
-    )
-    val isReplying by remember { derivedStateOf { isUploading || isSending } }
-    val replySuccess by viewModel.uiState.collectPartialAsState(
-        prop1 = ReplyUiState::replySuccess,
-        initial = false
-    )
+    val submission by viewModel.submission.collectAsState()
+    val isReplying = submission is ReplySubmissionState.Sending || submission is ReplySubmissionState.Sent
     val curKeyboardType by viewModel.uiState.collectPartialAsState(
         prop1 = ReplyUiState::replyPanelType,
         initial = NONE
@@ -268,62 +228,23 @@ internal fun ReplyPageContent(
         }
     }
 
-    val curTextFlow = remember { MutableStateFlow("") }
-    val curText by curTextFlow.collectAsState()
-    LaunchedEffect(Unit) {
-        curTextFlow
-            .sample(500)
-            .distinctUntilChanged()
-            .collect {
-                if (!replySuccess) {
-                    thread {
-                        Draft(hash, it).saveOrUpdate("hash = ?", hash)
-                    }
-                }
-            }
+    var curText by remember(draft) { mutableStateOf("") }
+    var edited by remember(draft) { mutableStateOf(false) }
+    LaunchedEffect(draft) {
+        val saved = ReplyDrafts.read(draft)
+        if (!edited && !saved.isNullOrEmpty()) setText(saved)
     }
-    LaunchedEffect(Unit) {
-        LitePal.where("hash = ?", hash).findFirstAsync<Draft?>()
-            .listen {
-                if (it != null) {
-                    setText(it.content)
-                }
-            }
-    }
-    val textLength by remember { derivedStateOf { curText.length } }
-    val isTextEmpty by remember { derivedStateOf { curText.isEmpty() } }
-
-    viewModel.onEvent<ReplyUiEvent.ReplySuccess> {
-        if (it.expInc.isEmpty()) {
-            context.toastShort(R.string.toast_reply_success_default)
-        } else {
-            context.toastShort(R.string.toast_reply_success, it.expInc)
-        }
-        LitePal.deleteAllAsync<Draft>("hash = ?", hash).listen { onBack() }
-    }
-
-    var waitUploadSuccessToSend by remember { mutableStateOf(false) }
-    viewModel.onEvent<ReplyUiEvent.UploadSuccess> {
-        if (waitUploadSuccessToSend) {
-            waitUploadSuccessToSend = false
-            val imageContent = it.resultList
-                .joinToString("\n") { image ->
-                    "#(pic,${image.picId},${image.picInfo.originPic.width},${image.picInfo.originPic.height})"
-                }
-            viewModel.send(
-                ReplyUiIntent.Send(
-                    "${getText()}\n$imageContent",
-                    forumId,
-                    forumName,
-                    threadId,
-                    curTbs,
-                    postId,
-                    subPostId,
-                    replyUserId,
-                )
-            )
+    val textLength = curText.length
+    val onSent = submission as? ReplySubmissionState.Sent
+    LaunchedEffect(onSent) {
+        if (onSent != null) {
+            ReplyDrafts.clear(draft)
+            if (onSent.expInc.isEmpty()) context.toastShort(R.string.toast_reply_success_default)
+            else context.toastShort(R.string.toast_reply_success, onSent.expInc)
+            onBack()
         }
     }
+    BackHandler(enabled = isReplying) {}
 
     var closingPanel by remember { mutableStateOf(false) }
     var startClosingAnimation by remember { mutableStateOf(false) }
@@ -359,8 +280,8 @@ internal fun ReplyPageContent(
     }
 
     MyBackHandler(
-        enabled = curKeyboardType != NONE,
-        currentScreen = ReplyPageDestination.takeUnless { isDialog }
+        enabled = !isReplying && curKeyboardType != NONE,
+        currentScreen = ReplyPageDestination
     ) {
         switchToPanel(NONE)
     }
@@ -402,18 +323,6 @@ internal fun ReplyPageContent(
         derivedStateOf { max(imeVisibleHeightPx.pxToDpFloat(), 150f).dp }
     }
 
-    val textMeasurer = rememberTextMeasurer()
-
-    val minResult = textMeasurer.measure(
-        AnnotatedString("\n\n"),
-        style = LocalTextStyle.current
-    ).size.height.pxToDpFloat().dp
-
-    val maxResult = textMeasurer.measure(
-        AnnotatedString("\n\n\n\n\n"),
-        style = LocalTextStyle.current
-    ).size.height.pxToDpFloat().dp
-
     LaunchedEffect(closingPanel, imeAnimationEnd) {
         if (closingPanel) {
             if (!startClosingAnimation && !imeAnimationEnd) {
@@ -425,42 +334,38 @@ internal fun ReplyPageContent(
         }
     }
 
-    val canSend by remember { derivedStateOf { !isTextEmpty || selectedImageList.isNotEmpty() } }
+    val canSend = !isReplying && (curText.isNotBlank() || selectedImageList.isNotEmpty())
+    fun submit() {
+        viewModel.submit(ReplyRequest(
+            content = getText(), forumId = forumId, forumName = forumName, threadId = threadId,
+            tbs = tbs.orEmpty(), postId = postId, subPostId = subPostId, replyUserId = replyUserId,
+            replyUserName = replyUserName, replyUserPortrait = replyUserPortrait,
+            imageUris = selectedImageList, isOriginImage = isOriginImage,
+        ))
+    }
 
     val textFieldScrollState = rememberScrollState()
 
-    val contentSize = if (isDialog) Modifier.fillMaxWidth() else Modifier.fillMaxSize()
-    val parentModifier = contentSize.navigationBarsPadding().then(
+    val parentModifier = Modifier.fillMaxSize().navigationBarsPadding().then(
         if (curKeyboardType != NONE || closingPanel) Modifier.consumeWindowInsets(WindowInsets.ime)
         else Modifier
     )
 
     Column(modifier = parentModifier) {
-        if (isDialog) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.title_reply), style = MaterialTheme.typography.titleLarge)
-                Text("$textLength", style = MaterialTheme.typography.labelMedium)
-            }
-        } else {
-            TopAppBar(
-                title = { Text(stringResource(R.string.title_reply)) },
-                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
-                actions = {
-                    Text(
-                        "$textLength",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                },
-            )
-        }
+        TopAppBar(
+            title = { Text(stringResource(R.string.title_reply)) },
+            navigationIcon = { BackNavigationIcon(onBackPressed = { if (!isReplying) onBack() }) },
+            actions = {
+                Text(
+                    "$textLength",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            },
+        )
         Box(
             modifier = Modifier
-                .then(if (isDialog) Modifier.wrapContentHeight() else Modifier.weight(1f))
+                .weight(1f)
                 .fillMaxWidth()
                 .imeNestedScroll(textFieldScrollState),
         ) {
@@ -468,7 +373,6 @@ internal fun ReplyPageContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .then(if (isDialog) Modifier.requiredHeightIn(min = minResult, max = maxResult) else Modifier)
                     .verticalScroll(textFieldScrollState)
             ) {
                 val dark = LocalAppDarkTheme.current
@@ -496,7 +400,7 @@ internal fun ReplyPageContent(
                         val input = View.inflate(themed, R.layout.layout_reply_edit_text, null) as TextInputLayout
                         input.findViewById<UndoableEditText>(R.id.edit_text).apply {
                             editTextView = this
-                            if (subPostId != null && subPostId != 0L && replyUserName != null) {
+                            if (postId != null && postId > 0L && !replyUserName.isNullOrBlank()) {
                                 input.hint = ctx.getString(R.string.hint_reply, replyUserName)
                             }
                             setOnFocusChangeListener { _, hasFocus ->
@@ -506,8 +410,11 @@ internal fun ReplyPageContent(
                             }
                             addTextChangedListener(
                                 afterTextChanged = {
-                                    coroutineScope.launch {
-                                        curTextFlow.emit(it?.toString() ?: "")
+                                    val text = it?.toString().orEmpty()
+                                    if (viewModel.submission.value !is ReplySubmissionState.Sent) {
+                                        edited = true
+                                        curText = text
+                                        ReplyDrafts.save(draft, text)
                                     }
                                 }
                             )
@@ -527,6 +434,7 @@ internal fun ReplyPageContent(
                             input.cursorColor = focusColor
                         }
                         input.editText?.apply {
+                            isEnabled = !isReplying
                             setTextColor(colors.onSurface.toArgb())
                             setHintTextColor(labelColor)
                             setTextSize(TypedValue.COMPLEX_UNIT_PX, bodySize)
@@ -537,6 +445,14 @@ internal fun ReplyPageContent(
                         .wrapContentHeight(align = Alignment.Top)
                 )
             }
+        }
+        val failure = submission as? ReplySubmissionState.Failed
+        if (failure != null) {
+            Text(
+                stringResource(R.string.toast_reply_failed, failure.errorCode, failure.errorMessage),
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -598,41 +514,12 @@ internal fun ReplyPageContent(
                 )
             } else {
                 FilledIconButton(
-                    onClick = {
-                        val replyContent = if (subPostId == null || subPostId == 0L) {
-                            getText()
-                        } else {
-                            "回复 #(reply, ${replyUserPortrait}, ${replyUserName}) :${getText()}"
-                        }
-                        if (selectedImageList.isEmpty()) {
-                            viewModel.send(
-                                ReplyUiIntent.Send(
-                                    content = replyContent,
-                                    forumId = forumId,
-                                    forumName = forumName,
-                                    threadId = threadId,
-                                    tbs = curTbs,
-                                    postId = postId,
-                                    subPostId = subPostId,
-                                    replyUserId = replyUserId
-                                )
-                            )
-                        } else {
-                            waitUploadSuccessToSend = true
-                            viewModel.send(
-                                ReplyUiIntent.UploadImages(
-                                    forumName,
-                                    selectedImageList,
-                                    isOriginImage
-                                )
-                            )
-                        }
-                    },
+                    onClick = ::submit,
                     enabled = canSend,
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = stringResource(id = R.string.send_reply),
+                        contentDescription = stringResource(if (failure == null) R.string.send_reply else R.string.reply_retry),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -766,9 +653,15 @@ fun ReplyPage(
     replyUserName: String? = null,
     replyUserPortrait: String? = null,
     tbs: String? = null,
+    tbsAccountId: String? = null,
     viewModel: ReplyViewModel = pageViewModel(),
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val account = AccountUtil.LocalAccount.current
+    if (account == null) {
+        ReplyLoginPrompt(onLogin = { navigator.navigate(LoginPageDestination) }, onBack = { navigator.navigateUp() })
+        return
+    }
+    key(account.uid) { Surface(modifier = Modifier.fillMaxSize()) {
         ReplyPageContent(
             viewModel = viewModel,
             onBack = { navigator.navigateUp() },
@@ -780,8 +673,23 @@ fun ReplyPage(
             replyUserId = replyUserId,
             replyUserName = replyUserName,
             replyUserPortrait = replyUserPortrait,
-            tbs = tbs
+            tbs = tbs?.takeIf { it.isNotBlank() && tbsAccountId == account.uid } ?: account.tbs,
+            accountId = account.uid,
         )
+    } }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ReplyLoginPrompt(onLogin: () -> Unit, onBack: () -> Unit) {
+    Surface(Modifier.fillMaxSize()) {
+        Column {
+            TopAppBar(title = { Text(stringResource(R.string.title_reply)) },
+                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) })
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Button(onClick = onLogin) { Text(stringResource(R.string.login_to_reply)) }
+            }
+        }
     }
 }
 

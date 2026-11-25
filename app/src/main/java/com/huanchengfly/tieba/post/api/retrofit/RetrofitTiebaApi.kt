@@ -335,6 +335,7 @@ object RetrofitTiebaApi {
                 Param.Z_ID to { AccountUtil.getAccountInfo { zid }.orEmpty() },
             ),
             stParamInterceptor,
+            retryOnConnectionFailure = false,
         )
     }
 
@@ -389,7 +390,8 @@ object RetrofitTiebaApi {
 
     private inline fun <reified T : Any> createProtobufApi(
         baseUrl: String,
-        vararg interceptors: Interceptor
+        vararg interceptors: Interceptor,
+        retryOnConnectionFailure: Boolean = true,
     ) = Retrofit.Builder()
         .baseUrl(baseUrl)
         .addCallAdapterFactory(DeferredCallAdapterFactory())
@@ -397,6 +399,7 @@ object RetrofitTiebaApi {
         .addConverterFactory(NullOnEmptyConverterFactory())
         .addConverterFactory(WireConverterFactory.create())
         .client(OkHttpClient.Builder().apply {
+            retryOnConnectionFailure(retryOnConnectionFailure)
             readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
             connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
             writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)

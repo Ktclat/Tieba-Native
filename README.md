@@ -13,8 +13,9 @@
 - 上滑浏览后面的内容时，底部导航栏保持原有高度，随滚动逐步下移。反向滚动即可拉回
 - 底部导航占据 Scaffold 的布局空间，不覆盖列表、按钮或系统手势区域
 - 浏览历史支持本机检索。帖子可按标题、作者或完整帖子 ID 查找，贴吧可按吧名查找。点开帖子可继续上次阅读
-- Compose 使用 Google 的 MaterialExpressiveTheme，原生 Activity 使用 Material Components 的 Expressive 主题。帖子、顶部标签、设置和回复控件共享配色、字阶与形状，支持自选色、系统动态色和深色主题。
+- Compose 使用 Google 的 MaterialExpressiveTheme，原生 Activity 使用 Material Components 的 Expressive 主题。在「我 → 主题选择」可选预设颜色或输入 HEX。Android 12 及以上还可开启「跟随系统壁纸」，浅色和深色界面都会使用系统配色。
 - 帖子与评论以留白分组，赞在对应作者行右侧。楼中楼把作者、回复对象和正文紧凑排列，发送时间和 IP 属地另行显示。有用户 ID 的回复对象可打开主页，纯文字名字按原文显示。
+- 帖子与楼中楼按作者 ID 补全接口返回的头像。打开帖子可评论主题、回复楼层或指定某条楼中楼。游客可从评论入口登录，发送失败可在原处修改草稿并重试。
 - 评论布局参照 [TiebaLite 4.0-dev 的帖子页](https://github.com/HuanCheng65/TiebaLite/blob/9295d1b5dfc52261dffeb7b34afae8f3ca00fdd9/app/src/main/java/com/huanchengfly/tieba/post/ui/page/thread/ThreadPage.kt#L1848-L1982) 和[楼中楼详情](https://github.com/HuanCheng65/TiebaLite/blob/9295d1b5dfc52261dffeb7b34afae8f3ca00fdd9/app/src/main/java/com/huanchengfly/tieba/post/ui/page/subposts/SubPostsPage.kt#L635-L692)。
 - 最低 API 26，编译/目标 API 35；AGP 8.6.1、Gradle 8.7、JDK 17
 - 修复贴吧加载成功仍显示加载中、缓存串页和缺失作者信息处理

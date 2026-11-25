@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.utils
 
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.DrawableRes
@@ -132,7 +133,7 @@ object QuickPreviewUtil {
                         it.data_?.forum?.name,
                         it.data_?.thread?.replyNum?.toString()
                     ),
-                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.portrait))
+                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.displayPortrait))
                 )
             }
             .catch { it.printStackTrace() }
