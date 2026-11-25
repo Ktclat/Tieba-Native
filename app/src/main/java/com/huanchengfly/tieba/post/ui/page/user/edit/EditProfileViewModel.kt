@@ -64,26 +64,7 @@ class EditProfileViewModel @Inject constructor() :
                     .userProfileFlow(account.uid.toLong())
                     .map<ProfileResponse, EditProfilePartialChange.Init> { profile ->
                         val user = checkNotNull(profile.data_?.user)
-                        account.apply {
-                            nameShow = user.nameShow
-                            portrait = user.portrait
-                            intro = user.intro
-                            sex = user.sex.toString()
-                            fansNum = user.fans_num.toString()
-                            postNum = user.post_num.toString()
-                            threadNum = user.thread_num.toString()
-                            concernNum = user.concern_num.toString()
-                            tbAge = user.tb_age
-                            age = user.birthday_info?.age?.toString()
-                            birthdayShowStatus =
-                                user.birthday_info?.birthday_show_status?.toString()
-                            birthdayTime = user.birthday_info?.birthday_time?.toString()
-                            constellation = user.birthday_info?.constellation
-                            tiebaUid = user.tieba_uid
-                            loadSuccess = true
-                            updateAll("uid = ?", uid)
-                        }
-                        EditProfilePartialChange.Init.Success(account = account)
+                        EditProfilePartialChange.Init.Success(account = AccountUtil.saveProfile(account, user))
                     }
                     .onStart { emit(EditProfilePartialChange.Init.Loading) }
                     .catch { emit(EditProfilePartialChange.Init.Fail(it.getErrorMessage())) }

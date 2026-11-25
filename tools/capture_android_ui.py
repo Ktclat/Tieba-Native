@@ -1,4 +1,4 @@
-"""Exercise guest navigation, font settings and persisted color choices on Android 15."""
+"""Exercise guest login, navigation, font settings and persisted color choices on Android 15."""
 
 import argparse
 from collections import Counter
@@ -135,6 +135,40 @@ def restart_home():
     find_label("随便看看")
 
 
+def disconnect_emulator():
+    if adb("shell", "getprop", "ro.kernel.qemu").strip() != b"1":
+        raise RuntimeError("The offline login check requires a disposable emulator")
+    adb("shell", "cmd", "connectivity", "airplane-mode", "enable")
+    adb("shell", "svc", "wifi", "disable")
+    end = time.monotonic() + 30
+    while time.monotonic() < end:
+        status = adb("shell", "dumpsys", "connectivity")
+        if re.search(rb"(?mi)^\s*Active default network:\s*none\s*$", status):
+            return
+        time.sleep(0.5)
+    raise RuntimeError("Android still has a default network or could not confirm disconnection")
+
+
+def review_guest_login(output):
+    tap("去登录")
+    find_label("登录百度账号")
+    find_label("无法打开百度登录页")
+    tap("重试")
+    capture(output, "01a-login-offline", "无法打开百度登录页")
+    tap("返回")
+    find_label("去登录")
+
+    tap("我")
+    tap("请先登录")
+    find_label("登录百度账号")
+    find_label("无法打开百度登录页")
+    back_to("请先登录")
+    restart_home()
+    find_label("去登录")
+    tap("我")
+    capture(output, "02-profile", "请先登录")
+
+
 def open_themes():
     tap("我")
     tap("主题选择")
@@ -217,6 +251,7 @@ def review_colors(output):
 
 def run(apk, output):
     output.mkdir(parents=True, exist_ok=True)
+    disconnect_emulator()
     adb("install", "-r", "-g", str(apk), timeout=90)
     adb("shell", "wm", "size", "1080x2340")
     adb("shell", "wm", "density", "420")
@@ -225,8 +260,7 @@ def run(apk, output):
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
     find_label("随便看看", recover_launcher=True)
     capture(output, "01-home", "随便看看")
-    tap("我")
-    capture(output, "02-profile", "设置")
+    review_guest_login(output)
     tap("设置")
     capture(output, "03-settings", "个性化")
     tap("个性化")

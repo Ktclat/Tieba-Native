@@ -194,24 +194,6 @@ interface OfficialTiebaApi {
     @Headers(
         "${Header.COOKIE}: ka=open",
         "${Header.DROP_HEADERS}: ${Header.CHARSET},${Header.CLIENT_TYPE}",
-        "${Header.DROP_PARAMS}: BDUSS"
-    )
-    @POST("/c/s/login")
-    @FormUrlEncoded
-    fun loginFlow(
-        @Field("bdusstoken") bdusstoken: String = "${AccountUtil.getBduss()!!}|null",
-        @Field("stoken") sToken: String = AccountUtil.getSToken()!!,
-        @Field("user_id") userId: String? = AccountUtil.getUid(),
-        @Field("channel_id") channelId: String = "",
-        @Field("channel_uid") channelUid: String = "",
-        @Field("_client_version") client_version: String = "11.10.8.6",
-        @retrofit2.http.Header(Header.USER_AGENT) user_agent: String = "bdtb for Android $client_version",
-        @Field("authsid") authsid: String = "null",
-    ): Flow<LoginBean>
-
-    @Headers(
-        "${Header.COOKIE}: ka=open",
-        "${Header.DROP_HEADERS}: ${Header.CHARSET},${Header.CLIENT_TYPE}",
     )
     @POST("/c/u/user/profile")
     @FormUrlEncoded

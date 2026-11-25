@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
+import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.AboutPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.AppThemePageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.HistoryPageDestination
@@ -188,12 +190,13 @@ private fun RowScope.StatCardItem(
 }
 
 @Composable
-private fun LoginTipCard(modifier: Modifier = Modifier) {
+private fun LoginTipCard(onLogin: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(role = Role.Button, onClick = onLogin)
             .padding(18.dp),
     ) {
         Column(
@@ -305,6 +308,7 @@ fun UserPage(
                     )
                 } else {
                     LoginTipCard(
+                        onLogin = { navigator.navigate(LoginPageDestination) },
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 16.dp)
                             .padding(top = 8.dp),
