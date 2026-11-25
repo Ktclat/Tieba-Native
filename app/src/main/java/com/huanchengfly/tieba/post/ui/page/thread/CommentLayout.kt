@@ -38,15 +38,26 @@ import com.huanchengfly.tieba.post.utils.Util
 internal fun CommentLayout(
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
-    action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         header?.invoke()
         ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
-        if (action != null) {
-            Box(Modifier.align(Alignment.End)) { action() }
-        }
+    }
+}
+
+@Composable
+internal fun CommentAuthorRow(
+    action: (@Composable () -> Unit)?,
+    author: @Composable () -> Unit,
+) {
+    if (action == null) {
+        author()
+        return
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.weight(1f).align(Alignment.CenterVertically)) { author() }
+        action()
     }
 }
 
@@ -57,6 +68,7 @@ internal fun CommentHeader(
     time: Long?,
     floor: Int? = null,
     recipient: (@Composable () -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null,
     onUserClick: (User) -> Unit,
 ) {
     val authorId = author?.id ?: 0L
@@ -81,6 +93,7 @@ internal fun CommentHeader(
         bawuType = author?.bawuType,
         authorId = authorId,
         recipient = recipient,
+        action = action,
     )
 }
 
@@ -97,33 +110,36 @@ internal fun CommentHeader(
     bawuType: String? = null,
     authorId: Long? = null,
     recipient: (@Composable () -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null,
 ) {
     val avatar = portrait?.trim().orEmpty()
     val hasAuthor = name.isNotBlank() || avatar.isNotEmpty() || onAuthorClick != null ||
         userLevel > 0 || isLz || !bawuType.isNullOrBlank()
     if (!hasAuthor && recipient == null) {
-        CommentMetadata(time, floor, ipAddress)
+        CommentAuthorRow(action) { CommentMetadata(time, floor, ipAddress) }
         return
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (hasAuthor) {
-            val profileAction = if (onAuthorClick == null) Modifier else Modifier
-                .clickable(role = Role.Button, onClick = onAuthorClick)
-                .heightIn(min = 48.dp)
-            Row(
-                modifier = Modifier.fillMaxWidth().then(profileAction),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CommentAvatar(name = name.text, portrait = avatar, authorId = authorId)
-                CommentAuthorName(
-                    userName = name,
-                    userLevel = userLevel,
-                    modifier = Modifier.weight(1f),
-                    isLz = isLz,
-                    bawuType = bawuType,
-                )
+        CommentAuthorRow(action) {
+            if (hasAuthor) {
+                val profileAction = if (onAuthorClick == null) Modifier else Modifier
+                    .clickable(role = Role.Button, onClick = onAuthorClick)
+                    .heightIn(min = 48.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().then(profileAction),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CommentAvatar(name = name.text, portrait = avatar, authorId = authorId)
+                    CommentAuthorName(
+                        userName = name,
+                        userLevel = userLevel,
+                        modifier = Modifier.weight(1f),
+                        isLz = isLz,
+                        bawuType = bawuType,
+                    )
+                }
             }
         }
         if (recipient != null) {

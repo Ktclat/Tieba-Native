@@ -1,10 +1,8 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.concern
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -14,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.api.models.protos.hasAgree
 import com.huanchengfly.tieba.post.arch.CommonUiEvent.ScrollToTop.bindScrollToTopEvent
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -33,7 +30,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -75,53 +71,45 @@ fun ConcernPage(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                itemsIndexed(
+                items(
                     items = data,
-                    key = { _, item -> "${item.recommendType}_${item.threadList?.id}" },
-                    contentType = { _, item -> item.recommendType }
-                ) { index, item ->
+                    key = { item -> "${item.recommendType}_${item.threadList?.id}" },
+                    contentType = { item -> item.recommendType }
+                ) { item ->
                     Container {
                         if (item.recommendType == 1) {
-                            Column {
-                                FeedCard(
-                                    item = wrapImmutable(item.threadList!!),
-                                    onClick = {
-                                        navigator.navigate(
-                                            ThreadPageDestination(
-                                                it.threadId,
-                                                it.forumId,
-                                                threadInfo = it
-                                            )
+                            FeedCard(
+                                item = wrapImmutable(item.threadList!!),
+                                onClick = {
+                                    navigator.navigate(
+                                        ThreadPageDestination(
+                                            it.threadId,
+                                            it.forumId,
+                                            threadInfo = it
                                         )
-                                    },
-                                    onClickReply = {
-                                        navigator.navigate(
-                                            ThreadPageDestination(
-                                                it.threadId,
-                                                it.forumId,
-                                                scrollToReply = true
-                                            )
-                                        )
-                                    },
-                                    onAgree = {
-                                        viewModel.send(
-                                            ConcernUiIntent.Agree(
-                                                it.threadId,
-                                                it.firstPostId,
-                                                it.hasAgree
-                                            )
-                                        )
-                                    },
-                                    onClickForum = { navigator.navigate(ForumPageDestination(it.name)) },
-                                    onClickUser = { navigator.navigate(UserProfilePageDestination(it.id)) },
-                                )
-                                if (index < data.size - 1) {
-                                    VerticalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        thickness = 2.dp
                                     )
-                                }
-                            }
+                                },
+                                onClickReply = {
+                                    navigator.navigate(
+                                        ThreadPageDestination(
+                                            it.threadId,
+                                            it.forumId,
+                                            scrollToReply = true
+                                        )
+                                    )
+                                },
+                                onAgree = {
+                                    viewModel.send(
+                                        ConcernUiIntent.Agree(
+                                            it.threadId,
+                                            it.firstPostId,
+                                            it.hasAgree
+                                        )
+                                    )
+                                },
+                                onClickForum = { navigator.navigate(ForumPageDestination(it.name)) },
+                                onClickUser = { navigator.navigate(UserProfilePageDestination(it.id)) },
+                            )
                         } else {
                             Box {}
                         }

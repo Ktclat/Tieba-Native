@@ -23,7 +23,6 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -424,17 +423,16 @@ internal fun SubPostsContent(
                                     threadAuthorId = thread?.get { author?.id } ?: 0L,
                                     canDelete = { it.author_id == account?.uid?.toLongOrNull() },
                                     showSubPosts = false,
-                                    showFloorDivider = false,
                                     onUserClick = {
                                         navigator.navigate(UserProfilePageDestination(it.id))
                                     },
                                     onAgree = {
-                                        val hasAgreed = it.get { agree?.hasAgree != 0 }
+                                        val hasAgreed = it.get { agree?.hasAgree == 1 }
                                         viewModel.send(
                                             SubPostsUiIntent.Agree(
                                                 forumId,
                                                 threadId,
-                                                postId,
+                                                it.get { id },
                                                 agree = !hasAgreed
                                             )
                                         )
@@ -474,17 +472,19 @@ internal fun SubPostsContent(
                             onUserClick = {
                                 navigator.navigate(UserProfilePageDestination(it.id))
                             },
-                            onAgree = {
-                                val hasAgreed = it.agree?.hasAgree != 0
-                                viewModel.send(
-                                    SubPostsUiIntent.Agree(
-                                        forumId,
-                                        threadId,
-                                        postId,
-                                        subPostId = it.id,
-                                        agree = !hasAgreed
+                            onAgree = { reply ->
+                                val parentId = post?.get { id } ?: 0L
+                                if (parentId > 0L) {
+                                    viewModel.send(
+                                        SubPostsUiIntent.Agree(
+                                            forumId,
+                                            threadId,
+                                            postId = parentId,
+                                            subPostId = reply.id,
+                                            agree = reply.agree?.hasAgree != 1,
+                                        )
                                     )
-                                )
+                                }
                             },
                             onReplyClick = {
                                 showReplyDialog(
@@ -523,7 +523,6 @@ internal fun SubPostsContent(
 internal fun SubPostsHeading(totalCount: Int) {
     val colors = M3Theme.colorScheme
     Column(Modifier.fillMaxWidth().background(colors.surfaceContainerLow)) {
-        HorizontalDivider(color = colors.outlineVariant)
         Text(
             text = stringResource(R.string.title_sub_posts_header, totalCount),
             style = M3Theme.typography.titleSmall,
@@ -576,7 +575,9 @@ internal fun SubPostItem(
         (contentRenders.firstOrNull() as? TextContentRender)?.text?.splitDirectedReply()
     }
     val colors = M3Theme.colorScheme
-    val rowFrame = Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp).replyRail(colors.outlineVariant)
+    val rowFrame = Modifier.fillMaxWidth()
+        .padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
+        .replyRail(colors.outlineVariant)
     BlockableContent(
         blocked = blocked,
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },
@@ -630,35 +631,34 @@ internal fun SubPostItem(
             },
             onClick = { onReplyClick(subPost.get()) }.takeUnless { context.appPreferences.hideReply }
         ) {
-            Column {
-                CommentLayout(
-                    modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
-                    header = {
-                        CommentHeader(
-                            author = subPost.get { author },
-                            threadAuthorId = threadAuthorId,
-                            time = subPost.get { time.toLong() },
-                            onUserClick = onUserClick,
-                            recipient = if (directed != null) { { ReplyRecipient(directed) } } else null,
-                        )
-                    },
-                    action = {
-                        PostAgreeBtn(
-                            hasAgreed = hasAgreed,
-                            agreeNum = agreeNum,
-                            onClick = { onAgree(subPost.get()) },
-                        )
-                    },
-                ) {
-                    contentRenders.fastForEachIndexed { index, render ->
-                        if (index == 0 && directed != null) {
-                            if (directed.body.isNotEmpty()) TextContentRender(directed.body).Render()
-                        } else {
-                            render.Render()
-                        }
+            CommentLayout(
+                modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
+                header = {
+                    CommentHeader(
+                        author = subPost.get { author },
+                        threadAuthorId = threadAuthorId,
+                        time = subPost.get { time.toLong() },
+                        onUserClick = onUserClick,
+                        recipient = if (directed != null) { { ReplyRecipient(directed) } } else null,
+                        action = if (item.id > 0) {
+                            {
+                                PostAgreeBtn(
+                                    hasAgreed = hasAgreed,
+                                    agreeNum = agreeNum,
+                                    onClick = { onAgree(subPost.get()) },
+                                )
+                            }
+                        } else null,
+                    )
+                },
+            ) {
+                contentRenders.fastForEachIndexed { index, render ->
+                    if (index == 0 && directed != null) {
+                        if (directed.body.isNotEmpty()) TextContentRender(directed.body).Render()
+                    } else {
+                        render.Render()
                     }
                 }
-                HorizontalDivider(Modifier.padding(start = 14.dp), color = colors.outlineVariant)
             }
         }
     }

@@ -18,12 +18,14 @@ import com.huanchengfly.tieba.post.api.models.protos.updateAgreeStatus
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorCode
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.BaseViewModel
+import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.PartialChange
 import com.huanchengfly.tieba.post.arch.PartialChangeProducer
 import com.huanchengfly.tieba.post.arch.UiEvent
 import com.huanchengfly.tieba.post.arch.UiIntent
 import com.huanchengfly.tieba.post.arch.UiState
+import com.huanchengfly.tieba.post.arch.emitGlobalEventSuspend
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
 import com.huanchengfly.tieba.post.utils.BlockManager.shouldBlock
@@ -126,6 +128,7 @@ class SubPostsViewModel @Inject constructor() :
                     objType = if (subPostId == null) 1 else 2
                 )
                 .map<AgreeBean, SubPostsPartialChange.Agree> {
+                    emitGlobalEventSuspend(GlobalEvent.CommentVoteConfirmed(threadId, postId, subPostId, agree))
                     SubPostsPartialChange.Agree.Success(subPostId, agree)
                 }
                 .onStart { emit(SubPostsPartialChange.Agree.Start(subPostId, agree)) }

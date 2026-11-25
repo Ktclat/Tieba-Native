@@ -8,10 +8,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,6 +23,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import com.huanchengfly.tieba.post.App
+import com.huanchengfly.tieba.post.api.models.protos.Agree
 import com.huanchengfly.tieba.post.api.models.protos.PbContent
 import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.SubPost
@@ -53,11 +58,13 @@ class CommentActionsTest {
     fun authorLikeAndReplyTargetsRemainIndependent() {
         val reply = SubPostList(
             id = 81,
+            agree = Agree(diffAgreeNum = 7, hasAgree = 1),
             author = User(id = 20, name = "竹影"),
             content = listOf(PbContent(text = "昨天下午拍的。")),
         )
         val post = Post(
             id = 45,
+            agree = Agree(diffAgreeNum = 19),
             floor = 2,
             author = User(id = 10, name = "秋山"),
             content = listOf(PbContent(text = "这张照片是什么时候拍的？")),
@@ -73,7 +80,8 @@ class CommentActionsTest {
                         contentRenders = persistentListOf(TextContentRender(post.content.single().text)),
                         subPosts = post.subPosts,
                         onUserClick = { actions += "user-${it.id}" },
-                        onAgree = { actions += "like" },
+                        onAgree = { actions += "like-${post.id}" },
+                        onSubPostAgree = { actions += "like-${it.id}" },
                         onReplyClick = { actions += "reply-${it.id}" },
                         onOpenSubPosts = { actions += "open-$it" },
                         onSubPostReplyClick = { parent, child -> actions += "reply-${parent.id}-${child.id}" },
@@ -88,7 +96,9 @@ class CommentActionsTest {
 
         tapText("秋山")
         tapText("竹影")
-        compose.onNodeWithContentDescription("点赞", useUnmergedTree = true).performTouchInput { click() }
+        val like = hasContentDescription("点赞") and hasClickAction()
+        compose.onNode(like and hasText("19")).assertIsNotSelected().performTouchInput { click() }
+        compose.onNode(like and hasText("7")).assertIsSelected().performTouchInput { click() }
         tapText(post.content.single().text)
         val previewBody = compose.onNodeWithText(reply.content.single().text, useUnmergedTree = true)
         previewBody.performTouchInput { click() }
@@ -98,7 +108,7 @@ class CommentActionsTest {
         compose.onNodeWithText("复制").performClick()
 
         compose.runOnIdle {
-            assertEquals(listOf("user-10", "user-20", "like", "reply-45", "open-81", "reply-45-81",
+            assertEquals(listOf("user-10", "user-20", "like-45", "like-81", "reply-45", "open-81", "reply-45-81",
                 reply.content.single().text), actions)
         }
     }

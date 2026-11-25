@@ -115,60 +115,25 @@ fun ThreadInfo.updateCollectStatus(
     this
 }
 
-fun Post.updateAgreeStatus(
-    hasAgree: Int
-) = if (agree != null) {
-    if (hasAgree != agree.hasAgree) {
-        if (hasAgree == 1) {
-            copy(
-                agree = agree.copy(
-                    agreeNum = agree.agreeNum + 1,
-                    diffAgreeNum = agree.diffAgreeNum + 1,
-                    hasAgree = 1
-                )
-            )
-        } else {
-            copy(
-                agree = agree.copy(
-                    agreeNum = agree.agreeNum - 1,
-                    diffAgreeNum = agree.diffAgreeNum - 1,
-                    hasAgree = 0
-                )
-            )
-        }
-    } else {
-        this
-    }
-} else {
-    this
+private fun Agree?.withPostVote(hasAgree: Int): Agree? {
+    if ((this?.hasAgree ?: 0) == hasAgree) return this
+    val previous = this ?: Agree()
+    val delta = if (hasAgree == 1) 1L else -1L
+    return previous.copy(
+        hasAgree = hasAgree,
+        agreeNum = (previous.agreeNum + delta).coerceAtLeast(0L),
+        diffAgreeNum = previous.diffAgreeNum + delta,
+    )
 }
 
-fun SubPostList.updateAgreeStatus(
-    hasAgree: Int
-) = if (agree != null) {
-    if (hasAgree != agree.hasAgree) {
-        if (hasAgree == 1) {
-            copy(
-                agree = agree.copy(
-                    agreeNum = agree.agreeNum + 1,
-                    diffAgreeNum = agree.diffAgreeNum + 1,
-                    hasAgree = 1
-                )
-            )
-        } else {
-            copy(
-                agree = agree.copy(
-                    agreeNum = agree.agreeNum - 1,
-                    diffAgreeNum = agree.diffAgreeNum - 1,
-                    hasAgree = 0
-                )
-            )
-        }
-    } else {
-        this
-    }
-} else {
-    this
+fun Post.updateAgreeStatus(hasAgree: Int): Post {
+    val updated = agree.withPostVote(hasAgree)
+    return if (updated === agree) this else copy(agree = updated)
+}
+
+fun SubPostList.updateAgreeStatus(hasAgree: Int): SubPostList {
+    val updated = agree.withPostVote(hasAgree)
+    return if (updated === agree) this else copy(agree = updated)
 }
 
 fun PostInfoList.updateAgreeStatus(

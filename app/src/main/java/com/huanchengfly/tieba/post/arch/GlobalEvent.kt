@@ -43,6 +43,13 @@ sealed interface GlobalEvent : UiEvent {
         val newSubPostId: Long? = null,
     ) : GlobalEvent
 
+    data class CommentVoteConfirmed(
+        val threadId: Long,
+        val postId: Long,
+        val subPostId: Long?,
+        val hasAgree: Boolean,
+    ) : GlobalEvent
+
     data class StartActivityForResult(
         val requesterId: String,
         val intent: Intent,

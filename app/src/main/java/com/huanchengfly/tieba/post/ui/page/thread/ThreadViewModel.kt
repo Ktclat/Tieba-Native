@@ -25,6 +25,8 @@ import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorCode
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.BaseViewModel
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
+import com.huanchengfly.tieba.post.arch.GlobalEvent
+import com.huanchengfly.tieba.post.arch.GlobalEventFlow
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.PartialChange
 import com.huanchengfly.tieba.post.arch.PartialChangeProducer
@@ -112,6 +114,8 @@ class ThreadViewModel @Inject constructor() :
         @OptIn(ExperimentalCoroutinesApi::class)
         override fun toPartialChangeFlow(intentFlow: Flow<ThreadUiIntent>): Flow<ThreadPartialChange> =
             merge(
+                GlobalEventFlow.filterIsInstance<GlobalEvent.CommentVoteConfirmed>()
+                    .map { ThreadPartialChange.ConfirmedCommentVote(it) },
                 intentFlow.filterIsInstance<ThreadUiIntent.Init>()
                     .flatMapConcat { it.producePartialChange() },
                 intentFlow.filterIsInstance<ThreadUiIntent.Load>()
@@ -434,24 +438,22 @@ class ThreadViewModel @Inject constructor() :
             TiebaApi.getInstance()
                 .opAgreeFlow(
                     threadId.toString(),
-                    postId.toString(),
+                    (subPostId ?: postId).toString(),
                     if (agree) 0 else 1,
-                    objType = 1
+                    objType = if (subPostId == null) 1 else 2
                 )
                 .map<AgreeBean, ThreadPartialChange.AgreePost> {
-                    ThreadPartialChange.AgreePost.Success(
-                        postId,
-                        agree
-                    )
+                    ThreadPartialChange.AgreePost.Success(postId, agree, subPostId)
                 }
-                .onStart { emit(ThreadPartialChange.AgreePost.Start(postId, agree)) }
+                .onStart { emit(ThreadPartialChange.AgreePost.Start(postId, agree, subPostId)) }
                 .catch {
                     emit(
                         ThreadPartialChange.AgreePost.Failure(
                             postId,
                             !agree,
                             it.getErrorCode(),
-                            it.getErrorMessage()
+                            it.getErrorMessage(),
+                            subPostId,
                         )
                     )
                 }
@@ -583,7 +585,8 @@ sealed interface ThreadUiIntent : UiIntent {
     data class AgreePost(
         val threadId: Long,
         val postId: Long,
-        val agree: Boolean
+        val agree: Boolean,
+        val subPostId: Long? = null,
     ) : ThreadUiIntent
 
     data class DeletePost(
@@ -1086,53 +1089,70 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
         ) : AgreeThread()
     }
 
+    data class ConfirmedCommentVote(val event: GlobalEvent.CommentVoteConfirmed) : ThreadPartialChange {
+        override fun reduce(oldState: ThreadUiState): ThreadUiState {
+            if (oldState.threadInfo?.get { id } != event.threadId) return oldState
+            return AgreePost.Success(event.postId, event.hasAgree, event.subPostId).reduce(oldState)
+        }
+    }
+
     sealed class AgreePost : ThreadPartialChange {
-        private fun List<PostItemData>.updateAgreeStatus(
-            postId: Long,
-            hasAgree: Int
-        ): ImmutableList<PostItemData> {
+        abstract val postId: Long
+        abstract val subPostId: Long?
+        abstract val hasAgree: Boolean
+
+        private fun ImmutableList<PostItemData>.updateVotes(): ImmutableList<PostItemData> {
+            val status = if (hasAgree) 1 else 0
+            val targetReply = subPostId
+            fun SubPostList.updatePreviewVote(): SubPostList =
+                if (id == targetReply && agree != null) updateAgreeStatus(status) else this
+
             return map { item ->
-                val (holder) = item
-                val (post) = holder
-                if (post.id == postId) {
-                    item.copy(
-                        post = post.updateAgreeStatus(hasAgree).wrapImmutable()
-                    )
-                } else item
+                val post = item.post.get()
+                if (post.id != postId) return@map item
+                if (targetReply == null) {
+                    return@map item.copy(post = post.updateAgreeStatus(status).wrapImmutable())
+                }
+
+                val nested = post.sub_post_list
+                val updatedPost = if (nested != null) {
+                    val replies = nested.sub_post_list.map { it.updatePreviewVote() }
+                    post.copy(sub_post_list = nested.copy(sub_post_list = replies))
+                } else post
+                item.copy(
+                    post = updatedPost.wrapImmutable(),
+                    subPosts = item.subPosts.map { preview ->
+                        val original = preview.subPost.get()
+                        val updated = original.updatePreviewVote()
+                        if (original === updated) preview else preview.copy(subPost = updated.wrapImmutable())
+                    }.toImmutableList(),
+                )
             }.toImmutableList()
         }
 
-        override fun reduce(oldState: ThreadUiState): ThreadUiState {
-            return when (this) {
-                is Start -> oldState.copy(
-                    data = oldState.data.updateAgreeStatus(postId, if (hasAgree) 1 else 0)
-                )
-
-                is Success -> oldState.copy(
-                    data = oldState.data.updateAgreeStatus(postId, if (hasAgree) 1 else 0)
-                )
-
-                is Failure -> oldState.copy(
-                    data = oldState.data.updateAgreeStatus(postId, if (hasAgree) 1 else 0)
-                )
-            }
-        }
+        override fun reduce(oldState: ThreadUiState): ThreadUiState = oldState.copy(
+            data = oldState.data.updateVotes(),
+            latestPosts = oldState.latestPosts.updateVotes(),
+        )
 
         data class Start(
-            val postId: Long,
-            val hasAgree: Boolean
+            override val postId: Long,
+            override val hasAgree: Boolean,
+            override val subPostId: Long? = null,
         ) : AgreePost()
 
         data class Success(
-            val postId: Long,
-            val hasAgree: Boolean
+            override val postId: Long,
+            override val hasAgree: Boolean,
+            override val subPostId: Long? = null,
         ) : AgreePost()
 
         data class Failure(
-            val postId: Long,
-            val hasAgree: Boolean,
+            override val postId: Long,
+            override val hasAgree: Boolean,
             val errorCode: Int,
-            val errorMessage: String
+            val errorMessage: String,
+            override val subPostId: Long? = null,
         ) : AgreePost()
     }
 

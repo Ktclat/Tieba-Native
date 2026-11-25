@@ -71,7 +71,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -298,12 +297,6 @@ private fun FeedList(
                 ) { hiddenThreadIds.contains(item.get { threadId }) || hidden }
             val isRefreshPosition =
                 remember(index, refreshPosition) { index + 1 == refreshPosition }
-            val isNotLast = remember(index, data.size) { index < data.size - 1 }
-            val showDivider = remember(
-                isHidden,
-                isRefreshPosition,
-                isNotLast
-            ) { !isHidden && !isRefreshPosition && isNotLast }
             Container {
                 AnimatedVisibility(
                     visible = !isHidden,
@@ -318,32 +311,24 @@ private fun FeedList(
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp, horizontal = 16.dp)
                         ) {
-                            Column {
-                                FeedCard(
-                                    item = item,
-                                    onClick = onItemClick,
-                                    onClickReply = onItemReplyClick,
-                                    onAgree = onAgree,
-                                    onClickForum = remember {
-                                        {
-                                            onOpenForum(it.name)
-                                        }
-                                    },
-                                    onClickUser = onClickUser,
-                                ) {
-                                    if (personalized != null) {
-                                        Dislike(
-                                            personalized = personalized,
-                                            onDislike = { clickTime, reasons ->
-                                                onDislike(item.get(), clickTime, reasons)
-                                            }
-                                        )
+                            FeedCard(
+                                item = item,
+                                onClick = onItemClick,
+                                onClickReply = onItemReplyClick,
+                                onAgree = onAgree,
+                                onClickForum = remember {
+                                    {
+                                        onOpenForum(it.name)
                                     }
-                                }
-                                if (showDivider) {
-                                    VerticalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        thickness = 2.dp
+                                },
+                                onClickUser = onClickUser,
+                            ) {
+                                if (personalized != null) {
+                                    Dislike(
+                                        personalized = personalized,
+                                        onDislike = { clickTime, reasons ->
+                                            onDislike(item.get(), clickTime, reasons)
+                                        }
                                     )
                                 }
                             }
