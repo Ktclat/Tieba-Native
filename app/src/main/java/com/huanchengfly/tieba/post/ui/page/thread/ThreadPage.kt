@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,6 +81,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -117,6 +119,7 @@ import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.plainText
+import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -178,7 +181,8 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.math.max
@@ -506,7 +510,7 @@ fun ThreadPage(
     )
     var waitLoadSuccessAndScrollToFirstReply by remember { mutableStateOf(scrollToReply) }
 
-    val lazyListState = rememberLazyListState()
+    val lazyListState = key(threadId) { rememberLazyListState() }
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val firstFloor = remember(firstPost) {
@@ -547,44 +551,30 @@ fun ThreadPage(
         )
     }
 
-    val updateCollectMarkDialogState = rememberDialogState()
-    var markBeforeBack by remember { mutableStateOf<ThreadFloorKey?>(null) }
-    ConfirmDialog(
-        dialogState = updateCollectMarkDialogState,
-        onConfirm = {
-            coroutineScope.launch {
-                navigator.navigateUp()
-                markBeforeBack?.let { position ->
-                    TiebaApi.getInstance()
-                        .addStoreFlow(threadId, position.postId)
-                        .catch {
-                            context.toastShort(
-                                R.string.message_update_collect_mark_failed,
-                                it.getErrorMessage()
-                            )
-                        }
-                        .collect {
-                            context.toastShort(R.string.message_update_collect_mark_success)
-                        }
-                }
-            }
-        },
-        onCancel = {
-            navigator.navigateUp()
-        }
-    ) {
-        Text(text = stringResource(R.string.message_update_collect_mark, markBeforeBack?.floor ?: 0))
+    var markBeforeBack by rememberSaveable(threadId) { mutableStateOf<ThreadFloorKey?>(null) }
+    fun leaveThread() {
+        val position = if (isCollected) lazyListState.lastVisibleFloor(firstFloor) else null
+        if (position == null) navigator.navigateUp() else markBeforeBack = position
     }
     MyBackHandler(
         enabled = isCollected && !menuOpen,
-        currentScreen = ThreadPageDestination
-    ) {
-        markBeforeBack = lazyListState.lastVisibleFloor(firstFloor)
-        if (markBeforeBack != null) {
-            updateCollectMarkDialogState.show()
-        } else {
-            navigator.navigateUp()
-        }
+        currentScreen = ThreadPageDestination,
+        onBack = ::leaveThread,
+    )
+    markBeforeBack?.let { position ->
+        ThreadReadingMarkDialog(
+            position = position,
+            saveMark = { postIdToMark ->
+                val response = TiebaApi.getInstance().addStoreFlow(threadId, postIdToMark).first()
+                if (response.errorCode != 0) throw TiebaApiException(response)
+                context.toastShort(R.string.message_update_collect_mark_success)
+            },
+            onDismiss = { markBeforeBack = null },
+            onLeave = {
+                markBeforeBack = null
+                navigator.navigateUp()
+            },
+        )
     }
 
     val confirmDeleteDialogState = rememberDialogState()
@@ -678,7 +668,7 @@ fun ThreadPage(
     }
 
     if (threadTitle.isNotBlank()) {
-        TrackThreadReadingPosition(threadId, lazyListState, firstFloor) { position ->
+        TrackThreadReadingPosition(threadId, lazyListState, firstFloor, onlyAuthor = isSeeLz) { position ->
             HistoryUtil.saveHistory(
                 History(
                     title = threadTitle,
@@ -901,7 +891,7 @@ fun ThreadPage(
                 topBar = {
                     TopBar(
                         forum = forum,
-                        onBack = { navigator.navigateUp() },
+                        onBack = ::leaveThread,
                         onForumClick = {
                             val forumName = forum?.get { name }
                             if (forumName != null) navigator.navigate(
@@ -1465,6 +1455,54 @@ internal fun ThreadBottomBar(
 }
 
 internal enum class DiscussionRole { Topic, Reply, ParentFloor }
+
+@Composable
+internal fun ThreadReadingMarkDialog(
+    position: ThreadFloorKey,
+    saveMark: suspend (Long) -> Unit,
+    onDismiss: () -> Unit,
+    onLeave: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var saving by remember(position) { mutableStateOf(false) }
+    var error by remember(position) { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = { if (!saving) onDismiss() },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.message_update_collect_mark, position.floor))
+                error?.let { Text(stringResource(R.string.message_update_collect_mark_failed, it), color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !saving, onClick = {
+                if (saving) return@TextButton
+                saving = true
+                error = null
+                scope.launch {
+                    try {
+                        saveMark(position.postId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (exception: Exception) {
+                        error = exception.getErrorMessage()
+                        saving = false
+                        return@launch
+                    }
+                    onLeave()
+                }
+            }) {
+                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Text(stringResource(R.string.save_reading_mark_and_return))
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !saving, onClick = onLeave) {
+                Text(stringResource(R.string.return_without_saving_reading_mark))
+            }
+        },
+    )
+}
 
 @Composable
 internal fun TopicSurface(content: @Composable ColumnScope.() -> Unit) {

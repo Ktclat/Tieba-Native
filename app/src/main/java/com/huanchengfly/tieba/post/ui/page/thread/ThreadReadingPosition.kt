@@ -4,6 +4,7 @@ import android.os.Parcelable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -41,13 +42,14 @@ internal fun TrackThreadReadingPosition(
     threadId: Long,
     list: LazyListState,
     firstPost: ThreadFloorKey?,
+    onlyAuthor: Boolean = false,
     onRead: (ThreadFloorKey) -> Unit,
-) {
+) = key(threadId, onlyAuthor) {
     val currentFirstPost by rememberUpdatedState(firstPost)
     val record by rememberUpdatedState(onRead)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
-    DisposableEffect(threadId, list, lifecycle) {
+    DisposableEffect(list, lifecycle) {
         var lastPostId: Long? = null
         fun save(position: ThreadFloorKey?) {
             if (position != null && position.postId != lastPostId) {

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -52,7 +53,7 @@ class ThreadReadingPositionTest {
                     Box(Modifier.fillMaxWidth().height(64.dp))
                 }
             }
-            if (tracking.value) TrackThreadReadingPosition(1, list, topic, saved::add)
+            if (tracking.value) TrackThreadReadingPosition(1, list, topic, onRead = saved::add)
         }
         compose.runOnIdle { assertEquals(listOf(topic), saved) }
 
@@ -98,7 +99,7 @@ class ThreadReadingPositionTest {
         compose.setContent {
             list = rememberLazyListState()
             scope = rememberCoroutineScope()
-            TrackThreadReadingPosition(1, list, null, saved::add)
+            TrackThreadReadingPosition(1, list, null, onRead = saved::add)
             LazyColumn(Modifier.height(64.dp), state = list) {
                 items(keys.size, key = { keys[it] }) {
                     Box(Modifier.fillMaxWidth().height(64.dp))
@@ -151,6 +152,30 @@ class ThreadReadingPositionTest {
         compose.runOnIdle { scope.launch { list.scrollToItem(3) } }
         compose.runOnIdle { tracking.value = false }
         compose.runOnIdle { assertEquals(listOf(1, 2), saved) }
+    }
+
+    @Test
+    fun filterAndThreadChangesKeepEachHistoryEntryWithItsOwnReadingMode() {
+        val threadId = mutableStateOf(11L)
+        val onlyAuthor = mutableStateOf(false)
+        val saved = mutableListOf<Triple<Long, Boolean, Long>>()
+        compose.setContent {
+            val id = threadId.value
+            val filtered = onlyAuthor.value
+            val topic = ThreadFloorKey(id * 10, 1)
+            list = key(id) { rememberLazyListState() }
+            TrackThreadReadingPosition(id, list, topic, onlyAuthor = filtered) { position ->
+                saved += Triple(id, filtered, position.postId)
+            }
+            LazyColumn(Modifier.height(64.dp), state = list) {
+                item(key = FirstPostKey) { Box(Modifier.fillMaxWidth().height(64.dp)) }
+            }
+        }
+        compose.runOnIdle { onlyAuthor.value = true }
+        compose.runOnIdle { threadId.value = 22L }
+        compose.runOnIdle {
+            assertEquals(listOf(Triple(11L, false, 110L), Triple(11L, true, 110L), Triple(22L, true, 220L)), saved)
+        }
     }
 
     @Test

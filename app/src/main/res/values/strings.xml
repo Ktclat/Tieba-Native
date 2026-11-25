@@ -428,6 +428,8 @@
     <string name="message_add_favorite_success">已收藏至第 %d 楼</string>
     <string name="message_remove_favorite_success">取消收藏成功</string>
     <string name="message_update_collect_mark">本次阅读到第 %d 楼，是否更新收藏楼层？</string>
+    <string name="save_reading_mark_and_return">保存并返回</string>
+    <string name="return_without_saving_reading_mark">直接返回</string>
     <string name="message_update_collect_mark_failed">更新收藏楼层失败 %s</string>
     <string name="message_update_collect_mark_success">更新收藏楼层成功</string>
     <string name="single_chinese_char" translatable="false">国</string>

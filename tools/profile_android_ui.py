@@ -7,6 +7,7 @@ import io
 import json
 import math
 from pathlib import Path
+import subprocess
 import time
 from xml.etree import ElementTree
 
@@ -85,7 +86,7 @@ def verify_navigation(visible, output):
 
 def run_block(apk, directory):
     directory.mkdir(parents=True, exist_ok=True)
-    if adb("shell", "pm", "list", "packages", PACKAGE).decode().splitlines() == ["package:" + PACKAGE]:
+    if "package:" + PACKAGE in adb("shell", "pm", "list", "packages", PACKAGE).decode().splitlines():
         adb("uninstall", PACKAGE, timeout=60)
     adb("install", "-g", str(apk), timeout=120)
     adb("shell", "wm", "size", "1080x2340")
@@ -180,7 +181,18 @@ def main():
     for index, version in enumerate(order):
         directory = args.output / f"{index + 1}-{version}"
         print(f"Profiling {directory.name}", flush=True)
-        readings = run_block(apks[version], directory)
+        try:
+            readings = run_block(apks[version], directory)
+        except Exception:
+            for filename, command in {
+                "failure.png": ["exec-out", "screencap", "-p"],
+                "last-window.xml": ["exec-out", "cat", "/sdcard/window.xml"],
+                "gfxinfo.txt": ["shell", "dumpsys", "gfxinfo", PACKAGE, "framestats"],
+            }.items():
+                diagnostic = subprocess.run(["adb", *command], capture_output=True, timeout=30)
+                if diagnostic.returncode == 0:
+                    (directory / filename).write_bytes(diagnostic.stdout)
+            raise
         block = {"version": version}
         for scenario, batches in readings.items():
             block[scenario] = [summarize(batch) for batch in batches]
