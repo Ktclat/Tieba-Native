@@ -29,7 +29,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
@@ -160,7 +159,7 @@ fun AccountManagePage(
                         .background(color = MaterialTheme.colorScheme.surfaceContainerHighest)
                         .padding(12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
             prefsItem {

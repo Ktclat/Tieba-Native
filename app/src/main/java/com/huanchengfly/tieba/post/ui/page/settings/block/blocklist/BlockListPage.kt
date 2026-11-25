@@ -41,7 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.gson.reflect.TypeToken
 import com.huanchengfly.tieba.post.R
@@ -171,8 +170,7 @@ fun BlockListPage(
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = stringResource(id = R.string.title_add_black),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Row(
@@ -194,8 +192,7 @@ fun BlockListPage(
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = stringResource(id = R.string.title_add_white),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                 }

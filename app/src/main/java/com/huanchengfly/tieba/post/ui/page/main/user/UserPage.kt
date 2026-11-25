@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.user
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import android.graphics.Typeface
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,10 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -140,8 +135,7 @@ private fun InfoCard(
         ) {
             Text(
                 text = userName,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -150,7 +144,7 @@ private fun InfoCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = userIntro,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -176,23 +170,18 @@ private fun RowScope.StatCardItem(
     statNum: Int,
     statText: String
 ) {
-    val context = LocalContext.current
-    val statsFont = remember(context) {
-        FontFamily(Typeface.createFromAsset(context.assets, "bebas.ttf"))
-    }
     Column(
         modifier = Modifier.weight(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = "$statNum",
-            fontSize = 20.sp,
-            fontFamily = statsFont,
+            style = MaterialTheme.typography.titleLarge,
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = statText,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -214,8 +203,7 @@ private fun LoginTipCard(modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = stringResource(id = R.string.tip_login),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -348,7 +336,7 @@ fun UserPage(
                     Text(
                         text = stringResource(id = R.string.my_info_night),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Switch(

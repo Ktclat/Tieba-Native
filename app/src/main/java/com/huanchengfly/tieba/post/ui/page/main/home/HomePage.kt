@@ -61,10 +61,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
@@ -179,8 +177,7 @@ private fun ForumItemPlaceholder(
                 .weight(1f)
                 .align(CenterVertically)
                 .loadingPlaceholder(visible = true),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -198,8 +195,7 @@ private fun ForumItemPlaceholder(
             Text(
                 text = "0",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.align(Center)
             )
         }
@@ -260,8 +256,7 @@ private fun ForumItemContent(
             modifier = Modifier
                 .weight(1f)
                 .align(CenterVertically),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -281,8 +276,7 @@ private fun ForumItemContent(
                 Text(
                     text = "Lv.${item.levelId}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(CenterVertically)
                 )
                 if (item.isSign) {
@@ -537,8 +531,7 @@ fun HomePage(
                                                     )
                                                     Text(
                                                         text = it.title,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
+                                                        style = MaterialTheme.typography.labelMedium,
                                                         modifier = Modifier.padding(end = 4.dp)
                                                     )
                                                 }

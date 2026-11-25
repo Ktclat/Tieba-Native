@@ -2,7 +2,8 @@ package com.huanchengfly.tieba.post.ui.page.main.explore.hot
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,10 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.hasAgree
@@ -53,7 +52,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
-import com.huanchengfly.tieba.post.ui.widgets.compose.items
 import com.huanchengfly.tieba.post.ui.widgets.compose.itemsIndexed
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.ramcosta.composedestinations.annotation.Destination
@@ -96,7 +94,12 @@ fun HotPage(
                             modifier = Modifier
                                 .padding(bottom = 8.dp)
                                 .padding(horizontal = 16.dp)
-                        ) { ChipHeader(text = stringResource(id = R.string.hot_topic_rank)) }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.hot_topic_rank),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
                     }
                 }
                 item(key = "TopicList") {
@@ -166,7 +169,7 @@ fun HotPage(
                             modifier = Modifier
                                 .padding(top = 16.dp, bottom = 8.dp)
                                 .padding(horizontal = 16.dp),
-                            thickness = 2.dp
+                            thickness = 1.dp
                         )
                     }
                 }
@@ -175,38 +178,21 @@ fun HotPage(
                 if (tabList.isNotEmpty()) {
                     item(key = "ThreadTabs") {
                         Container {
-                            VerticalGrid(
-                                column = 5,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .padding(vertical = 8.dp)
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                item {
-                                    ThreadListTab(
-                                        text = stringResource(id = R.string.tab_all_hot_thread),
-                                        selected = currentTabCode == "all",
-                                        onSelected = {
-                                            viewModel.send(
-                                                HotUiIntent.RefreshThreadList(
-                                                    "all"
-                                                )
-                                            )
-                                        }
-                                    )
-                                }
-                                items(tabList) {
-                                    ThreadListTab(
-                                        text = it.get { tabName },
-                                        selected = currentTabCode == it.get { tabCode },
-                                        onSelected = {
-                                            viewModel.send(
-                                                HotUiIntent.RefreshThreadList(
-                                                    it.get { tabCode })
-                                            )
-                                        }
+                                FilterChip(
+                                    selected = currentTabCode == "all",
+                                    onClick = { viewModel.send(HotUiIntent.RefreshThreadList("all")) },
+                                    label = { Text(stringResource(R.string.tab_all_hot_thread)) },
+                                )
+                                tabList.forEach { tab ->
+                                    val code = tab.get { tabCode }
+                                    FilterChip(
+                                        selected = currentTabCode == code,
+                                        onClick = { viewModel.send(HotUiIntent.RefreshThreadList(code)) },
+                                        label = { Text(tab.get { tabName }) },
                                     )
                                 }
                             }
@@ -222,8 +208,7 @@ fun HotPage(
                         Text(
                             text = stringResource(id = R.string.hot_thread_rank_rule),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }
@@ -281,18 +266,6 @@ fun HotPage(
                                 }
                             }
                         }
-//                        ThreadListItem(
-//                            index = index,
-//                            itemHolder = item,
-//                            onClick = {
-//                                navigator.navigate(
-//                                    ThreadPageDestination(
-//                                        threadId = it.id,
-//                                        threadInfo = it
-//                                    )
-//                                )
-//                            }
-//                        )
                     }
                 }
             }
@@ -310,8 +283,7 @@ private fun ThreadListItemPlaceholder() {
         ) {
             Text(
                 text = "1",
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .padding(top = 3.dp)
@@ -336,50 +308,6 @@ private fun ThreadListItemPlaceholder() {
             }
         }
     }
-}
-
-@Composable
-private fun ThreadListTab(
-    text: String,
-    selected: Boolean,
-    onSelected: () -> Unit
-) {
-    val textColor by animateColorAsState(targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
-    val backgroundColor by animateColorAsState(targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
-    Text(
-        text = text,
-        textAlign = TextAlign.Center,
-        color = textColor,
-        maxLines = 1,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(100))
-            .background(backgroundColor)
-            .clickable(onClick = onSelected)
-            .padding(vertical = 4.dp),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold
-    )
-}
-
-
-@Composable
-private fun ChipHeader(
-    text: String,
-    invert: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        color = if (invert) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        text = text,
-        modifier = Modifier
-            .clip(RoundedCornerShape(100))
-            .then(modifier)
-            .background(color = if (invert) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceContainerHighest)
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-    )
 }
 
 @Composable

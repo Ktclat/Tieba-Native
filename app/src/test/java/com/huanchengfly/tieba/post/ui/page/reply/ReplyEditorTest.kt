@@ -101,7 +101,7 @@ class ReplyEditorTest {
             send.assertIsEnabled()
             val emoji = compose.onNodeWithContentDescription(App.INSTANCE.getString(R.string.insert_emotions))
             for (control in listOf(emoji, send)) {
-                val bounds = control.fetchSemanticsNode().boundsInRoot
+                val bounds = control.fetchSemanticsNode().touchBoundsInRoot
                 assertTrue("Expected a 48dp composer control at mdpi", bounds.width >= 48f && bounds.height >= 48f)
             }
             compose.captureReviewImage(view, if (dark) "reply-editor-dark.png" else "reply-editor-light.png")
