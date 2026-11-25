@@ -42,6 +42,7 @@ internal fun SearchThreadResults(
         data = data,
         lazyListState = lazyListState,
         onItemClick = { open(it.searchDestination()) },
+        onReplyClick = { open(it.searchDestination(scrollToReply = true)) },
         onItemUserClick = { user ->
             user.userId.positiveId()?.let { navigator.navigate(UserProfilePageDestination(it)) }
         },
@@ -72,8 +73,8 @@ internal fun SearchThreadResults(
 
 private fun String?.positiveId(): Long? = this?.toLongOrNull()?.takeIf { it > 0 }
 
-internal fun SearchThreadBean.ThreadInfoBean.searchDestination(): Direction? {
-    val threadId = tid.positiveId() ?: return postInfo?.searchDestination() ?: mainPost?.searchDestination()
+internal fun SearchThreadBean.ThreadInfoBean.searchDestination(scrollToReply: Boolean = false): Direction? {
+    val threadId = tid.positiveId() ?: return postInfo?.searchDestination(scrollToReply) ?: mainPost?.searchDestination()
     if (postInfo != null) {
         cid.positiveId()?.let { subPostId ->
             return SubPostsPageDestination(threadId = threadId, subPostId = subPostId, loadFromSubPost = true)
@@ -83,13 +84,13 @@ internal fun SearchThreadBean.ThreadInfoBean.searchDestination(): Direction? {
         val postId = pid.positiveId() ?: postInfo?.takeIf { it.tid == threadId && it.pid > 0 }?.pid
         if (postId != null) return ThreadPageDestination(threadId = threadId, postId = postId, scrollToReply = true)
     }
-    return ThreadPageDestination(threadId = threadId)
+    return ThreadPageDestination(threadId = threadId, scrollToReply = scrollToReply)
 }
 
-internal fun SearchThreadBean.PostInfo.searchDestination(): Direction? = when {
+internal fun SearchThreadBean.PostInfo.searchDestination(scrollToReply: Boolean = false): Direction? = when {
     tid <= 0 -> null
     pid > 0 -> ThreadPageDestination(threadId = tid, postId = pid, scrollToReply = true)
-    else -> ThreadPageDestination(threadId = tid)
+    else -> ThreadPageDestination(threadId = tid, scrollToReply = scrollToReply)
 }
 
 internal fun SearchThreadBean.MainPost.searchDestination(): Direction? =
