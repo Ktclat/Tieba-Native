@@ -72,7 +72,7 @@ public class TranslucentThemeColorAdapter extends RecyclerView.Adapter<MyViewHol
     @NonNull
     @Override
     public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new MyViewHolder(getContext(), R.layout.item_theme_color);
+        return new MyViewHolder(parent.getContext(), R.layout.item_theme_color, parent);
     }
 
     @Override

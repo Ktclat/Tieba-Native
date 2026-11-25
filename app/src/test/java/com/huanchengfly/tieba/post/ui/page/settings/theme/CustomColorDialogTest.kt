@@ -16,15 +16,19 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.captureReviewImage
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = Application::class, qualifiers = "zh-rCN-w360dp-h720dp-mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CustomColorDialogTest {
     @get:Rule val compose = createComposeRule()
 
@@ -33,10 +37,13 @@ class CustomColorDialogTest {
         var saved: Int? = null
         compose.setContent {
             MaterialExpressiveTheme {
-                CustomColorDialog(android.graphics.Color.WHITE, false, false, dismiss = {}, save = { argb, _, _ -> saved = argb })
+                CustomColorDialog(0xFF416A84.toInt(), false, false, dismiss = {}, save = { argb, _, _ -> saved = argb })
             }
         }
         val confirm = compose.onNodeWithText(context.getString(R.string.button_finish))
+        confirm.assertIsEnabled()
+        val dialogView = compose.runOnIdle { checkNotNull(ShadowDialog.getLatestDialog().window).decorView }
+        compose.captureReviewImage(dialogView, "theme-color-editor.png")
         val input = compose.onNode(hasSetTextAction())
         input.performTextReplacement("#12")
         confirm.assertIsNotEnabled()

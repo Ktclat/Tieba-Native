@@ -77,7 +77,7 @@ internal fun MainNavigationBar(
                 ShortNavigationBarItem(
                     selected = selected,
                     onClick = { select(index) },
-                    modifier = drag,
+                    modifier = drag.destinationBadgeDescription(item),
                     label = { Text(item.title(selected), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     icon = { DestinationIcon(item, selected) },
                 )

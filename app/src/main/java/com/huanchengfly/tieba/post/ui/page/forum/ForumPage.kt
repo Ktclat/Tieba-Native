@@ -1,5 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.forum
 
+import com.huanchengfly.tieba.post.collectPreferenceAsState
+import androidx.datastore.preferences.core.stringPreferencesKey
 import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
@@ -576,10 +578,14 @@ fun ForumPage(
                     )
                 },
                 floatingActionButton = {
-                    if (context.appPreferences.forumFabFunction != "hide") {
+                    val forumAction by context.dataStore.collectPreferenceAsState(
+                        key = stringPreferencesKey("forumFabFunction"),
+                        defaultValue = "post",
+                    )
+                    if (forumAction != "hide") {
                         FloatingActionButton(
                             onClick = {
-                                when (context.appPreferences.forumFabFunction) {
+                                when (forumAction) {
                                     "refresh" -> {
                                         coroutineScope.launch {
                                             emitGlobalEventSuspend(
@@ -619,12 +625,18 @@ fun ForumPage(
                             modifier = Modifier.navigationBarsPadding()
                         ) {
                             Icon(
-                                imageVector = when (context.appPreferences.forumFabFunction) {
+                                imageVector = when (forumAction) {
                                     "refresh" -> Icons.Rounded.Refresh
                                     "back_to_top" -> Icons.Rounded.VerticalAlignTop
                                     else -> Icons.Rounded.Add
                                 },
-                                contentDescription = null
+                                contentDescription = stringResource(
+                                    when (forumAction) {
+                                        "refresh" -> R.string.btn_refresh
+                                        "back_to_top" -> R.string.btn_back_to_top
+                                        else -> R.string.btn_post
+                                    }
+                                )
                             )
                         }
                     }

@@ -25,6 +25,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
@@ -39,7 +41,8 @@ internal fun DestinationIcon(item: NavigationItem, selected: Boolean) {
     BadgedBox(badge = {
         if (item.badge) {
             if (item.badgeText != null) {
-                Badge { Text(item.badgeText) }
+                val count = item.badgeText.toIntOrNull()
+                Badge { Text(if (count != null && count > 99) "99+" else item.badgeText) }
             } else Badge()
         }
     }) {
@@ -48,6 +51,14 @@ internal fun DestinationIcon(item: NavigationItem, selected: Boolean) {
             contentDescription = null,
         )
     }
+}
+
+@Composable
+internal fun Modifier.destinationBadgeDescription(item: NavigationItem): Modifier {
+    if (!item.badge) return this
+    val description = item.badgeText?.let { stringResource(R.string.navigation_unread_count, it) }
+        ?: stringResource(R.string.navigation_unread)
+    return semantics { stateDescription = description }
 }
 
 @Composable
@@ -76,7 +87,7 @@ internal fun NavigationDrawerContent(
                     onClick = { onSelect(index) },
                     icon = { DestinationIcon(item, selected) },
                     label = { Text(item.title(selected), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).destinationBadgeDescription(item),
                 )
             }
         }
@@ -99,6 +110,7 @@ internal fun NavigationRail(
             navigationItems.forEachIndexed { index, item ->
                 val selected = index == currentPosition
                 NavigationRailItem(
+                    modifier = Modifier.destinationBadgeDescription(item),
                     selected = selected,
                     onClick = { onSelect(index) },
                     icon = { DestinationIcon(item, selected) },

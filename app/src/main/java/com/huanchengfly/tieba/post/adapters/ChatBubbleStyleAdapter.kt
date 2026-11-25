@@ -12,8 +12,9 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.adapters.ChatBubbleStyleAdapter.Bubble.Companion.POSITION_RIGHT
 import com.huanchengfly.tieba.post.adapters.base.BaseSingleTypeAdapter
 import com.huanchengfly.tieba.post.components.MyViewHolder
-import com.huanchengfly.tieba.post.ui.widgets.theme.TintLinearLayout
-import com.huanchengfly.tieba.post.ui.widgets.theme.TintTextView
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.textview.MaterialTextView
 
 class ChatBubbleStyleAdapter(
     context: Context,
@@ -29,28 +30,17 @@ class ChatBubbleStyleAdapter(
     override fun getItemLayoutId(): Int = R.layout.item_chat_bubble
 
     override fun convert(viewHolder: MyViewHolder, item: Bubble, position: Int) {
-        viewHolder.getView<TintLinearLayout>(R.id.chat_bubble_background).apply {
-            setBackgroundTintResId(
-                if (item.position == POSITION_RIGHT) {
-                    R.color.default_color_accent
-                } else {
-                    R.color.default_color_card
-                }
-            )
-            (layoutParams as FrameLayout.LayoutParams).gravity =
-                if (item.position == POSITION_RIGHT) {
-                    Gravity.END
-                } else {
-                    Gravity.START
-                }
+        val outgoing = item.position == POSITION_RIGHT
+        viewHolder.getView<MaterialCardView>(R.id.chat_bubble_background).apply {
+            val colorAttr = if (outgoing) com.google.android.material.R.attr.colorPrimaryContainer
+                else com.google.android.material.R.attr.colorSurfaceContainerHigh
+            setCardBackgroundColor(MaterialColors.getColor(this, colorAttr))
+            (layoutParams as FrameLayout.LayoutParams).gravity = if (outgoing) Gravity.END else Gravity.START
         }
-        viewHolder.getView<TintTextView>(R.id.chat_bubble_text).apply {
-            tintResId =
-                if (item.position == POSITION_RIGHT) {
-                    R.color.default_color_on_accent
-                } else {
-                    R.color.default_color_text
-                }
+        viewHolder.getView<MaterialTextView>(R.id.chat_bubble_text).apply {
+            val colorAttr = if (outgoing) com.google.android.material.R.attr.colorOnPrimaryContainer
+                else com.google.android.material.R.attr.colorOnSurface
+            setTextColor(MaterialColors.getColor(this, colorAttr))
             if (bubblesFontSize > 0f) {
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, bubblesFontSize)
             }
@@ -58,6 +48,7 @@ class ChatBubbleStyleAdapter(
         viewHolder.setText(R.id.chat_bubble_text, item.text)
         viewHolder.setVisibility(R.id.chat_bubble_text, item.text != null)
         val customViewParent = viewHolder.getView<FrameLayout>(R.id.chat_bubble_custom_view)
+        customViewParent.removeAllViews()
         val customView = item.customViewBuilder?.invoke(context, item.position, customViewParent)
         if (customView != null) {
             customViewParent

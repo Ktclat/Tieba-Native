@@ -10,7 +10,6 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.huanchengfly.tieba.post.R
@@ -47,10 +46,15 @@ internal fun appColorScheme(
         else -> if (ThemeUtil.isTranslucentTheme(name)) customSeed else null
     }
     val useWallpaper = dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val key = PaletteKey(seed, dark, name == ThemeUtil.THEME_AMOLED_DARK,
-        if (useWallpaper) Configuration(context.resources.configuration) else null,
-        if (useWallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            context.getColor(android.R.color.system_accent1_500) else null)
+    val key = PaletteKey(
+        seed = seed,
+        dark = dark,
+        amoled = name == ThemeUtil.THEME_AMOLED_DARK,
+        wallpaperConfiguration = if (useWallpaper) Configuration(context.resources.configuration) else null,
+        wallpaperAccent = if (useWallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getColor(android.R.color.system_accent1_500)
+        } else null,
+    )
     palettes[key]?.let { return it }
     val base = when {
         useWallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
@@ -66,10 +70,10 @@ internal fun appColorScheme(
     return scheme
 }
 
-/** A user-picked color keeps its hue; Material Color Utilities supplies the paired contrast roles. */
+/** A user-picked color keeps its hue. Material Color Utilities supplies the paired contrast roles. */
 private fun schemeFromUserColor(seed: Color, dark: Boolean): ColorScheme {
     val scheme = SchemeFidelity(Hct.fromInt(seed.toArgb()), dark, 0.0)
-    return lightColorScheme(
+    return ColorScheme(
         primary = Color(scheme.primary),
         onPrimary = Color(scheme.onPrimary),
         primaryContainer = Color(scheme.primaryContainer),

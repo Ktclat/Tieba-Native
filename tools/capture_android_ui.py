@@ -82,7 +82,26 @@ def run(apk, output):
     tap("放大一级")
     capture(output, "06-font-larger", "105%")
     tap("保存字号")
-    capture(output, "07-saved", "夜间模式主题")
+    find_label("夜间模式主题")
+    tap("字体大小")
+    find_label("105%")
+    for _ in range(5):
+        tap("放大一级")
+    find_label("130%")
+    tap("保存字号")
+    find_label("夜间模式主题")
+
+    # Relaunch with the system in night mode on a 320dp-wide display.
+    adb("shell", "am", "force-stop", PACKAGE)
+    adb("shell", "cmd", "uimode", "night", "yes")
+    adb("shell", "wm", "size", "840x2058")
+    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+    capture(output, "07-home-compact-dark-130", "随便看看")
+    tap("我")
+    tap("设置")
+    tap("个性化")
+    tap("字体大小")
+    capture(output, "08-font-compact-dark-130", "阅读预览")
 
 
 if __name__ == "__main__":

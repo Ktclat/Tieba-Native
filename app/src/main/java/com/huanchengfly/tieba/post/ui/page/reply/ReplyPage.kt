@@ -1,5 +1,10 @@
 package com.huanchengfly.tieba.post.ui.page.reply
 
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
+import androidx.compose.ui.graphics.toArgb
+import android.util.TypedValue
+import android.view.ContextThemeWrapper
+import android.content.res.ColorStateList
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -465,9 +470,29 @@ internal fun ReplyPageContent(
                     .then(if (isDialog) Modifier.requiredHeightIn(min = minResult, max = maxResult) else Modifier)
                     .verticalScroll(textFieldScrollState)
             ) {
+                val dark = LocalAppDarkTheme.current
+                val colors = MaterialTheme.colorScheme
+                val borderColors = remember(colors) {
+                    ColorStateList(
+                        arrayOf(
+                            intArrayOf(-android.R.attr.state_enabled),
+                            intArrayOf(android.R.attr.state_focused),
+                            intArrayOf(android.R.attr.state_hovered),
+                            intArrayOf(),
+                        ),
+                        intArrayOf(
+                            colors.onSurface.copy(alpha = 0.12f).toArgb(),
+                            colors.primary.toArgb(), colors.onSurface.toArgb(), colors.outline.toArgb(),
+                        ),
+                    )
+                }
+                val labelColor = remember(colors) { ColorStateList.valueOf(colors.onSurfaceVariant.toArgb()) }
+                val focusColor = remember(colors) { ColorStateList.valueOf(colors.primary.toArgb()) }
+                val bodySize = with(density) { MaterialTheme.typography.bodyLarge.fontSize.toPx() }
                 AndroidView(
                     factory = { ctx ->
-                        val input = View.inflate(ctx, R.layout.layout_reply_edit_text, null) as TextInputLayout
+                        val themed = ContextThemeWrapper(ctx, if (dark) R.style.AppTheme_Dark else R.style.AppTheme)
+                        val input = View.inflate(themed, R.layout.layout_reply_edit_text, null) as TextInputLayout
                         input.findViewById<UndoableEditText>(R.id.edit_text).apply {
                             editTextView = this
                             if (subPostId != null && subPostId != 0L && replyUserName != null) {
@@ -492,6 +517,17 @@ internal fun ReplyPageContent(
                             }
                         }
                         input
+                    },
+                    update = { input ->
+                        input.setBoxStrokeColorStateList(borderColors)
+                        input.defaultHintTextColor = labelColor
+                        input.hintTextColor = focusColor
+                        input.cursorColor = focusColor
+                        input.editText?.apply {
+                            setTextColor(colors.onSurface.toArgb())
+                            setHintTextColor(labelColor)
+                            setTextSize(TypedValue.COMPLEX_UNIT_PX, bodySize)
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -703,10 +739,7 @@ internal fun ReplyPageContent(
             )
         },
     ) {
-        Text(
-            text = stringResource(id = R.string.message_dialog_reply_warning),
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
+        Text(stringResource(R.string.message_dialog_reply_warning))
     }
 
     LaunchedEffect(Unit) {

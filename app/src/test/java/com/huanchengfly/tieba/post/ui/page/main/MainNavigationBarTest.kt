@@ -503,6 +503,7 @@ class MainNavigationBarTest {
         val from = compose.onNode(hasText(titles[0]) and hasClickAction())
         val to = compose.onNode(hasText(titles[2]) and hasClickAction())
         compose.onAllNodes(isSelectable()).assertCountEquals(titles.size)
+        to.assert(hasStateDescription("217 条未读消息"))
         titles.forEach { title ->
             val bounds = compose.onNode(hasText(title) and hasClickAction()).getUnclippedBoundsInRoot()
             assertTrue("Navigation targets must be at least 48 dp", bounds.width >= 48.dp && bounds.height >= 48.dp)

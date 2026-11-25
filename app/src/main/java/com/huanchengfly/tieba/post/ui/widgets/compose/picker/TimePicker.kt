@@ -7,7 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.Modifier
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -33,9 +35,10 @@ fun TimePicker(
     }
     val state = rememberTimePickerState(initial.hour, initial.minute, is24TimeFormat)
     val notify by rememberUpdatedState(onTimeChanged)
-    LaunchedEffect(state.hour, state.minute, is24TimeFormat) {
-        val value = LocalTime.of(state.hour, state.minute).format(if (is24TimeFormat) output24 else output12)
-        notify(value)
+    LaunchedEffect(state, is24TimeFormat) {
+        snapshotFlow { LocalTime.of(state.hour, state.minute) }.drop(1).collect { time ->
+            notify(time.format(if (is24TimeFormat) output24 else output12))
+        }
     }
     TimeInput(state = state, modifier = modifier)
 }

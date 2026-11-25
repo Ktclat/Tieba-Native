@@ -53,6 +53,9 @@ import java.io.File
 
 class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
     private var previewJob: Job? = null
+    private val selectedColor: Int get() = appPreferences.translucentPrimaryColor
+        ?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+        ?: ThemeUtils.getColorById(this, R.color.default_color_primary)
     private var mUri: Uri? = null
     private var alpha = 0
     private var blur = 0
@@ -194,7 +197,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         mProgress.visibility = View.VISIBLE
         if (mUri == null) {
             findViewById<View>(R.id.background).setBackgroundColor(
-                ThemeUtils.getColorByAttr(this, com.google.android.material.R.attr.colorSurface)
+                com.google.android.material.color.MaterialColors.getColor(findViewById(R.id.background), com.google.android.material.R.attr.colorSurface)
             )
             mProgress.visibility = View.GONE
             return
@@ -252,7 +255,10 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         }
         wallpapers =
             CacheUtil.getCache(this, "recommend_wallpapers", List::class.java) as List<String>?
-        colorTheme.check(if (appPreferences.translucentBackgroundTheme == TRANSLUCENT_THEME_DARK) R.id.dark_color else R.id.light_color)
+        colorTheme.check(
+            if (appPreferences.translucentBackgroundTheme == TRANSLUCENT_THEME_DARK) R.id.dark_color
+            else R.id.light_color
+        )
         colorTheme.addOnButtonCheckedListener { _, id, checked ->
             if (checked) {
                 appPreferences.translucentBackgroundTheme =
@@ -274,7 +280,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         recommendWallpapersRv.adapter = wallpaperAdapter
         recommendWallpapersRv.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        mTranslucentThemeColorAdapter.setSelectedColor(ThemeUtils.getColorById(this, R.color.default_color_primary))
+        mTranslucentThemeColorAdapter.setSelectedColor(selectedColor)
         mTranslucentThemeColorAdapter.onItemClickListener =
             OnItemClickListener { _: View?, themeColor: Int, _: Int, _: Int ->
                 appPreferences.translucentPrimaryColor = toString(themeColor)
@@ -428,7 +434,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
                 selectImageLauncher.launch(PickMediasRequest(mediaType = PickMediasRequest.ImageOnly))
             }
             R.id.custom_color -> {
-                showThemeColorPicker(this, ThemeUtils.getColorById(this, R.color.default_color_primary), true) { color ->
+                showThemeColorPicker(this, selectedColor) { color ->
                     appPreferences.translucentPrimaryColor = toString(color)
                     mTranslucentThemeColorAdapter.setSelectedColor(color)
                     ThemeUtils.refreshUI(this, this)

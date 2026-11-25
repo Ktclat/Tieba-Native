@@ -2,6 +2,7 @@ package com.huanchengfly.tieba.post.ui.page.settings.theme
 
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -171,7 +172,11 @@ fun AppThemePage(navigator: DestinationsNavigator) {
 
 @Composable
 private fun ColorSwatch(color: Color, endColor: Color = color) {
-    Box(Modifier.size(36.dp).clip(CircleShape).background(Brush.linearGradient(listOf(color, endColor))))
+    Box(
+        Modifier.size(36.dp).clip(CircleShape)
+            .background(Brush.linearGradient(listOf(color, endColor)))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+    )
 }
 
 @Composable
@@ -210,7 +215,7 @@ internal fun CustomColorDialog(
     var toolbar by rememberSaveable { mutableStateOf(initialToolbar) }
     var darkIcons by rememberSaveable { mutableStateOf(initialDarkIcons) }
     val color = Color.hsv(hue, saturation, brightness)
-    val validHex = hex.matches(Regex("#[0-9a-fA-F]{6}"))
+    val validHex = HexColor.matches(hex)
     fun updateChannels(h: Float, s: Float, v: Float) {
         hue = h
         saturation = s
@@ -228,7 +233,7 @@ internal fun CustomColorDialog(
                         value = hex,
                         onValueChange = { input ->
                             hex = input
-                            if (input.matches(Regex("#[0-9a-fA-F]{6}"))) {
+                            if (HexColor.matches(input)) {
                                 val channels = FloatArray(3)
                                 android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(input), channels)
                                 hue = channels[0]
@@ -263,6 +268,8 @@ internal fun CustomColorDialog(
         dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.button_cancel)) } },
     )
 }
+
+private val HexColor = Regex("#[0-9a-fA-F]{6}")
 
 private fun rgbHex(color: Int) = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
 

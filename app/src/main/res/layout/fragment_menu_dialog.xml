@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.huanchengfly.tieba.post.ui.widgets.theme.TintRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
-    android:background="@drawable/bg_round"
-    app:backgroundTint="@color/default_color_background">
+    android:background="@android:color/transparent">
 
-    <com.huanchengfly.tieba.post.ui.widgets.theme.TintTextView
+    <com.google.android.material.textview.MaterialTextView
         android:id="@+id/title_text_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -16,17 +15,13 @@
         android:paddingTop="16dp"
         android:paddingEnd="24dp"
         android:paddingBottom="8dp"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:tint="@color/default_color_text" />
+        android:textAppearance="?attr/textAppearanceTitleLarge" />
 
-    <com.huanchengfly.tieba.post.ui.widgets.theme.TintNavigationView
+    <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/title_text_view"
         app:elevation="0dp"
-        app:itemIconTint="@color/default_color_primary"
-        app:itemTextAppearance="@style/TextAppearance.Bold"
-        app:itemTextTint="@color/default_color_text" />
-</com.huanchengfly.tieba.post.ui.widgets.theme.TintRelativeLayout>
+        android:background="@android:color/transparent" />
+</RelativeLayout>
