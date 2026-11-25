@@ -24,6 +24,7 @@ internal data class ReplyRequest(
     val replyUserPortrait: String? = null,
     val imageUris: List<String> = emptyList(),
     val isOriginImage: Boolean = false,
+    val accountId: String? = null,
 ) {
     fun contentWithImages(images: List<UploadPictureResultBean>): String = buildString {
         if ((subPostId ?: 0L) > 0 && !replyUserName.isNullOrBlank()) {

@@ -11,6 +11,7 @@ import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInExcept
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaUnknownException
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.components.ImageUploader
+import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.FileUtil
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 internal object AddPostRepository {
     suspend fun submit(request: ReplyRequest): ReplySubmissionState.Sent = withContext(Dispatchers.IO) {
-        val account = AccountUtil.getLoginInfo() ?: throw TiebaNotLoggedInException(App.INSTANCE.getString(R.string.tip_login))
+        val accountId = activeAccount(request.accountId).uid
         val floor = request.postId?.takeUnless { it == 0L }
         val nested = request.subPostId?.takeUnless { it == 0L }
         if (request.threadId <= 0L || request.forumId <= 0L || (floor ?: 0L) < 0L || (nested ?: 0L) < 0L ||
@@ -34,7 +35,7 @@ internal object AddPostRepository {
                 request.isOriginImage,
             ).single()
         }
-        if (account.uid != AccountUtil.getUid()) throw TiebaNotLoggedInException(App.INSTANCE.getString(R.string.tip_login))
+        val account = activeAccount(accountId)
         val response = TiebaApi.getInstance().addPostFlow(
             content = request.contentWithImages(images),
             forumId = request.forumId.toString(),
@@ -47,6 +48,14 @@ internal object AddPostRepository {
             replyUserId = request.replyUserId?.takeIf { floor != null && it > 0L }?.toString(),
         ).single()
         response.confirmReply(request.threadId, floor, nested)
+    }
+
+    private fun activeAccount(expectedId: String?): Account {
+        val account = AccountUtil.getLoginInfo()
+        if (account == null || (expectedId != null && account.uid != expectedId)) {
+            throw TiebaNotLoggedInException(App.INSTANCE.getString(R.string.tip_login))
+        }
+        return account
     }
 }
 
