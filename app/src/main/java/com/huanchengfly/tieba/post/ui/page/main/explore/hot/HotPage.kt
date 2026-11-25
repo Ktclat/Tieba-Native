@@ -261,7 +261,7 @@ fun HotPage(
                                             item.get { hotNum }.getShortNumString()
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = color
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
