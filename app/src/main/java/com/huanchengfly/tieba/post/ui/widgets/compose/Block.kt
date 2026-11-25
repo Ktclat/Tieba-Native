@@ -11,12 +11,11 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.utils.appPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 
 @Composable
 fun BlockTip(
@@ -42,7 +41,7 @@ fun BlockableContent(
     blocked: Boolean,
     modifier: Modifier = Modifier,
     blockedTip: @Composable () -> Unit = { BlockTip() },
-    hideBlockedContent: Boolean = LocalContext.current.appPreferences.hideBlockedContent,
+    hideBlockedContent: Boolean = LocalDisplayPreferences.current.hideBlockedContent,
     content: @Composable () -> Unit,
 ) {
     if (!blocked) {

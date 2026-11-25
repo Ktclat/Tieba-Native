@@ -3,7 +3,6 @@ package com.huanchengfly.tieba.post.ui.widgets.compose
 import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.material3.Surface as Material3Surface
@@ -23,14 +22,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideTextStyle
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
@@ -50,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -68,7 +67,6 @@ import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.material.fade
 import com.google.accompanist.placeholder.material.placeholder
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.Media
 import com.huanchengfly.tieba.post.api.models.protos.OriginThreadInfo
@@ -97,21 +95,12 @@ import com.huanchengfly.tieba.post.utils.EmoticonUtil.emoticonString
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
-import com.huanchengfly.tieba.post.utils.appPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedTextStyle
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.math.max
 import kotlin.math.min
-
-private val ImmutableHolder<Media>.url: String
-    get() = ImageUtil.getUrl(
-        App.INSTANCE,
-        true,
-        get { originPic },
-        get { bigPic },
-        get { dynamicPic },
-        get { srcPic }
-    )
 
 @Composable
 private fun UserHeader(
@@ -215,7 +204,6 @@ fun Card(
     onClick: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    val cardShape = RoundedCornerShape(20.dp)
     val cardModifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)
     } else Modifier
@@ -226,15 +214,10 @@ fun Card(
     Material3Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 5.dp),
-        shape = cardShape,
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = Material3Theme.shapes.medium,
         color = Material3Theme.colorScheme.surfaceContainerLow,
         contentColor = Material3Theme.colorScheme.onSurface,
-        tonalElevation = 1.dp,
-        border = BorderStroke(
-            0.8.dp,
-            Material3Theme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-        ),
     ) {
         Column(
             modifier = cardModifier
@@ -327,7 +310,7 @@ fun ThreadContent(
         lineSpacing = 0.8.sp,
         overflow = TextOverflow.Ellipsis,
         maxLines = maxLines,
-        style = MaterialTheme.typography.body1,
+        style = Material3Theme.typography.bodyLarge,
         highlightKeywords = highlightKeywords
     )
 }
@@ -339,7 +322,7 @@ fun FeedCardPlaceholder() {
         content = {
             Text(
                 text = "TitlePlaceholder",
-                style = MaterialTheme.typography.subtitle1,
+                style = Material3Theme.typography.titleMedium,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -353,7 +336,7 @@ fun FeedCardPlaceholder() {
 
             Text(
                 text = "Text",
-                style = MaterialTheme.typography.body1,
+                style = Material3Theme.typography.bodyLarge,
                 fontSize = 15.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -407,7 +390,7 @@ fun ForumInfoChip(
         }
         Text(
             text = stringResource(id = R.string.title_forum_name, name),
-            style = MaterialTheme.typography.body2,
+            style = Material3Theme.typography.bodyMedium,
             color = ExtendedTheme.colors.onChip,
             fontSize = 12.sp,
         )
@@ -438,8 +421,8 @@ private fun MediaPlaceholder(
             ) {
                 icon()
             }
-            ProvideTextStyle(
-                value = MaterialTheme.typography.subtitle2,
+            ProvideUnifiedTextStyle(
+                style = Material3Theme.typography.titleSmall,
                 content = text
             )
         }
@@ -463,7 +446,9 @@ private fun ThreadMedia(
     val hasPhoto = remember(mediaCount) { mediaCount > 0 }
     val isSinglePhoto = remember(mediaCount) { mediaCount == 1 }
 
-    val hideMedia = context.appPreferences.hideMedia
+    if (!hasPhoto && videoInfo == null) return
+    val preferences = LocalDisplayPreferences.current
+    val hideMedia = preferences.hideMedia
 
     val windowWidthSizeClass = LocalWindowSizeClass.current.widthSizeClass
     val singleMediaFraction = remember(windowWidthSizeClass) {
@@ -472,136 +457,136 @@ private fun ThreadMedia(
         else 0.5f
     }
 
-    val hasMedia = remember(hasPhoto, videoInfo) {
-        hasPhoto || videoInfo != null
-    }
-
-    if (hasMedia) {
-        Box(modifier = modifier) {
-            if (videoInfo != null) {
-                if (hideMedia) {
-                    MediaPlaceholder(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Rounded.OndemandVideo,
-                                contentDescription = stringResource(id = R.string.desc_video)
-                            )
-                        },
-                        text = {
-                            Text(text = stringResource(id = R.string.desc_video))
-                        },
-                        modifier = Modifier.fillMaxWidth()
+    Box(modifier = modifier) {
+        if (videoInfo != null) {
+            if (hideMedia) {
+                MediaPlaceholder(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.OndemandVideo,
+                            contentDescription = stringResource(id = R.string.desc_video)
+                        )
+                    },
+                    text = {
+                        Text(text = stringResource(id = R.string.desc_video))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                val aspectRatio = remember(videoInfo) {
+                    max(
+                        videoInfo
+                            .get { thumbnailWidth }
+                            .toFloat() / videoInfo.get { thumbnailHeight },
+                        16f / 9
                     )
-                } else {
-                    val aspectRatio = remember(videoInfo) {
-                        max(
-                            videoInfo
-                                .get { thumbnailWidth }
-                                .toFloat() / videoInfo.get { thumbnailHeight },
-                            16f / 9
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {}
-                        )
-                    ) {
-                        VideoPlayer(
-                            videoUrl = videoInfo.get { videoUrl },
-                            thumbnailUrl = videoInfo.get { thumbnailUrl },
-                            modifier = Modifier
-                                .fillMaxWidth(singleMediaFraction)
-                                .aspectRatio(aspectRatio)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                    }
                 }
-            } else if (hasPhoto) {
-                val mediaWidthFraction = remember(isSinglePhoto, singleMediaFraction) {
-                    if (isSinglePhoto) singleMediaFraction else 1f
+                Box(
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                ) {
+                    VideoPlayer(
+                        videoUrl = videoInfo.get { videoUrl },
+                        thumbnailUrl = videoInfo.get { thumbnailUrl },
+                        modifier = Modifier
+                            .fillMaxWidth(singleMediaFraction)
+                            .aspectRatio(aspectRatio)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
                 }
-                val mediaAspectRatio = remember(isSinglePhoto) {
-                    if (isSinglePhoto) 2f else 3f
+            }
+        } else if (hasPhoto) {
+            val mediaWidthFraction = remember(isSinglePhoto, singleMediaFraction) {
+                if (isSinglePhoto) singleMediaFraction else 1f
+            }
+            val mediaAspectRatio = remember(isSinglePhoto) {
+                if (isSinglePhoto) 2f else 3f
+            }
+            if (hideMedia) {
+                val photoViewData = remember(
+                    medias, forumId, forumName, threadId
+                ) {
+                    getPhotoViewData(
+                        medias = medias.map { it.get() },
+                        forumId = forumId,
+                        forumName = forumName,
+                        threadId = threadId,
+                        index = 0
+                    )
                 }
-                if (hideMedia) {
-                    val photoViewData = remember(
-                        medias, forumId, forumName, threadId
-                    ) {
-                        getPhotoViewData(
-                            medias = medias.map { it.get() },
-                            forumId = forumId,
-                            forumName = forumName,
-                            threadId = threadId,
-                            index = 0
+                MediaPlaceholder(
+                    icon = {
+                        Icon(
+                            imageVector = if (isSinglePhoto) Icons.Rounded.Photo else Icons.Rounded.PhotoLibrary,
+                            contentDescription = stringResource(id = R.string.desc_photo)
                         )
-                    }
-                    MediaPlaceholder(
-                        icon = {
-                            Icon(
-                                imageVector = if (isSinglePhoto) Icons.Rounded.Photo else Icons.Rounded.PhotoLibrary,
-                                contentDescription = stringResource(id = R.string.desc_photo)
+                    },
+                    text = {
+                        Text(text = stringResource(id = R.string.btn_open_photos, mediaCount))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        context.goToActivity<PhotoViewActivity> {
+                            putExtra(
+                                PhotoViewActivity.EXTRA_PHOTO_VIEW_DATA,
+                                photoViewData
                             )
-                        },
-                        text = {
-                            Text(text = stringResource(id = R.string.btn_open_photos, mediaCount))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            context.goToActivity<PhotoViewActivity> {
-                                putExtra(
-                                    PhotoViewActivity.EXTRA_PHOTO_VIEW_DATA,
-                                    photoViewData
+                        }
+                    }
+                )
+            } else {
+                val showMediaCount = remember(medias) { min(medias.size, 3) }
+                val hasMoreMedia = remember(medias) { medias.size > 3 }
+                val showMedias = remember(medias) { medias.subList(0, showMediaCount) }
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(mediaWidthFraction)
+                            .aspectRatio(mediaAspectRatio)
+                            .clip(RoundedCornerShape(8.dp)),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        showMedias.fastForEachIndexed { index, media ->
+                            val photoViewData = remember(
+                                index, medias, forumId, forumName, threadId
+                            ) {
+                                getPhotoViewData(
+                                    medias = medias.map { it.get() },
+                                    forumId = forumId,
+                                    forumName = forumName,
+                                    threadId = threadId,
+                                    index = index
                                 )
                             }
-                        }
-                    )
-                } else {
-                    val showMediaCount = remember(medias) { min(medias.size, 3) }
-                    val hasMoreMedia = remember(medias) { medias.size > 3 }
-                    val showMedias = remember(medias) { medias.subList(0, showMediaCount) }
-                    Box {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(mediaWidthFraction)
-                                .aspectRatio(mediaAspectRatio)
-                                .clip(RoundedCornerShape(8.dp)),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            showMedias.fastForEachIndexed { index, media ->
-                                val photoViewData = remember(
-                                    index, medias, forumId, forumName, threadId
-                                ) {
-                                    getPhotoViewData(
-                                        medias = medias.map { it.get() },
-                                        forumId = forumId,
-                                        forumName = forumName,
-                                        threadId = threadId,
-                                        index = index
-                                    )
-                                }
-                                NetworkImage(
-                                    imageUri = remember(media) { media.url },
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .weight(1f),
-                                    photoViewData = photoViewData,
-                                    contentScale = ContentScale.Crop,
-                                    enablePreview = true
-                                )
-                            }
-                        }
-                        if (hasMoreMedia) {
-                            Badge(
-                                icon = Icons.Rounded.PhotoSizeSelectActual,
-                                text = "${medias.size}",
+                            NetworkImage(
+                                imageUri = remember(media, preferences.imageLoadType, context) {
+                                    media.get {
+                                        ImageUtil.getThumbnailUrl(
+                                            context, preferences.imageLoadType, originPic, bigPic, dynamicPic, srcPic
+                                        )
+                                    }
+                                },
+                                contentDescription = null,
                                 modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(8.dp)
+                                    .fillMaxHeight()
+                                    .weight(1f),
+                                photoViewData = photoViewData,
+                                contentScale = ContentScale.Crop,
+                                enablePreview = true
                             )
                         }
+                    }
+                    if (hasMoreMedia) {
+                        Badge(
+                            icon = Icons.Rounded.PhotoSizeSelectActual,
+                            text = "${medias.size}",
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                        )
                     }
                 }
             }
@@ -808,8 +793,8 @@ fun FeedCard(
                     OriginThreadCard(
                         originThreadInfo = it,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ExtendedTheme.colors.floorCard)
+                            .clip(Material3Theme.shapes.small)
+                            .background(Material3Theme.colorScheme.surfaceContainer)
                             .clickable {
                                 onClickOriginThread(it.get())
                             }
@@ -890,8 +875,8 @@ fun FeedCard(
                     OriginThreadCard(
                         originThreadInfo = it,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ExtendedTheme.colors.floorCard)
+                            .clip(Material3Theme.shapes.small)
+                            .background(Material3Theme.colorScheme.surfaceContainer)
                             .clickable {
                                 onClickOriginThread(it.get())
                             }
@@ -945,7 +930,7 @@ private fun ActionBtnPlaceholder(
     ) {
         Text(
             text = "Button",
-            style = MaterialTheme.typography.caption,
+            style = Material3Theme.typography.labelMedium,
             modifier = Modifier
                 .placeholder(
                     visible = true,
@@ -963,11 +948,14 @@ private fun ActionBtn(
     color: Color = LocalContentColor.current,
     onClick: (() -> Unit)? = null,
 ) {
-    val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    val actionModifier = if (onClick != null) {
+        Modifier.clickable(role = Role.Button, onClick = onClick)
+    } else Modifier
     Row(
-        modifier = clickableModifier
-            .padding(vertical = 16.dp)
-            .then(modifier),
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(Material3Theme.shapes.medium)
+            .then(actionModifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -976,7 +964,7 @@ private fun ActionBtn(
                 icon()
             }
             Spacer(modifier = Modifier.width(8.dp))
-            ProvideTextStyle(value = MaterialTheme.typography.caption) {
+            ProvideUnifiedTextStyle(Material3Theme.typography.labelMedium) {
                 text()
             }
         }
@@ -991,6 +979,10 @@ fun VideoPlayer(
     title: String = "",
 ) {
     val context = LocalContext.current
+    if (!LocalShouldLoad.current) {
+        Spacer(modifier)
+        return
+    }
     val systemUiController = rememberSystemUiController()
     val videoPlayerController = rememberVideoPlayerController(
         source = VideoPlayerSource.Network(videoUrl),
@@ -1012,7 +1004,7 @@ fun VideoPlayer(
     )
 
     val fullScreen by (videoPlayerController as DefaultVideoPlayerController).collect { isFullScreen }
-    val videoPlayerContent =
+    val videoPlayerContent = remember(videoPlayerController) {
         movableContentOf { isFullScreen: Boolean, playerModifier: Modifier ->
             com.huanchengfly.tieba.post.ui.widgets.compose.video.VideoPlayer(
                 videoPlayerController = videoPlayerController,
@@ -1020,6 +1012,7 @@ fun VideoPlayer(
                 backgroundColor = if (isFullScreen) Color.Black else Color.Transparent
             )
         }
+    }
 
     if (fullScreen) {
         Spacer(

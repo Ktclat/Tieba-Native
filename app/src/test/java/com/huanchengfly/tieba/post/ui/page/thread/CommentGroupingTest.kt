@@ -257,7 +257,10 @@ class CommentGroupingTest {
             "detail recipient" to recipientBounds,
         )
         assertTrue("Directed reply label must precede its body", recipientBounds.bottom <= directedBody.top)
-        assertTrue("Child replies need a distinct indentation from the parent", directedBody.left > parentBody.left)
+        val detailAuthor = compose.onNodeWithText(children.first().author!!.nameShow, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("Short author and recipient should share a row", detailAuthor.top < recipientBounds.bottom &&
+            recipientBounds.top < detailAuthor.bottom && detailAuthor.right <= recipientBounds.left)
+        assertEquals("Expanded replies should use the full body column", parentBody.left, directedBody.left, 1f)
         assertEquals("Sibling body alignment", directedBody.left, plainBody.left, 1f)
         compose.onNodeWithText(App.INSTANCE.getString(R.string.hint_reply, "@小岚")).assertDoesNotExist()
         val firstReply = compose.onNodeWithTag("detail-${children.first().id}").fetchSemanticsNode().boundsInRoot
@@ -265,7 +268,7 @@ class CommentGroupingTest {
         val heading = compose.onNodeWithTag("reply-heading").fetchSemanticsNode().boundsInRoot
         assertNoRule(detailImage, heading.top - 2f, heading.top + 2f)
         assertWhitespace(detailImage, firstReply.bottom, clearance = 2)
-        assertReplyRails(detailImage, directedBody, plainBody)
+        assertNoReplyRails(detailImage, directedBody, plainBody)
         val replyLikes = children.map { child -> tapHeaderLike(child.author!!, child.content.last().text) }
         assertGlyphContrast(detailImage, "detail like" to replyLikes.first(), minimum = 3.0)
         compose.runOnIdle {
@@ -322,10 +325,9 @@ class CommentGroupingTest {
             val surface = image.getPixel(0, y)
             assertEquals("Expected the app's grey dark surface", App.INSTANCE.getColor(R.color.theme_color_background_grey_dark), surface)
             val railX = (1 until image.width / 2).first { image.getPixel(it, y) != surface }
-            val rail = image.getPixel(railX, y)
             val panel = image.getPixel(railX + 3, y)
             assertNotEquals("Preview panel must have its own surface", surface, panel)
-            assertTrue("Inset rail must stand out from the dark panel", ColorUtils.calculateContrast(rail, panel) >= 1.25)
+            assertEquals("Preview edge must open directly onto the tonal panel", panel, image.getPixel(railX, y))
         } finally {
             image.recycle()
         }
@@ -345,7 +347,7 @@ class CommentGroupingTest {
         }
     }
 
-    private fun assertReplyRails(fileName: String, firstBody: Rect, secondBody: Rect) {
+    private fun assertNoReplyRails(fileName: String, firstBody: Rect, secondBody: Rect) {
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
         try {
             fun railAt(body: Rect): List<Int> {
@@ -354,8 +356,8 @@ class CommentGroupingTest {
                 return (1 until body.left.roundToInt()).filter { x -> image.getPixel(x, y) != surface }
             }
             val firstRail = railAt(firstBody)
-            assertTrue("Each reply should have a narrow indentation rail", firstRail.size in 1..3)
-            assertEquals("Sibling reply rails must align", firstRail, railAt(secondBody))
+            assertTrue("No rail beside the first sibling", firstRail.isEmpty())
+            assertTrue("No rail beside the next sibling", railAt(secondBody).isEmpty())
         } finally {
             image.recycle()
         }

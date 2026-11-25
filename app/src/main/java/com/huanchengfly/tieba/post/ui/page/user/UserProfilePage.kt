@@ -31,7 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ProvideTextStyle
-import androidx.compose.material.Tab
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -718,9 +718,7 @@ private fun UserProfileTabRow(
             Tab(
                 selected = pagerState.currentPage == i,
                 onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(i)
-                    }
+                    pagerState.requestScrollToPage(i)
                 },
                 selectedContentColor = ExtendedTheme.colors.primary,
                 unselectedContentColor = ExtendedTheme.colors.textSecondary,
@@ -731,7 +729,7 @@ private fun UserProfileTabRow(
                         .height(48.dp)
                         .padding(horizontal = 16.dp)
                 ) {
-                    Text(text = pageData.title(user), style = tabTextStyle)
+                    androidx.compose.material3.Text(text = pageData.title(user), style = tabTextStyle)
                 }
             }
         }

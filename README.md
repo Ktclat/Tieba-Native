@@ -8,12 +8,14 @@
 
 ## 已实现的改造
 
-- 手机端点按底部胶囊导航时，抬手即选中目标页，再点当前项可刷新。平板保留自适应导航栏和抽屉
+- 主标签首次打开时才创建。点按底部导航直接切换，返回已访问标签时保留列表位置。屏外标签暂停翻页加载和视频，平板沿用自适应导航栏和抽屉
 - 选中项描边可左右拖动切换页面；拖动时描边过渡为填充背景（线转面）
 - 上滑浏览后面的内容时，底部胶囊保持原有高度，随滚动逐步下移。反向滚动即可拉回
 - 底部导航占据 Scaffold 的布局空间，不覆盖列表、按钮或系统手势区域
 - 浏览历史支持本机检索。帖子可按标题、作者或完整帖子 ID 查找，贴吧可按吧名查找。点开帖子可继续上次阅读
-- 帖子卡片之间留白。评论点赞位于作者行右上角，发送时间和 IP 属地列在下方。楼中楼缩进显示，点定向回复中的用户名可打开对方主页。消息页区分收到的回复与引用原文
+- Compose 和原生 Activity 使用 Google 的 Material 3 Expressive 主题。帖子、顶部标签、设置和回复控件共享配色、字阶与形状，支持自选色、系统动态色和深色主题。
+- 帖子与评论以留白分组，赞在对应作者行右侧。楼中楼把作者、回复对象和正文紧凑排列，发送时间和 IP 属地另行显示。有用户 ID 的回复对象可打开主页，纯文字名字按原文显示。
+- 评论布局参照 [TiebaLite 4.0-dev 的帖子页](https://github.com/HuanCheng65/TiebaLite/blob/9295d1b5dfc52261dffeb7b34afae8f3ca00fdd9/app/src/main/java/com/huanchengfly/tieba/post/ui/page/thread/ThreadPage.kt#L1848-L1982) 和[楼中楼详情](https://github.com/HuanCheng65/TiebaLite/blob/9295d1b5dfc52261dffeb7b34afae8f3ca00fdd9/app/src/main/java/com/huanchengfly/tieba/post/ui/page/subposts/SubPostsPage.kt#L635-L692)。
 - 最低 API 26，编译/目标 API 35；AGP 8.6.1、Gradle 8.7、JDK 17
 - 修复贴吧加载成功仍显示加载中、缓存串页和缺失作者信息处理
 - 删除 ViewModel 中可能含私人数据的日志

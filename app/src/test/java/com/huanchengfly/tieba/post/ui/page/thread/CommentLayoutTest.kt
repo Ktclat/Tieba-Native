@@ -145,7 +145,7 @@ class CommentLayoutTest {
         )) {
             val bounds = assertFullyVisible(textIn("floor", metadata))
             assertTrue("Preview metadata overlaps author or body",
-                bounds.top >= previewNameBounds.bottom && bounds.bottom <= previewBodyBounds.top)
+                previewNameBounds.bottom <= previewBodyBounds.top && bounds.top >= previewBodyBounds.bottom)
         }
         compose.onAllNodes(
             hasAnyAncestor(hasTestTag("floor")) and
@@ -166,7 +166,7 @@ class CommentLayoutTest {
             "reply-${first.id}", first.author!!.name, first.content.single().text, listOf(
                 DateTimeUtils.getRelativeTimeString(context, first.time.toLong()),
                 context.getString(R.string.text_profile_ip_location, first.author!!.ip_address),
-            ),
+            ), metadataAfterBody = true,
         )
         assertTopAction("reply-${first.id}", "12", textIn("reply-${first.id}", first.author!!.name),
             textIn("reply-${first.id}", first.content.single().text))
@@ -201,14 +201,15 @@ class CommentLayoutTest {
         useUnmergedTree = true,
     )
 
-    private fun assertCommentOrder(section: String, name: String, body: String, metadata: List<String>) {
+    private fun assertCommentOrder(section: String, name: String, body: String, metadata: List<String>, metadataAfterBody: Boolean = false) {
         val nameBounds = assertFullyVisible(textIn(section, name))
         val bodyBounds = assertFullyVisible(textIn(section, body))
         assertTrue("Body remains indented below the avatar in $section", bodyBounds.left < nameBounds.left)
         val metadataBounds = metadata.map { assertFullyVisible(textIn(section, it)) }
         for ((index, bounds) in metadataBounds.withIndex()) {
             assertTrue("Metadata overlaps author or body in $section",
-                bounds.top >= nameBounds.bottom && bounds.bottom <= bodyBounds.top)
+                if (metadataAfterBody) nameBounds.bottom <= bodyBounds.top && bounds.top >= bodyBounds.bottom
+                else bounds.top >= nameBounds.bottom && bounds.bottom <= bodyBounds.top)
             for (other in metadataBounds.drop(index + 1)) {
                 assertFalse("Metadata labels overlap in $section", bounds.overlaps(other))
             }

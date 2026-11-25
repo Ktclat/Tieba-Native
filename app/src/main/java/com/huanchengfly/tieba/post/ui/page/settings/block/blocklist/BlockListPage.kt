@@ -18,7 +18,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Tab
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
@@ -29,7 +29,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +63,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.GsonUtil
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Destination
@@ -99,7 +97,6 @@ fun BlockListPage(
 
     val context = LocalContext.current
     val pagerState = rememberPagerState { 2 }
-    val coroutineScope = rememberCoroutineScope()
     val blackList by viewModel.uiState.collectPartialAsState(
         prop1 = BlockListUiState::blackList,
         initial = emptyList()
@@ -143,13 +140,13 @@ fun BlockListPage(
                     ) {
                         Tab(
                             selected = pagerState.currentPage == 0,
-                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
-                            text = { Text(text = stringResource(id = R.string.title_black_list)) },
+                            onClick = { pagerState.requestScrollToPage(0) },
+                            text = { androidx.compose.material3.Text(text = stringResource(id = R.string.title_black_list)) },
                         )
                         Tab(
                             selected = pagerState.currentPage == 1,
-                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
-                            text = { Text(text = stringResource(id = R.string.title_white_list)) },
+                            onClick = { pagerState.requestScrollToPage(1) },
+                            text = { androidx.compose.material3.Text(text = stringResource(id = R.string.title_white_list)) },
                         )
                     }
                 }

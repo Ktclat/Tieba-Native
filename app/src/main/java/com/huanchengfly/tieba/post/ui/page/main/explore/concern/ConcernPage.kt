@@ -29,6 +29,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -49,14 +50,15 @@ fun ConcernPage(
         refreshing = isRefreshing,
         onRefresh = { viewModel.send(ConcernUiIntent.Refresh) })
 
-    onGlobalEvent<GlobalEvent.Refresh>(
-        filter = { it.key == "concern" }
-    ) {
-        viewModel.send(ConcernUiIntent.Refresh)
-    }
-
     val lazyListState = rememberLazyListState()
-    viewModel.bindScrollToTopEvent(lazyListState = lazyListState)
+    if (LocalShouldLoad.current) {
+        viewModel.bindScrollToTopEvent(lazyListState = lazyListState)
+        onGlobalEvent<GlobalEvent.Refresh>(
+            filter = { it.key == "concern" }
+        ) {
+            viewModel.send(ConcernUiIntent.Refresh)
+        }
+    }
 
     Box(
         modifier = Modifier.pullRefresh(pullRefreshState)

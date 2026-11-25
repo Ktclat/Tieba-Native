@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.main.home
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
@@ -50,6 +49,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.Center
@@ -67,6 +67,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -77,6 +79,8 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
+import com.huanchengfly.tieba.post.collectPreferenceAsState
+import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
@@ -104,15 +108,11 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
-import com.huanchengfly.tieba.post.utils.appPreferences
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
+import kotlinx.coroutines.launch
 
-private fun getGridCells(context: Context, listSingle: Boolean = context.appPreferences.listSingle): GridCells {
-    return if (listSingle) {
-        GridCells.Fixed(1)
-    } else {
-        GridCells.Adaptive(180.dp)
-    }
-}
+private val ListSingleKey = booleanPreferencesKey("listSingle")
+private val ShowHistoryForumKey = booleanPreferencesKey("homePageShowHistoryForum")
 
 @Preview("SearchBoxPreview")
 @Composable
@@ -405,15 +405,23 @@ fun HomePage(
     val isLoggedIn = remember(account) { account != null }
     val isEmpty by remember { derivedStateOf { forums.isEmpty() } }
     val hasTopForum by remember { derivedStateOf { topForums.isNotEmpty() } }
-    val showHistoryForum by remember { derivedStateOf { context.appPreferences.homePageShowHistoryForum && historyForums.isNotEmpty() } }
-    var listSingle by remember { mutableStateOf(context.appPreferences.listSingle) }
+    val preferences = context.dataStore
+    val scope = rememberCoroutineScope()
+    val historyEnabled by preferences.collectPreferenceAsState(
+        ShowHistoryForumKey, defaultValue = true, initialValue = false,
+    )
+    val showHistoryForum = historyEnabled && historyForums.isNotEmpty()
+    val listSingle by preferences.collectPreferenceAsState(ListSingleKey, defaultValue = false)
     val isError by remember { derivedStateOf { error != null } }
-    val gridCells by remember { derivedStateOf { getGridCells(context, listSingle) } }
+    val gridCells = remember(listSingle) { if (listSingle) GridCells.Fixed(1) else GridCells.Adaptive(180.dp) }
 
-    onGlobalEvent<GlobalEvent.Refresh>(
-        filter = { it.key == "home" }
-    ) {
-        viewModel.send(HomeUiIntent.Refresh)
+    val active = LocalShouldLoad.current
+    if (active) {
+        onGlobalEvent<GlobalEvent.Refresh>(
+            filter = { it.key == "home" }
+        ) {
+            viewModel.send(HomeUiIntent.Refresh)
+        }
     }
 
     var unfollowForum by remember { mutableStateOf<HomeUiState.Forum?>(null) }
@@ -434,8 +442,12 @@ fun HomePage(
         )
     }
 
-    LaunchedEffect(Unit) {
-        if (viewModel.initialized) viewModel.send(HomeUiIntent.RefreshHistory)
+    var refreshHistoryOnEntry by remember { mutableStateOf(viewModel.initialized) }
+    LaunchedEffect(active) {
+        if (active) {
+            if (refreshHistoryOnEntry) viewModel.send(HomeUiIntent.RefreshHistory)
+            refreshHistoryOnEntry = true
+        }
     }
 
     MyScaffold(
@@ -455,8 +467,9 @@ fun HomePage(
                         icon = Icons.Outlined.ViewAgenda,
                         contentDescription = stringResource(id = R.string.title_switch_list_single)
                     ) {
-                        context.appPreferences.listSingle = !listSingle
-                        listSingle = !listSingle
+                        scope.launch {
+                            preferences.edit { it[ListSingleKey] = !(it[ListSingleKey] ?: false) }
+                        }
                     }
                 }
             )

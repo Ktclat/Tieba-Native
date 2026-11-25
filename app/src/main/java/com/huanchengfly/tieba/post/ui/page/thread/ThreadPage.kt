@@ -6,8 +6,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -31,12 +32,20 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton as M3IconButton
+import androidx.compose.material3.TonalToggleButton
+import androidx.compose.material3.Surface as M3Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.MaterialTheme
@@ -82,12 +91,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -121,13 +132,9 @@ import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
 import com.huanchengfly.tieba.post.ui.common.PbContentText
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.invertChipBackground
-import com.huanchengfly.tieba.post.ui.common.theme.compose.invertChipContent
 import com.huanchengfly.tieba.post.ui.common.theme.compose.loadMoreIndicator
 import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
-import com.huanchengfly.tieba.post.ui.common.theme.compose.threadBottomBar
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
-import com.huanchengfly.tieba.post.ui.page.subposts.replyRail
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
@@ -144,7 +151,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
-import com.huanchengfly.tieba.post.ui.widgets.compose.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
@@ -158,7 +164,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TextWithMinWidth
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
@@ -221,146 +226,23 @@ fun PostAgreeBtn(
 }
 
 @Composable
-private fun BottomBarAgreeBtn(
-    hasAgreed: Boolean,
-    agreeNum: Long,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val color = if (hasAgreed) ExtendedTheme.colors.accent else ExtendedTheme.colors.textSecondary
-    val animatedColor by animateColorAsState(color, label = "agreeBtnColor")
-
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(0),
-        contentPadding = PaddingValues(horizontal = 4.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = ExtendedTheme.colors.bottomBar,
-            contentColor = animatedColor
-        ),
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier.align(Alignment.CenterVertically),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                imageVector = if (hasAgreed) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = stringResource(id = R.string.title_agree),
-                tint = animatedColor
-            )
-            if (agreeNum > 0) {
-                Text(
-                    text = agreeNum.getShortNumString(),
-                    style = MaterialTheme.typography.caption,
-                    color = animatedColor,
-                    fontSize = 12.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BottomBarPlaceholder() {
-    Row(
-        modifier = Modifier
-            .height(IntrinsicSize.Min)
-            .background(ExtendedTheme.colors.bottomBar)
-            // 拦截点击事件
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {}
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .weight(1f)
-                .clip(RoundedCornerShape(6.dp))
-                .background(ExtendedTheme.colors.bottomBarSurface)
-                .padding(8.dp),
-        ) {
-            Text(
-                text = stringResource(id = R.string.tip_reply_thread),
-                style = MaterialTheme.typography.caption,
-                color = ExtendedTheme.colors.onBottomBarSurface,
-            )
-        }
-
-        BottomBarAgreeBtn(
-            hasAgreed = false,
-            agreeNum = 1,
-            onClick = {},
-            modifier = Modifier.fillMaxHeight()
-        )
-
-        Box(
-            modifier = Modifier.fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.MoreVert,
-                contentDescription = stringResource(id = R.string.btn_more),
-                tint = ExtendedTheme.colors.textSecondary,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun ToggleButton(
-    text: @Composable (() -> Unit),
+private fun ThreadMenuToggle(
+    text: @Composable () -> Unit,
     checked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    icon: @Composable (() -> Unit)? = null,
-    backgroundColor: Color = ExtendedTheme.colors.chip,
-    contentColor: Color = ExtendedTheme.colors.text,
-    selectedBackgroundColor: Color = ExtendedTheme.colors.invertChipBackground,
-    selectedContentColor: Color = ExtendedTheme.colors.invertChipContent,
+    icon: @Composable () -> Unit,
 ) {
-    val animatedColor by animateColorAsState(
-        if (checked) selectedContentColor else contentColor,
-        label = "toggleBtnColor"
-    )
-    val animatedBackgroundColor by animateColorAsState(
-        if (checked) selectedBackgroundColor else backgroundColor,
-        label = "toggleBtnBackgroundColor"
-    )
-
-    Surface(
+    FilterChip(
+        selected = checked,
         onClick = onClick,
+        label = text,
+        leadingIcon = icon,
         modifier = modifier,
-        enabled = true,
-        shape = RoundedCornerShape(6.dp),
-        color = animatedBackgroundColor,
-        contentColor = animatedColor,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (icon != null) {
-                    icon()
-                }
-                ProvideTextStyle(
-                    value = MaterialTheme.typography.subtitle1.copy(
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center,
-                    )
-                ) {
-                    text()
-                }
-            }
-        }
-    }
+        shape = M3Theme.shapes.large,
+        colors = FilterChipDefaults.filterChipColors(containerColor = M3Theme.colorScheme.surfaceContainer),
+        border = null,
+    )
 }
 
 object ThreadPageFrom {
@@ -1008,21 +890,13 @@ fun ThreadPage(
             if (!desc) {
                 item("LatestPostsTip") {
                     Container {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            VerticalDivider(modifier = Modifier.weight(1f))
-                            Text(
-                                text = stringResource(id = R.string.below_is_latest_post),
-                                color = ExtendedTheme.colors.textSecondary,
-                                style = MaterialTheme.typography.caption,
-                            )
-                            VerticalDivider(modifier = Modifier.weight(1f))
-                        }
+                        Text(
+                            text = stringResource(id = R.string.below_is_latest_post),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            style = M3Theme.typography.labelLarge,
+                            color = M3Theme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
@@ -1042,21 +916,13 @@ fun ThreadPage(
             if (desc) {
                 item("LatestPostsTip") {
                     Container {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            VerticalDivider(modifier = Modifier.weight(1f))
-                            Text(
-                                text = stringResource(id = R.string.above_is_latest_post),
-                                color = ExtendedTheme.colors.textSecondary,
-                                style = MaterialTheme.typography.caption,
-                            )
-                            VerticalDivider(modifier = Modifier.weight(1f))
-                        }
+                        Text(
+                            text = stringResource(id = R.string.above_is_latest_post),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            style = M3Theme.typography.labelLarge,
+                            color = M3Theme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
@@ -1105,7 +971,7 @@ fun ThreadPage(
                     )
                 },
                 bottomBar = {
-                    BottomBar(
+                    ThreadBottomBar(
                         user = user,
                         onClickReply = {
                             navigator.navigate(
@@ -1138,12 +1004,6 @@ fun ThreadPage(
                         },
                         hasAgreed = hasThreadAgreed,
                         agreeNum = threadAgreeNum,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {}
-                            )
                     )
                 },
             ) { paddingValues ->
@@ -1388,89 +1248,24 @@ fun ThreadPage(
                                                         )
                                                     }
 
-                                                VerticalDivider(
-                                                    modifier = Modifier
-                                                        .padding(horizontal = 16.dp)
-                                                        .padding(bottom = 8.dp),
-                                                    thickness = 2.dp
-                                                )
                                             }
                                         }
                                     }
                                 }
                                 stickyHeader(key = "ThreadHeader") {
                                     Container {
-                                        Row(
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colors.background)
-                                                .padding(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.title_thread_header,
-                                                    "${thread?.get { replyNum - 1 } ?: 0}"),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = ExtendedTheme.colors.text,
-                                                modifier = Modifier.padding(horizontal = 8.dp),
-                                            )
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.height(IntrinsicSize.Min)
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.text_all),
-                                                    modifier = Modifier
-                                                        .padding(horizontal = 8.dp)
-                                                        .clickable(
-                                                            interactionSource = remember { MutableInteractionSource() },
-                                                            indication = null,
-                                                            enabled = isSeeLz
-                                                        ) {
-                                                            if (isSeeLz) {
-                                                                viewModel.send(
-                                                                    ThreadUiIntent.LoadFirstPage(
-                                                                        threadId = threadId,
-                                                                        forumId = forumId,
-                                                                        seeLz = false,
-                                                                        sortType = curSortType
-                                                                    )
-                                                                )
-                                                            }
-                                                        },
-                                                    fontSize = 13.sp,
-                                                    fontWeight = if (!isSeeLz) FontWeight.SemiBold else FontWeight.Normal,
-                                                    color = if (!isSeeLz) ExtendedTheme.colors.text else ExtendedTheme.colors.textSecondary,
+                                        ThreadRepliesHeader(
+                                            replyCount = ((thread?.get { replyNum } ?: 1) - 1).coerceAtLeast(0),
+                                            seeLz = isSeeLz,
+                                            onFilterChange = { onlyAuthor ->
+                                                viewModel.send(
+                                                    ThreadUiIntent.LoadFirstPage(
+                                                        threadId = threadId, forumId = forumId,
+                                                        seeLz = onlyAuthor, sortType = curSortType,
+                                                    )
                                                 )
-                                                HorizontalDivider()
-                                                Text(
-                                                    text = stringResource(R.string.title_see_lz),
-                                                    modifier = Modifier
-                                                        .padding(horizontal = 8.dp)
-                                                        .clickable(
-                                                            interactionSource = remember { MutableInteractionSource() },
-                                                            indication = null,
-                                                            enabled = !isSeeLz
-                                                        ) {
-                                                            if (!isSeeLz) {
-                                                                viewModel.send(
-                                                                    ThreadUiIntent.LoadFirstPage(
-                                                                        threadId = threadId,
-                                                                        forumId = forumId,
-                                                                        seeLz = true,
-                                                                        sortType = curSortType
-                                                                    )
-                                                                )
-                                                            }
-                                                        },
-                                                    fontSize = 13.sp,
-                                                    fontWeight = if (isSeeLz) FontWeight.SemiBold else FontWeight.Normal,
-                                                    color = if (isSeeLz) ExtendedTheme.colors.text else ExtendedTheme.colors.textSecondary,
-                                                )
-                                            }
-                                        }
+                                            },
+                                        )
                                     }
                                 }
                                 if (curSortType == ThreadSortType.SORT_TYPE_DESC) {
@@ -1629,8 +1424,48 @@ private fun TopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
-private fun BottomBar(
+internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange: (Boolean) -> Unit) {
+    val scheme = M3Theme.colorScheme
+    M3Surface(color = scheme.surface) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.title_thread_header, replyCount.toString()),
+                modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() },
+                style = M3Theme.typography.titleMedium,
+            )
+            Row(
+                modifier = Modifier.selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            ) {
+                listOf(false, true).forEach { onlyAuthor ->
+                    val isSelected = seeLz == onlyAuthor
+                    TonalToggleButton(
+                        checked = isSelected,
+                        onCheckedChange = { if (it) onFilterChange(onlyAuthor) },
+                        shapes = if (onlyAuthor) ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.semantics {
+                            role = Role.RadioButton
+                            selected = isSelected
+                        },
+                    ) {
+                        Text(stringResource(if (onlyAuthor) R.string.title_see_lz else R.string.text_all))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ThreadBottomBar(
     user: ImmutableHolder<User>,
     onClickReply: () -> Unit,
     onAgree: () -> Unit,
@@ -1639,75 +1474,37 @@ private fun BottomBar(
     hasAgreed: Boolean = false,
     agreeNum: Long = 0,
 ) {
-    Column(
-        modifier = Modifier.background(ExtendedTheme.colors.threadBottomBar)
-    ) {
-        Row(
-            modifier = Modifier
-                .height(IntrinsicSize.Min)
-                .then(modifier)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (user.get { is_login } == 1 && !LocalContext.current.appPreferences.hideReply) {
-                Avatar(
-                    data = StringUtil.getAvatarUrl(user.get { portrait }),
-                    size = Sizes.Tiny,
-                    contentDescription = user.get { name },
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .weight(1f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(ExtendedTheme.colors.bottomBarSurface)
-                        .clickable(onClick = onClickReply)
-                        .padding(8.dp),
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.tip_reply_thread),
-                        style = MaterialTheme.typography.caption,
-                        color = ExtendedTheme.colors.onBottomBarSurface,
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp))
-            }
-
-            BottomBarAgreeBtn(
-                hasAgreed = hasAgreed,
-                agreeNum = agreeNum,
-                onClick = onAgree,
-                modifier = Modifier.fillMaxHeight()
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .clickable(onClick = onClickMore)
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.Center
+    M3Surface(modifier = modifier.fillMaxWidth(), color = M3Theme.colorScheme.surfaceContainer) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = stringResource(id = R.string.btn_more),
-                    tint = ExtendedTheme.colors.textSecondary,
-                )
+                if (user.get { is_login } == 1 && !LocalContext.current.appPreferences.hideReply) {
+                    FilledTonalButton(
+                        onClick = onClickReply,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Avatar(
+                            data = StringUtil.getAvatarUrl(user.get { portrait }),
+                            size = Sizes.Tiny, contentDescription = null,
+                        )
+                        Text(
+                            text = stringResource(R.string.tip_reply_thread),
+                            modifier = Modifier.weight(1f).padding(start = 8.dp),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                } else Spacer(Modifier.weight(1f))
+                PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
+                M3IconButton(onClick = onClickMore) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                }
             }
-        }
-
-        Box(
-            modifier = Modifier
-                .requiredHeightIn(min = if (LocalContext.current.appPreferences.liftUpBottomBar) 16.dp else 0.dp)
-        ) {
             Spacer(
-                modifier = Modifier
+                Modifier.requiredHeightIn(min = if (LocalContext.current.appPreferences.liftUpBottomBar) 16.dp else 0.dp)
                     .windowInsetsBottomHeight(WindowInsets.navigationBars)
             )
         }
@@ -1873,46 +1670,46 @@ fun PostCard(
                     contentRenders.fastForEach { it.Render() }
 
                     if (showSubPosts && !immersiveMode && (visibleSubPosts.isNotEmpty() || moreReplies)) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(start = 8.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(M3Theme.colorScheme.surfaceContainerLow)
-                                .replyRail(M3Theme.colorScheme.outlineVariant),
+                        M3Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = M3Theme.shapes.medium,
+                            color = M3Theme.colorScheme.surfaceContainerLow,
                         ) {
-                            visibleSubPosts.fastForEach { item ->
-                                BlockableContent(
-                                    blocked = item.blocked,
-                                    blockedTip = {
-                                        Text(
-                                            text = stringResource(R.string.tip_blocked_sub_post),
-                                            style = M3Theme.typography.bodySmall,
-                                            color = M3Theme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            Column {
+                                visibleSubPosts.fastForEach { item ->
+                                    BlockableContent(
+                                        blocked = item.blocked,
+                                        blockedTip = {
+                                            Text(
+                                                text = stringResource(R.string.tip_blocked_sub_post),
+                                                style = M3Theme.typography.bodySmall,
+                                                color = M3Theme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            )
+                                        },
+                                    ) {
+                                        SubPostItem(
+                                            subPostList = item.subPost,
+                                            subPostContent = item.subPostContent,
+                                            threadAuthorId = threadAuthorId,
+                                            onUserClick = onUserClick,
+                                            onAgree = onSubPostAgree,
+                                            onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
+                                            onOpenSubPosts = onOpenSubPosts,
+                                            onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
                                         )
-                                    },
-                                ) {
-                                    SubPostItem(
-                                        subPostList = item.subPost,
-                                        subPostContent = item.subPostContent,
-                                        threadAuthorId = threadAuthorId,
-                                        onUserClick = onUserClick,
-                                        onAgree = onSubPostAgree,
-                                        onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
-                                        onOpenSubPosts = onOpenSubPosts,
-                                        onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
+                                    }
+                                }
+                                if (moreReplies) {
+                                    Text(
+                                        text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
+                                        style = M3Theme.typography.labelLarge,
+                                        color = M3Theme.colorScheme.secondary,
+                                        modifier = Modifier.fillMaxWidth()
+                                            .clickable { onOpenSubPosts(0) }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
                                     )
                                 }
-                            }
-                            if (moreReplies) {
-                                Text(
-                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                    style = M3Theme.typography.labelLarge,
-                                    color = M3Theme.colorScheme.secondary,
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable { onOpenSubPosts(0) }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                )
                             }
                         }
                     }
@@ -1980,66 +1777,38 @@ internal fun SubPostItem(
         val displayName = StringUtil.getUsernameAnnotatedString(
             context, author?.name.orEmpty(), author?.nameShow?.takeIf { it.isNotBlank() },
         )
-        val hasAuthor = author != null && (displayName.isNotBlank() || author.portrait.isNotBlank() || author.id > 0)
         val directed = remember(subPostContent) { subPostContent.splitDirectedReply() }
         val body = directed?.body ?: subPostContent
+        val reply = subPostList.get()
+        val agree = reply.agree
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            val reply = subPostList.get()
-            val agree = reply.agree
-            CommentAuthorRow(
+            CommentHeader(
+                name = displayName, portrait = author?.portrait,
+                authorId = author?.id, avatarSize = Sizes.Tiny,
+                isLz = threadAuthorId > 0 && threadAuthorId == author?.id,
+                onAuthorClick = if (author != null && author.id > 0) { { onUserClick(author) } } else null,
+                time = null, showMetadata = false,
+                recipient = directed?.let { { ReplyRecipient(it) } },
                 action = if (reply.id > 0 && agree != null && onAgree != null) {
-                    {
-                        PostAgreeBtn(
-                            hasAgreed = agree.hasAgree == 1,
-                            agreeNum = agree.diffAgreeNum,
-                            onClick = { onAgree(reply) },
-                        )
-                    }
+                    { PostAgreeBtn(agree.hasAgree == 1, agree.diffAgreeNum, onClick = { onAgree(reply) }) }
                 } else null,
-            ) {
-                if (hasAuthor && author != null) {
-                    val profile = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
-                    Row(
-                        modifier = profile,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CommentAvatar(
-                            name = displayName.text, portrait = author.portrait,
-                            authorId = author.id.takeIf { it > 0 }, size = 26.dp,
-                        )
-                        CommentAuthorName(
-                            userName = displayName,
-                            isLz = threadAuthorId > 0 && author.id == threadAuthorId,
-                        )
-                    }
-                }
+            )
+            if (body.isNotEmpty()) {
+                PbContentText(
+                    text = body, style = M3Theme.typography.bodyMedium, color = M3Theme.colorScheme.onSurface,
+                    overflow = TextOverflow.Ellipsis, maxLines = 4,
+                )
             }
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = if (hasAuthor) 34.dp else 0.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (directed != null) ReplyRecipient(directed)
-                CommentMetadata(time = subPostList.get { time.toLong() }, ipAddress = author?.ip_address)
-                if (body.isNotEmpty()) {
-                    PbContentText(
-                        text = body,
-                        style = M3Theme.typography.bodyMedium,
-                        color = M3Theme.colorScheme.onSurface,
-                        overflow = TextOverflow.Ellipsis,
-                        maxLines = 4,
-                    )
-                }
-            }
+            CommentMetadata(time = reply.time.toLong(), ipAddress = author?.ip_address)
         }
     }
 }
 
 @Composable
-private fun ThreadMenu(
+internal fun ThreadMenu(
     isSeeLz: Boolean,
     isCollected: Boolean,
     isImmersiveMode: Boolean,
@@ -2077,7 +1846,7 @@ private fun ThreadMenu(
             modifier = Modifier.padding(horizontal = 16.dp),
         ) {
             item {
-                ToggleButton(
+                ThreadMenuToggle(
                     text = {
                         TextWithMinWidth(
                             text = stringResource(id = R.string.title_see_lz),
@@ -2096,7 +1865,7 @@ private fun ThreadMenu(
                 )
             }
             item {
-                ToggleButton(
+                ThreadMenuToggle(
                     text = {
                         TextWithMinWidth(
                             text = stringResource(
@@ -2117,7 +1886,7 @@ private fun ThreadMenu(
                 )
             }
             item {
-                ToggleButton(
+                ThreadMenuToggle(
                     text = {
                         TextWithMinWidth(
                             text = stringResource(
@@ -2138,7 +1907,7 @@ private fun ThreadMenu(
                 )
             }
             item {
-                ToggleButton(
+                ThreadMenuToggle(
                     text = {
                         TextWithMinWidth(
                             text = stringResource(

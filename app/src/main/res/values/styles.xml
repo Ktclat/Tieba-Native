@@ -2,7 +2,7 @@
 
     <style name="Widget" />
 
-    <style name="Widget.Button.Flat.Dense" parent="Widget.MaterialComponents.Button.TextButton">
+    <style name="Widget.Button.Flat.Dense" parent="Widget.Material3.Button.TextButton">
         <item name="android:minWidth">0dp</item>
         <item name="android:minHeight">0dp</item>
         <item name="android:padding">6dp</item>
@@ -14,7 +14,7 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="Widget.Button" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+    <style name="Widget.Button" parent="Widget.Material3.Button">
         <item name="android:minWidth">0dp</item>
         <item name="android:minHeight">0dp</item>
         <item name="android:padding">6dp</item>
@@ -34,14 +34,14 @@
         <item name="android:windowAnimationStyle">@style/Animation.Bottom</item>
     </style>
 
-    <style name="Dialog.Bottom" parent="Theme.MaterialComponents.Light.Dialog">
+    <style name="Dialog.Bottom" parent="Theme.Material3Expressive.Light.Dialog">
         <item name="android:windowFrame">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@android:color/white</item>
         <item name="android:windowAnimationStyle">@style/Animation.Bottom</item>
     </style>
 
-    <style name="Dialog.RequestPermissionTip" parent="Theme.MaterialComponents.DayNight.Dialog">
+    <style name="Dialog.RequestPermissionTip" parent="Theme.Material3Expressive.DayNight.Dialog">
         <item name="android:windowFrame">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
@@ -150,7 +150,7 @@
         <item name="android:activityCloseExitAnimation">@anim/anim_fade_out</item>
     </style>
 
-    <style name="AppTheme.PhotoView" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="AppTheme.PhotoView" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="android:windowAnimationStyle">@style/Animation.Fade</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
@@ -163,7 +163,7 @@
 
     <style name="Base" />
 
-    <style name="Theme.NewAppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.NewAppTheme" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -180,7 +180,7 @@
         <item name="postSplashScreenTheme">@style/Theme.NewAppTheme</item>
     </style>
 
-    <style name="Base.AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Base.AppTheme" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="windowActionModeOverlay">true</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowIsTranslucent">false</item>
@@ -191,7 +191,7 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
-    <style name="Base.AppTheme.Dark" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="Base.AppTheme.Dark" parent="Theme.Material3Expressive.Dark.NoActionBar">
         <item name="windowActionModeOverlay">true</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowIsTranslucent">false</item>
@@ -436,7 +436,7 @@
         <item name="colorDivider">#FF101010</item>
     </style>
 
-    <style name="Dialog.FullScreen" parent="Theme.MaterialComponents.DayNight.Dialog">
+    <style name="Dialog.FullScreen" parent="Theme.Material3Expressive.DayNight.Dialog">
         <item name="android:windowFrame">@null</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowIsTranslucent">true</item>

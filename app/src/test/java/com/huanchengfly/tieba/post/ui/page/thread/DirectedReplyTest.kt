@@ -53,17 +53,49 @@ class DirectedReplyTest {
     }
 
     @Test
-    fun keepsOrdinaryMentionsUnlinkedNamesAndAmbiguousPrefixesInTheMessage() {
+    fun separatesPlainRecipientsWithoutInventingAProfileOrChangingTheBody() {
+        val raw = AnnotatedString("回复 木偶鼹鼠 :这价格")
+        assertEquals(DirectedReply(null, "木偶鼹鼠", AnnotatedString("这价格")), raw.splitDirectedReply())
+        assertEquals("回复 木偶鼹鼠 :这价格", raw.text)
+
+        val body = AnnotatedString("  看看\n") + mention("@江岸", "57")
+        for (prefix in listOf("回复 @北窗： ", "回复@北窗: ", "回复\u3000@北窗 ： ")) {
+            assertEquals(DirectedReply(null, "@北窗", body), (AnnotatedString(prefix) + body).splitDirectedReply())
+        }
+        assertEquals("", AnnotatedString("回复 北窗：").splitDirectedReply()?.body?.text)
+    }
+
+    @Test
+    fun keepsOrdinaryMentionsAndAmbiguousPrefixesInTheMessage() {
         val user = mention("@北窗")
         val messages = listOf(
-            AnnotatedString("回复 @北窗：没有可验证的用户"),
+            AnnotatedString("昨天回复 北窗：早"),
+            AnnotatedString("回复北窗：早"),
+            AnnotatedString("回复 北窗的提问"),
+            AnnotatedString("回复 这个问题：有两个原因"),
+            AnnotatedString("回复 如下：第一条"),
+            AnnotatedString("回复 你的评论：我同意"),
+            AnnotatedString("回复 北窗 的问题：明天继续"),
+            AnnotatedString("回复\n北窗：跨行"),
+            AnnotatedString("回复 北窗\n：跨行"),
+            AnnotatedString("回复 北窗，江岸：大家好"),
+            AnnotatedString("回复 （北窗）：早"),
+            AnnotatedString("回复 " + "窗".repeat(25) + "：早"),
             user + AnnotatedString(" 提到的角度很好"),
             AnnotatedString("请回复 ") + user + AnnotatedString("：明天继续"),
             AnnotatedString("回复 ") + user + AnnotatedString(" 的问题"),
             AnnotatedString("回复 ") + mention("@北窗", "0") + AnnotatedString(":早"),
             AnnotatedString("回复 ") + mention("@北窗", "bad") + AnnotatedString(":早"),
+            AnnotatedString("回复 北") + mention("窗") + AnnotatedString(":早"),
+            buildAnnotatedString {
+                append("回复 ")
+                pushStringAnnotation("url", "https://example.org/")
+                append("北窗")
+                pop()
+                append("：早")
+            },
         )
-        messages.forEach { assertNull(it.splitDirectedReply()) }
+        messages.forEach { assertNull(it.text, it.splitDirectedReply()) }
     }
 
     @Test

@@ -55,6 +55,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.HotTopicListPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
@@ -77,10 +78,12 @@ fun HotPage(
         viewModel.send(HotUiIntent.Load)
         viewModel.initialized = true
     }
-    onGlobalEvent<GlobalEvent.Refresh>(
-        filter = { it.key == "hot" }
-    ) {
-        viewModel.send(HotUiIntent.Load)
+    if (LocalShouldLoad.current) {
+        onGlobalEvent<GlobalEvent.Refresh>(
+            filter = { it.key == "hot" }
+        ) {
+            viewModel.send(HotUiIntent.Load)
+        }
     }
     val navigator = LocalNavigator.current
     val isLoading by viewModel.uiState.collectPartialAsState(HotUiState::isRefreshing)

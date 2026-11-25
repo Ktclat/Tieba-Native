@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Base.AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Base.AppTheme" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="android:forceDarkAllowed">false</item>
         <item name="windowActionModeOverlay">true</item>
         <item name="android:windowActionModeOverlay">true</item>
@@ -14,7 +14,7 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
-    <style name="Base.AppTheme.Dark" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="Base.AppTheme.Dark" parent="Theme.Material3Expressive.Dark.NoActionBar">
         <item name="android:forceDarkAllowed">false</item>
         <item name="windowActionModeOverlay">true</item>
         <item name="android:windowActionModeOverlay">true</item>

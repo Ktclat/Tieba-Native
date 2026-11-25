@@ -57,11 +57,9 @@ import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity.Companion.EXTRA_PHOTO_VIEW_DATA
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.NetworkUtil
-import com.huanchengfly.tieba.post.utils.appPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 
-fun shouldLoadImage(context: Context, skipNetworkCheck: Boolean): Boolean {
-    val imageLoadSettings =
-        context.appPreferences.imageLoadType?.toIntOrNull() ?: ImageUtil.SETTINGS_SMART_ORIGIN
+private fun shouldLoadImage(context: Context, skipNetworkCheck: Boolean, imageLoadSettings: Int): Boolean {
     return skipNetworkCheck
             || imageLoadSettings == ImageUtil.SETTINGS_SMART_ORIGIN
             || imageLoadSettings == ImageUtil.SETTINGS_ALL_ORIGIN
@@ -232,13 +230,18 @@ fun NetworkImage(
 ) {
     val context = LocalContext.current
 
-    var shouldLoad by remember { mutableStateOf(shouldLoadImage(context, skipNetworkCheck)) }
+    val preferences = LocalDisplayPreferences.current
+    var shouldLoad by remember(imageUri, skipNetworkCheck, preferences.imageLoadType) {
+        mutableStateOf(shouldLoadImage(context, skipNetworkCheck, preferences.imageLoadType))
+    }
     val enableClick = remember(photoViewData, shouldLoad) { photoViewData != null || !shouldLoad }
 
-    val colorMask =
-        if (ExtendedTheme.colors.isNightMode && context.appPreferences.imageDarkenWhenNightMode) {
+    val darken = ExtendedTheme.colors.isNightMode && preferences.darkenImages
+    val colorMask = remember(darken) {
+        if (darken) {
             MaskTransformation(Color.parseColor("#99000000"))
         } else null
+    }
 
     var layoutSize by remember { mutableStateOf(IntSize.Zero) }
 

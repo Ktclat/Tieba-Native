@@ -27,12 +27,11 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideTextStyle
 import androidx.compose.material.Text
 import androidx.compose.material3.TopAppBar as M3TopAppBar
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.MaterialTheme as Material3Theme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideMaterial3Content
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -241,13 +240,11 @@ fun TitleCentredToolbar(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    ProvideTextStyle(Material3Theme.typography.titleLarge) {
-                        ProvideContentColor(ExtendedTheme.colors.onTopBar) { title() }
-                    }
+                    ProvideMaterial3Content(title)
                 },
-                navigationIcon = { navigationIcon?.invoke() },
-                actions = { actions() },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                navigationIcon = { ProvideMaterial3Content { navigationIcon?.invoke() } },
+                actions = { ProvideMaterial3Content { actions() } },
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = ExtendedTheme.colors.topBar,
                     titleContentColor = ExtendedTheme.colors.onTopBar,
                     navigationIconContentColor = ExtendedTheme.colors.onTopBar,
@@ -292,23 +289,9 @@ fun Toolbar(
     TopAppBarContainer(
         topBar = {
             M3TopAppBar(
-                title = {
-                    ProvideTextStyle(value = Material3Theme.typography.titleLarge) {
-                        ProvideContentColor(color = contentColor, content = title)
-                    }
-                },
-                actions = {
-                    ProvideContentColor(color = contentColor) {
-                        actions()
-                    }
-                },
-                navigationIcon = {
-                    if (navigationIcon != null) {
-                        ProvideContentColor(color = contentColor) {
-                            navigationIcon()
-                        }
-                    }
-                },
+                title = { ProvideMaterial3Content(title) },
+                actions = { ProvideMaterial3Content { actions() } },
+                navigationIcon = { ProvideMaterial3Content { navigationIcon?.invoke() } },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = backgroundColor,
                     titleContentColor = contentColor,
