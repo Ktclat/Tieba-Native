@@ -38,12 +38,17 @@ internal fun cookieForLoginReturn(url: String?, read: (String) -> String?): Stri
     val current = sessions.firstOrNull() ?: return null
     if (current.sToken.isNotEmpty()) return current.cookie
     val sameAccount = sessions.firstOrNull { it.bduss == current.bduss && it.sToken.isNotEmpty() } ?: return current.cookie
-    val header = current.cookie.split(';').filterNot { it.substringBefore('=').trim().equals("STOKEN", true) }
-    return header.joinToString(";") + "; STOKEN=" + sameAccount.sToken
+    return current.withUpdatedToken(sameAccount).cookie
 }
 
 // A normal class deliberately does not print the web session in toString().
 internal class LoginSession private constructor(val bduss: String, val sToken: String, val cookie: String) {
+    fun withUpdatedToken(newer: LoginSession): LoginSession {
+        if (newer.bduss != bduss || newer.sToken.isBlank() || newer.sToken == sToken) return this
+        val parts = cookie.split(';').filterNot { it.substringBefore('=').trim().equals("STOKEN", true) }
+        return LoginSession(bduss, newer.sToken, parts.joinToString(";") + "; STOKEN=" + newer.sToken)
+    }
+
     companion object {
         fun from(header: String?): LoginSession? {
             if (header.isNullOrBlank()) return null
@@ -80,9 +85,13 @@ internal class LoginFlowController(
     private var closed = false
 
     fun onReturn(url: String?, cookie: String?) {
-        if (closed || !isLoginReturnUrl(url) || stage == LoginStage.Verifying || stage == LoginStage.Complete ||
-            stage == LoginStage.VerificationFailed) return
+        if (closed || !isLoginReturnUrl(url) || stage == LoginStage.Complete) return
         val session = LoginSession.from(cookie)
+        if (stage == LoginStage.Verifying || stage == LoginStage.VerificationFailed) {
+            // Passport may finish writing STOKEN after the first request. Only an explicit retry uses it.
+            if (session != null) returned = returned?.withUpdatedToken(session)
+            return
+        }
         if (session == null && stage == LoginStage.PageFailed) return
         returned = session
         when {
@@ -137,6 +146,38 @@ internal class LoginFlowController(
                 throw cancel
             } catch (_: Exception) {
                 if (!closed) stage = LoginStage.VerificationFailed
+            }
+        }
+    }
+}
+
+internal suspend fun clearLoginCookies(
+    read: (String) -> String?,
+    expire: suspend (url: String, cookie: String) -> Unit,
+) {
+    val pages = returnHosts.flatMap { host -> returnPaths.map { path -> URI("https://$host$path") } } +
+        listOf(URI(LOGIN_URL), URI(ALTERNATIVE_LOGIN_URL))
+    val authorizedNames = setOf("BDUSS", "STOKEN", "BDUSS_BFESS", "STOKEN_BFESS")
+    for ((host, urls) in pages.groupBy { it.host }) {
+        // CookieManager exposes names and values only. Every matching Cookie Path is a directory
+        // prefix or the complete path, and a trailing slash identifies a different stored cookie.
+        val paths = mutableSetOf("/")
+        for (url in urls) {
+            var prefix = ""
+            for (segment in url.path.split('/').filter { it.isNotEmpty() }) {
+                prefix += "/$segment"
+                paths.add(prefix)
+                paths.add("$prefix/")
+            }
+        }
+        for (path in paths) {
+            val url = "https://$host$path"
+            val names = read(url).orEmpty().split(';').map { it.substringBefore('=').trim() }.distinct()
+            for (name in names.filter { it.uppercase() in authorizedNames }) {
+                val deletion = "$name=; Path=$path; Max-Age=0; Secure; HttpOnly"
+                expire(url, deletion)
+                expire(url, "$deletion; Domain=$host")
+                expire(url, "$deletion; Domain=baidu.com")
             }
         }
     }

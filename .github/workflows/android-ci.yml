@@ -157,10 +157,22 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_5
+          # Use SwiftShader GLES for WebView on a headless runner without a Vulkan GPU.
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
             python3 tools/capture_android_ui.py review-apk/*.apk build/reports/device-screenshots
             python3 tools/profile_android_ui.py review-apk/*.apk build/reports/device-frames --baseline-dir baseline-apk --baseline-sha "${{ steps.baseline.outputs.sha }}" --candidate-sha "${{ github.event.pull_request.head.sha || github.sha }}" --reset-emulator-app-data
+      - name: Record host diagnostics if the emulator exits
+        if: failure()
+        run: |
+          mkdir -p build/reports/device-screenshots
+          {
+            free -h
+            df -h "$RUNNER_TEMP"
+            if [[ -r /sys/fs/cgroup/memory.events ]]; then cat /sys/fs/cgroup/memory.events; fi
+            sudo journalctl -k --since '35 minutes ago' --no-pager | grep -Ei 'out of memory|oom-kill|killed process|qemu|emulator|segfault' || true
+          } > build/reports/device-screenshots/runner-health.txt
       - name: Upload emulator screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v6

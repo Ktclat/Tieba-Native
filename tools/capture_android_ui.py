@@ -129,6 +129,13 @@ def capture(output, name, label):
     print(f"Captured {name}", flush=True)
 
 
+def save_diagnostic(output, name, *command):
+    try:
+        (output / name).write_bytes(adb(*command, timeout=5))
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"Could not capture {name} ({type(error).__name__})", flush=True)
+
+
 def restart_home():
     adb("shell", "am", "force-stop", PACKAGE)
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
@@ -151,7 +158,15 @@ def disconnect_emulator():
 
 def review_guest_login(output):
     tap("去登录")
-    find_label("登录百度账号")
+
+    def login_page(tree):
+        if next(labelled_nodes(tree, "登录百度账号"), None) is not None:
+            return tree
+        return None
+
+    tree = wait_for_match("the login title", login_page)
+    (output / "login-entry.xml").write_bytes(ElementTree.tostring(tree, encoding="utf-8"))
+    save_diagnostic(output, "login-entry.png", "exec-out", "screencap", "-p")
     find_label("无法打开百度登录页")
     tap("重试")
     capture(output, "01a-login-offline", "无法打开百度登录页")
@@ -319,13 +334,7 @@ if __name__ == "__main__":
     try:
         run(args.apk, args.output)
     except Exception:
-        args.output.mkdir(parents=True, exist_ok=True)
-        for name, command in {
-            "failure.png": ["exec-out", "screencap", "-p"],
-            "last-window.xml": ["exec-out", "cat", "/sdcard/window.xml"],
-            "crashes.txt": ["logcat", "-b", "crash", "-d", "-t", "300"],
-        }.items():
-            result = subprocess.run(["adb", *command], capture_output=True, timeout=30)
-            if result.returncode == 0:
-                (args.output / name).write_bytes(result.stdout)
+        save_diagnostic(args.output, "failure.png", "exec-out", "screencap", "-p")
+        save_diagnostic(args.output, "last-window.xml", "exec-out", "cat", "/sdcard/window.xml")
+        save_diagnostic(args.output, "crashes.txt", "logcat", "-b", "crash", "-d", "-t", "300", "-s", "AndroidRuntime:E")
         raise

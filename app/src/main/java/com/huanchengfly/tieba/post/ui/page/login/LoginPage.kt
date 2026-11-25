@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,7 +85,18 @@ internal class LoginPageViewModel : ViewModel() {
             // Device metadata is optional after the account has been verified and selected.
             runCatching { ClientUtils.saveBaiduId(App.INSTANCE, baiduId) }
         }
-    }.also { it.restartWith(currentLoginCookies()) }
+    }
+    val network = LoginNetwork { isLoginDefinitelyOffline(App.INSTANCE) }
+    private var initialized = false
+
+    fun prepareBrowser() {
+        if (!initialized) restartBrowser(currentLoginCookies())
+    }
+
+    fun restartBrowser(previous: List<String>) {
+        flow.restartWith(previous)
+        initialized = true
+    }
 }
 
 private class LoginBrowser(var restored: Bundle? = null) {
@@ -92,6 +104,17 @@ private class LoginBrowser(var restored: Bundle? = null) {
     var host by mutableStateOf("")
     var progress by mutableIntStateOf(0)
     var canGoBack by mutableStateOf(false)
+    var attempt by mutableIntStateOf(0)
+        private set
+
+    fun startNewPage() {
+        restored = null
+        view = null
+        host = ""
+        progress = 0
+        canGoBack = false
+        attempt++
+    }
 
     companion object {
         val saver = Saver<LoginBrowser, Bundle>(
@@ -107,26 +130,65 @@ fun LoginPage(navigator: DestinationsNavigator) {
     val model = viewModel<LoginPageViewModel>()
     val flow = model.flow
     val browser = rememberSaveable(saver = LoginBrowser.saver) { LoginBrowser() }
+    val network = remember(model) { model.network.apply { enter() } }
     var alternate by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var switching by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val owner = LocalLifecycleOwner.current
     val entry = if (alternate) ALTERNATIVE_LOGIN_URL else LOGIN_URL
-    val stage = flow.stage
+    val stage = if (network.pending != null && flow.stage != LoginStage.Complete) LoginStage.PageFailed else flow.stage
 
     fun returnIfReady(url: String?, finished: Boolean): Boolean {
         if (!isLoginReturnUrl(url)) return false
+        if (network.pending != null) return true
+        if (flow.stage !in setOf(LoginStage.Verifying, LoginStage.Complete, LoginStage.VerificationFailed) &&
+            !network.allow(LoginAttempt.CheckSession)) return true
         val cookie = cookieForLoginReturn(url, CookieManager.getInstance()::getCookie)
         if (cookie != null || finished) flow.onReturn(url, cookie)
         return cookie != null
     }
 
-    fun reopen(switchProvider: Boolean = false) {
-        val previousCookies = currentLoginCookies()
-        if (switchProvider) alternate = !alternate
-        flow.restartWith(previousCookies)
-        browser.view?.loadUrl(if (alternate) ALTERNATIVE_LOGIN_URL else LOGIN_URL)
+    fun request(attempt: LoginAttempt) {
+        if (!network.allow(attempt)) return
+        when (attempt) {
+            LoginAttempt.Resume -> {
+                if (flow.stage == LoginStage.PageFailed) {
+                    model.restartBrowser(currentLoginCookies())
+                    browser.startNewPage()
+                } else {
+                    // A restored view may already be on the official callback. A fresh view checks on navigation.
+                    browser.view?.let { returnIfReady(it.url, false) }
+                }
+            }
+            LoginAttempt.OpenPage -> {
+                model.restartBrowser(currentLoginCookies())
+                browser.startNewPage()
+            }
+            LoginAttempt.CheckSession -> {
+                // After rotation the factory restores the browser first and its normal callbacks check this URL.
+                browser.view?.let { returnIfReady(it.url, true) }
+            }
+            LoginAttempt.Verify -> {
+                returnIfReady(browser.view?.url, false)
+                flow.retryVerification()
+            }
+            LoginAttempt.Confirm -> flow.confirmExisting()
+            LoginAttempt.ChangeAccount -> {
+                if (!switching) {
+                    switching = true
+                    val previous = currentLoginCookies()
+                    scope.launch {
+                        try {
+                            clearWebSignInSession()
+                            model.restartBrowser(previous)
+                            network.allow(LoginAttempt.Resume)
+                            browser.startNewPage()
+                        } finally { switching = false }
+                    }
+                }
+            }
+        }
     }
 
     fun close() {
@@ -140,7 +202,8 @@ fun LoginPage(navigator: DestinationsNavigator) {
                 Lifecycle.Event.ON_PAUSE -> browser.view?.onPause()
                 Lifecycle.Event.ON_RESUME -> browser.view?.let { web ->
                     web.onResume()
-                    returnIfReady(web.url, false)
+                    if (isLoginReturnUrl(web.url)) returnIfReady(web.url, false)
+                    else if (flow.stage == LoginStage.Browsing) network.enter()
                 }
                 else -> Unit
             }
@@ -174,16 +237,21 @@ fun LoginPage(navigator: DestinationsNavigator) {
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(text = { Text(stringResource(if (alternate) R.string.login_mobile_page else R.string.login_alternative_page)) },
-                            onClick = { menuOpen = false; reopen(switchProvider = true) })
+                            onClick = { menuOpen = false; alternate = !alternate; request(LoginAttempt.OpenPage) })
                         DropdownMenuItem(text = { Text(stringResource(R.string.title_refresh)) },
-                            onClick = { menuOpen = false; reopen() })
+                            onClick = { menuOpen = false; request(LoginAttempt.OpenPage) })
                     }
                 }
             },
         )
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            OfficialLoginBrowser(browser, entry, flow, ::returnIfReady)
+            // An already mounted login page may receive the real redirect after a temporary network loss.
+            if (network.pending == null || browser.view != null) {
+                key(browser.attempt) {
+                    OfficialLoginBrowser(browser, entry, stage == LoginStage.Browsing, model::prepareBrowser, flow, ::returnIfReady)
+                }
+            }
             if (stage == LoginStage.Browsing && browser.progress in 1..99) {
                 LinearProgressIndicator(progress = { browser.progress / 100f }, modifier = Modifier.fillMaxWidth())
             }
@@ -201,30 +269,29 @@ fun LoginPage(navigator: DestinationsNavigator) {
                             else -> R.string.login_verifying
                         }
                         Text(stringResource(title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                        if (stage == LoginStage.PageFailed && network.pending != null) {
+                            Text(
+                                stringResource(R.string.login_network_offline_hint),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                         when (stage) {
                             LoginStage.Verifying, LoginStage.Complete -> CircularProgressIndicator()
-                            LoginStage.PageFailed -> Button(onClick = { reopen() }) { Text(stringResource(R.string.button_retry)) }
+                            LoginStage.PageFailed -> Button(onClick = {
+                                request(network.pending ?: LoginAttempt.OpenPage)
+                            }) { Text(stringResource(R.string.button_retry)) }
                             LoginStage.VerificationFailed -> {
-                                Button(onClick = flow::retryVerification) { Text(stringResource(R.string.button_retry)) }
-                                TextButton(onClick = { reopen() }) { Text(stringResource(R.string.login_restart)) }
+                                Button(onClick = { request(LoginAttempt.Verify) }) { Text(stringResource(R.string.button_retry)) }
+                                TextButton(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
                             }
                             LoginStage.MissingSession -> {
-                                Button(onClick = { reopen() }) { Text(stringResource(R.string.login_restart)) }
-                                TextButton(onClick = { returnIfReady(browser.view?.url, true) }) { Text(stringResource(R.string.login_check_again)) }
+                                Button(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
+                                TextButton(onClick = { request(LoginAttempt.CheckSession) }) { Text(stringResource(R.string.login_check_again)) }
                             }
                             LoginStage.ExistingSession -> {
-                                Button(onClick = flow::confirmExisting, enabled = !switching) { Text(stringResource(R.string.login_use_current)) }
-                                TextButton(enabled = !switching, onClick = {
-                                    switching = true
-                                    val previous = currentLoginCookies()
-                                    scope.launch {
-                                        try {
-                                            clearWebSignInSession()
-                                            flow.restartWith(previous)
-                                            browser.view?.loadUrl(entry)
-                                        } finally { switching = false }
-                                    }
-                                }) { Text(stringResource(R.string.login_other_account)) }
+                                Button(onClick = { request(LoginAttempt.Confirm) }, enabled = !switching) { Text(stringResource(R.string.login_use_current)) }
+                                TextButton(enabled = !switching, onClick = { request(LoginAttempt.ChangeAccount) }) { Text(stringResource(R.string.login_other_account)) }
                             }
                             else -> Unit
                         }
@@ -237,16 +304,23 @@ fun LoginPage(navigator: DestinationsNavigator) {
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun OfficialLoginBrowser(browser: LoginBrowser, entry: String, flow: LoginFlowController, onReturn: (String?, Boolean) -> Boolean) {
+private fun OfficialLoginBrowser(
+    browser: LoginBrowser,
+    entry: String,
+    visible: Boolean,
+    beforeCreate: () -> Unit,
+    flow: LoginFlowController,
+    onReturn: (String?, Boolean) -> Boolean,
+) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         update = { view ->
-            val visible = flow.stage == LoginStage.Browsing
             view.visibility = if (visible) View.VISIBLE else View.INVISIBLE
             view.importantForAccessibility = if (visible) View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
                 else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         },
         factory = { context ->
+            beforeCreate()
             WebView(context).apply {
                 browser.view = this
                 settings.apply {
@@ -261,23 +335,28 @@ private fun OfficialLoginBrowser(browser: LoginBrowser, entry: String, flow: Log
                     loadWithOverviewMode = true
                 }
                 webChromeClient = object : WebChromeClient() {
-                    override fun onProgressChanged(view: WebView, newProgress: Int) { browser.progress = newProgress }
+                    override fun onProgressChanged(view: WebView, newProgress: Int) {
+                        if (browser.view === view) browser.progress = newProgress
+                    }
                 }
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                        if (browser.view !== view) return
                         browser.host = url?.let { Uri.parse(it).host }.orEmpty()
                         browser.progress = 0
-                        if (browser.view === view) onReturn(url, false)
+                        onReturn(url, false)
                     }
 
                     override fun onPageFinished(view: WebView, url: String?) {
+                        if (browser.view !== view) return
                         browser.canGoBack = view.canGoBack()
-                        if (browser.view === view && view.url == url) onReturn(url, true)
+                        if (view.url == url) onReturn(url, true)
                     }
 
                     override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                        if (browser.view !== view) return
                         browser.canGoBack = view.canGoBack()
-                        if (browser.view === view) onReturn(url, false)
+                        onReturn(url, false)
                     }
 
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -301,7 +380,7 @@ private fun OfficialLoginBrowser(browser: LoginBrowser, entry: String, flow: Log
             }
         },
         onRelease = { view ->
-            browser.view = null
+            if (browser.view === view) browser.view = null
             view.stopLoading()
             view.webViewClient = WebViewClient()
             view.webChromeClient = null
@@ -326,13 +405,10 @@ private fun openLoginApp(context: Context, url: Uri) {
 // Run only when the user selects “切换百度账号”. Keep other websites and saved native accounts intact.
 private suspend fun clearWebSignInSession() {
     val jar = CookieManager.getInstance()
-    for (name in listOf("BDUSS", "STOKEN", "BDUSS_BFESS", "STOKEN_BFESS")) {
-        for (host in listOf("tieba.baidu.com", "tiebac.baidu.com", "wappass.baidu.com", "passport.baidu.com", "baidu.com")) {
-            val domain = if (host == "baidu.com") "; Domain=.baidu.com" else ""
-            suspendCancellableCoroutine { continuation ->
-                jar.setCookie("https://$host/", "$name=; Path=/; Max-Age=0; Secure$domain") {
-                    if (continuation.isActive) continuation.resume(Unit)
-                }
+    clearLoginCookies(jar::getCookie) { url, cookie ->
+        suspendCancellableCoroutine { continuation ->
+            jar.setCookie(url, cookie) {
+                if (continuation.isActive) continuation.resume(Unit)
             }
         }
     }
