@@ -83,30 +83,12 @@ fun HotPage(
         viewModel.send(HotUiIntent.Load)
     }
     val navigator = LocalNavigator.current
-    val isLoading by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::isRefreshing,
-        initial = false
-    )
-    val topicList by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::topicList,
-        initial = emptyList()
-    )
-    val threadList by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::threadList,
-        initial = emptyList()
-    )
-    val tabList by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::tabList,
-        initial = emptyList()
-    )
-    val currentTabCode by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::currentTabCode,
-        initial = "all"
-    )
-    val isLoadingThreadList by viewModel.uiState.collectPartialAsState(
-        prop1 = HotUiState::isLoadingThreadList,
-        initial = false
-    )
+    val isLoading by viewModel.uiState.collectPartialAsState(HotUiState::isRefreshing)
+    val topicList by viewModel.uiState.collectPartialAsState(HotUiState::topicList)
+    val threadList by viewModel.uiState.collectPartialAsState(HotUiState::threadList)
+    val tabList by viewModel.uiState.collectPartialAsState(HotUiState::tabList)
+    val currentTabCode by viewModel.uiState.collectPartialAsState(HotUiState::currentTabCode)
+    val isLoadingThreadList by viewModel.uiState.collectPartialAsState(HotUiState::isLoadingThreadList)
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoading,
         onRefresh = { viewModel.send(HotUiIntent.Load) })

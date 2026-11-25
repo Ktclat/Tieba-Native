@@ -67,11 +67,14 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.max
-import kotlin.math.min
 
 private val CapsuleHeight = 64.dp
 private val CapsuleVerticalMargin = 5.dp
+
+private class IndicatorDrag(start: Float) {
+    var position by mutableStateOf<Float?>(start)
+    var released by mutableStateOf(false)
+}
 
 @Composable
 internal fun FloatingNavigationBarSlot(
@@ -114,8 +117,7 @@ internal fun FloatingNavigationBarSlot(
 @Composable
 fun FloatingBottomNavigation(
     currentPosition: Int,
-    onChangePosition: (Int) -> Unit,
-    onReselected: (Int) -> Unit,
+    onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
     modifier: Modifier = Modifier,
     themeColors: ExtendedColors = ExtendedTheme.colors,
@@ -129,34 +131,34 @@ fun FloatingBottomNavigation(
     // invalidate their positions. Slower trailing edge gives a jelly response.
     val leadingEdge = remember { Animatable(selectedIndex.toFloat()) }
     val trailingEdge = remember { Animatable(selectedIndex + 1f) }
-    var dragPosition by remember { mutableStateOf<Float?>(null) }
-    var dragging by remember { mutableStateOf(false) }
+    var gesture by remember { mutableStateOf<IndicatorDrag?>(null) }
+    val drag = gesture
+    val dragging = drag != null && !drag.released
     val selectTab by rememberUpdatedState(newValue = { index: Int ->
-        if (index == selectedIndex) onReselected(index) else onChangePosition(index)
+        onSelect(index)
         navigationItems[index].onClick?.invoke()
     })
-    val releasedPosition = if (dragging) null else dragPosition
-    LaunchedEffect(selectedIndex, navigationItems.size, dragging, releasedPosition) {
+    LaunchedEffect(selectedIndex, navigationItems.size, drag, dragging) {
         if (dragging) return@LaunchedEffect
-        if (releasedPosition != null) {
-            // Continue the selection spring from the finger's release point.
-            leadingEdge.snapTo(releasedPosition)
-            trailingEdge.snapTo(releasedPosition + 1f)
-            dragPosition = null
-            return@LaunchedEffect
+        drag?.position?.let { release ->
+            val start = release.coerceIn(0f, navigationItems.lastIndex.toFloat())
+            leadingEdge.snapTo(start)
+            trailingEdge.snapTo(start + 1f)
+            drag.position = null
         }
-        val forward = selectedIndex > leadingEdge.value
+
+        val forward = selectedIndex + 0.5f > (leadingEdge.value + trailingEdge.value) / 2f
         coroutineScope {
             launch {
                 leadingEdge.animateTo(
                     selectedIndex.toFloat(),
-                    spring(dampingRatio = 0.62f, stiffness = if (forward) 180f else 335f),
+                    spring(dampingRatio = 0.85f, stiffness = if (forward) 590f else 850f),
                 )
             }
             launch {
                 trailingEdge.animateTo(
                     selectedIndex + 1f,
-                    spring(dampingRatio = 0.56f, stiffness = if (forward) 335f else 180f),
+                    spring(dampingRatio = 0.85f, stiffness = if (forward) 850f else 590f),
                 )
             }
         }
@@ -190,10 +192,12 @@ fun FloatingBottomNavigation(
                     .width((tabWidth - 4.dp).coerceAtLeast(0.dp))
                     .fillMaxHeight()
                     .graphicsLayer {
-                        val leading = dragPosition ?: min(leadingEdge.value, trailingEdge.value)
-                        val trailing = dragPosition?.plus(1f) ?: max(leadingEdge.value, trailingEdge.value)
-                        val targetWidth = ((trailing - leading) * widthPx - 2f * inset)
-                            .coerceAtLeast(widthPx * 0.45f)
+                        val position = drag?.position
+                        val start = position ?: leadingEdge.value
+                        val end = position?.plus(1f) ?: trailingEdge.value
+                        val span = (end - start).coerceIn(0.78f, minOf(1.4f, navigationItems.size.toFloat()))
+                        val leading = ((start + end - span) / 2f).coerceIn(0f, navigationItems.size - span)
+                        val targetWidth = (span * widthPx - 2f * inset).coerceAtLeast(0f)
                         translationX = direction * (leading * widthPx + inset)
                         scaleX = if (size.width > 0f) targetWidth / size.width else 1f
                         transformOrigin = TransformOrigin(if (rtl) 1f else 0f, 0.5f)
@@ -224,19 +228,20 @@ fun FloatingBottomNavigation(
                     val dragGesture = if (selected && widthPx > 0f) {
                         Modifier.pointerInput(selectedIndex, widthPx, navigationItems.size, rtl) {
                             var logicalDragPx = 0f
+                            var pointerDrag: IndicatorDrag? = null
                             try {
                                 detectHorizontalDragGestures(
                                     onDragStart = {
                                         logicalDragPx = 0f
-                                        dragPosition = selectedIndex.toFloat()
-                                        dragging = true
+                                        pointerDrag = IndicatorDrag(selectedIndex.toFloat())
+                                        gesture = pointerDrag
                                     },
-                                    onDragCancel = { dragging = false },
+                                    onDragCancel = { pointerDrag?.released = true },
                                     onDragEnd = {
                                         val target = resolveNavigationDragTarget(
                                             selectedIndex, logicalDragPx, widthPx, navigationItems.size
                                         )
-                                        dragging = false
+                                        pointerDrag?.released = true
                                         if (target != selectedIndex) selectTab(target)
                                     },
                                     onHorizontalDrag = { change, delta ->
@@ -245,11 +250,11 @@ fun FloatingBottomNavigation(
                                             -selectedIndex * widthPx,
                                             (navigationItems.lastIndex - selectedIndex) * widthPx,
                                         )
-                                        dragPosition = selectedIndex + logicalDragPx / widthPx
+                                        pointerDrag?.position = selectedIndex + logicalDragPx / widthPx
                                     }
                                 )
                             } finally {
-                                dragging = false
+                                pointerDrag?.released = true
                             }
                         }
                     } else Modifier

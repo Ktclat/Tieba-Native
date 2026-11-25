@@ -14,17 +14,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,7 +49,8 @@ import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.rememberPreferenceAsState
+import com.huanchengfly.tieba.post.collectPreferenceAsState
+import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowHeightSizeClass
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
@@ -70,13 +70,11 @@ import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.launch
 
 @Composable
 private fun NavigationWrapper(
     currentPosition: Int,
-    onChangePosition: (position: Int) -> Unit,
-    onReselected: (position: Int) -> Unit,
+    onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
     navigationType: MainNavigationType,
     navigationContentPosition: MainNavigationContentPosition,
@@ -86,8 +84,7 @@ private fun NavigationWrapper(
         AnimatedVisibility(visible = navigationType == MainNavigationType.PERMANENT_NAVIGATION_DRAWER) {
             NavigationDrawerContent(
                 currentPosition = currentPosition,
-                onChangePosition = onChangePosition,
-                onReselected = onReselected,
+                onSelect = onSelect,
                 navigationItems = navigationItems,
                 navigationContentPosition = navigationContentPosition
             )
@@ -95,8 +92,7 @@ private fun NavigationWrapper(
         AnimatedVisibility(visible = navigationType == MainNavigationType.NAVIGATION_RAIL) {
             NavigationRail(
                 currentPosition = currentPosition,
-                onChangePosition = onChangePosition,
-                onReselected = onReselected,
+                onSelect = onSelect,
                 navigationItems = navigationItems,
                 navigationContentPosition = navigationContentPosition
             )
@@ -106,6 +102,16 @@ private fun NavigationWrapper(
             .fillMaxHeight()) {
             content()
         }
+    }
+}
+
+internal fun PagerState.selectMainTab(index: Int, onReselected: (Int) -> Unit) {
+    if (index !in 0 until pageCount) return
+    if (index == currentPage && !isScrollInProgress) {
+        onReselected(index)
+    } else {
+        // Set the page during the tap and let the next layout measure its content.
+        requestScrollToPage(index)
     }
 }
 
@@ -122,10 +128,7 @@ fun MainPage(
     val windowWidthSizeClass by rememberUpdatedState(newValue = windowSizeClass.widthSizeClass)
     val foldingDevicePosture by LocalDevicePosture.current
 
-    val messageCount by viewModel.uiState.collectPartialAsState(
-        prop1 = MainUiState::messageCount,
-        initial = 0
-    )
+    val messageCount by viewModel.uiState.collectPartialAsState(MainUiState::messageCount)
 
     val notificationCountFlow = LocalNotificationCountFlow.current
     LaunchedEffect(null) {
@@ -134,9 +137,12 @@ fun MainPage(
         }
     }
 
-    val hideExplore by rememberPreferenceAsState(
+    val context = LocalContext.current
+    val hideExplore by context.dataStore.collectPreferenceAsState(
         key = booleanPreferencesKey("hideExplore"),
-        defaultValue = LocalContext.current.appPreferences.hideExplore
+        defaultValue = false,
+        // Restore the correct tab indices on the first layout, including after process death.
+        initialValue = remember(context) { context.appPreferences.hideExplore },
     )
     val pageCount by remember {
         derivedStateOf {
@@ -146,7 +152,7 @@ fun MainPage(
     val pagerState = rememberPagerState { pageCount }
     LaunchedEffect(hideExplore) {
         if (pagerState.currentPage == 3 && hideExplore) {
-            pagerState.scrollToPage(2)
+            pagerState.requestScrollToPage(2)
         }
     }
 
@@ -161,11 +167,9 @@ fun MainPage(
                     title = { stringResource(id = R.string.title_main) },
                     content = {
                         HomePage(
-                            canOpenExplore = !LocalContext.current.appPreferences.hideExplore
+                            canOpenExplore = !hideExplore
                         ) {
-                            coroutineScope.launch {
-                                pagerState.scrollToPage(1)
-                            }
+                            pagerState.requestScrollToPage(1)
                         }
                     }
                 ),
@@ -258,9 +262,9 @@ fun MainPage(
     }
     // Observes child scroll, consuming none of its distance.
     // The Scaffold bottom bar owns layout height, never overlays page content.
-    val navHideFraction = remember { mutableFloatStateOf(0f) }
+    val navHideFraction = remember(pagerState.currentPage, navigationType) { mutableFloatStateOf(0f) }
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
-    val navScrollObserver = remember(navigationType, navScrollRangePx) {
+    val navScrollObserver = remember(navigationType, navScrollRangePx, navHideFraction) {
         object : NestedScrollConnection {
             override fun onPostScroll(
                 consumed: Offset,
@@ -280,40 +284,20 @@ fun MainPage(
             }
         }
     }
-    LaunchedEffect(pagerState.currentPage, navigationType) {
-        navHideFraction.floatValue = 0f
-    }
-
-    // A very small page-scale overshoot accompanies the jelly indicator.
-    // graphicsLayer changes only presentation; list measurements stay stable.
-    val pageScale = remember { Animatable(1f) }
     val predictiveProgress = remember { Animatable(0f) }
-    val predictTabBack by rememberPreferenceAsState(
+    val predictTabBack by context.dataStore.collectPreferenceAsState(
         key = booleanPreferencesKey("enablePredictiveTabBack"),
         defaultValue = true,
     )
-    var lastAnimatedTab by remember { mutableIntStateOf(pagerState.currentPage) }
-    LaunchedEffect(pagerState.currentPage) {
-        if (lastAnimatedTab != pagerState.currentPage) {
-            lastAnimatedTab = pagerState.currentPage
-            pageScale.snapTo(0.974f)
-            pageScale.animateTo(
-                1f,
-                spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium)
-            )
+    val onSelect: (Int) -> Unit = { index ->
+        pagerState.selectMainTab(index) { current ->
+            coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(navigationItems[current].id))
         }
-    }
-
-    val onReselected: (Int) -> Unit = {
-        coroutineScope.emitGlobalEvent(
-            GlobalEvent.Refresh(navigationItems[it].id)
-        )
     }
     ProvideNavigator(navigator = navigator) {
         NavigationWrapper(
             currentPosition = pagerState.currentPage,
-            onChangePosition = { coroutineScope.launch { pagerState.scrollToPage(it) } },
-            onReselected = onReselected,
+            onSelect = onSelect,
             navigationItems = navigationItems,
             navigationType = navigationType,
             navigationContentPosition = navigationContentPosition
@@ -326,10 +310,7 @@ fun MainPage(
                         FloatingNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
                             FloatingBottomNavigation(
                                 currentPosition = pagerState.currentPage,
-                                onChangePosition = {
-                                    coroutineScope.launch { pagerState.scrollToPage(it) }
-                                },
-                                onReselected = onReselected,
+                                onSelect = onSelect,
                                 navigationItems = navigationItems,
                                 themeColors = themeColors,
                             )
@@ -344,8 +325,8 @@ fun MainPage(
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         // Layer-only updates avoid recomposition of the full tab content.
                         val preview = predictiveProgress.value
-                        scaleX = pageScale.value * (1f - preview * 0.055f)
-                        scaleY = pageScale.value * (1f - preview * 0.045f)
+                        scaleX = 1f - preview * 0.055f
+                        scaleY = 1f - preview * 0.045f
                         translationX = preview * 12.dp.toPx()
                     },
                     verticalAlignment = Alignment.Top,
@@ -374,7 +355,7 @@ fun MainPage(
         }
     }
     BackHandler(enabled = pagerState.currentPage != 0 && !predictTabBack) {
-        coroutineScope.launch { pagerState.scrollToPage(0) }
+        pagerState.requestScrollToPage(0)
     }
 }
 
