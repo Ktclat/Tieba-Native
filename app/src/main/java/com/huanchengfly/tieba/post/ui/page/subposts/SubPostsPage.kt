@@ -401,7 +401,7 @@ internal fun SubPostsContent(
                                                 forumName = forum?.get { name } ?: "",
                                                 threadId = threadId,
                                                 postId = parentId,
-                                                replyUserId = it.author?.id ?: it.author_id,
+                                                replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
                                                 replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                                                     ?: it.author?.name,
                                                 replyUserPortrait = it.author?.portrait,
@@ -451,7 +451,7 @@ internal fun SubPostsContent(
                                         threadId = threadId,
                                         postId = parentId,
                                         subPostId = it.id,
-                                        replyUserId = it.author?.id ?: it.author_id,
+                                        replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
                                         replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                                             ?: it.author?.name,
                                         replyUserPortrait = it.author?.portrait,

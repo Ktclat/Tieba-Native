@@ -456,6 +456,7 @@ internal fun ReplyPageContent(
         ) {
             IconButton(
                 onClick = { switchToPanel(EMOJI) },
+                enabled = !isReplying,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.EmojiEmotions,
@@ -466,6 +467,7 @@ internal fun ReplyPageContent(
             if (postId == null || postId == 0L) {
                 IconButton(
                     onClick = { switchToPanel(IMAGE) },
+                    enabled = !isReplying,
                 ) {
                     BadgedBox(
                         badge = {
@@ -507,6 +509,8 @@ internal fun ReplyPageContent(
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
+            } else if (failure != null) {
+                Button(onClick = ::submit, enabled = canSend) { Text(stringResource(R.string.reply_retry)) }
             } else {
                 FilledIconButton(
                     onClick = ::submit,
@@ -514,7 +518,7 @@ internal fun ReplyPageContent(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = stringResource(if (failure == null) R.string.send_reply else R.string.reply_retry),
+                        contentDescription = stringResource(R.string.send_reply),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -525,7 +529,7 @@ internal fun ReplyPageContent(
                 .fillMaxWidth()
                 .windowInsetsBottomHeight(WindowInsets.ime)
         )
-        if (curKeyboardType != NONE) {
+        if (!isReplying && curKeyboardType != NONE) {
             Column(modifier = Modifier.height(panelHeight)) {
                 when (curKeyboardType) {
                     EMOJI -> {

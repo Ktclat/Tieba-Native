@@ -784,7 +784,7 @@ fun ThreadPage(
                         forumName = forum?.get { name } ?: "",
                         threadId = threadId,
                         postId = it.id,
-                        replyUserId = it.author?.id ?: it.author_id,
+                        replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
                         replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                             ?: it.author?.name,
                         replyUserPortrait = it.author?.portrait,
@@ -799,7 +799,7 @@ fun ThreadPage(
                         threadId = threadId,
                         postId = post.id,
                         subPostId = subPost.id,
-                        replyUserId = subPost.author?.id ?: subPost.author_id,
+                        replyUserId = subPost.author?.id?.takeIf { id -> id > 0L } ?: subPost.author_id.takeIf { id -> id > 0L },
                         replyUserName = subPost.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                             ?: subPost.author?.name,
                         replyUserPortrait = subPost.author?.portrait,

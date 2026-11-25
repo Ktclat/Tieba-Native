@@ -160,7 +160,7 @@ class ReplyEditorTest {
             compose.captureReviewImage(view, if (dark) "reply-editor-dark.png" else "reply-editor-light.png")
             if (!dark) {
                 send.performClick()
-                val retry = compose.onNodeWithContentDescription(App.INSTANCE.getString(R.string.reply_retry))
+                val retry = compose.onNodeWithText(App.INSTANCE.getString(R.string.reply_retry))
                 retry.assertIsEnabled()
                 val text = "我也走过北岸这段。\n雨后记得穿防滑鞋。"
                 assertEquals(text, runBlocking { ReplyDrafts.read(target) })
