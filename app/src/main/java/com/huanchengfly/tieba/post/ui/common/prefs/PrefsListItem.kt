@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.ui.common.prefs
 
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -15,7 +14,6 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedTextSty
 
 /** Native M3 list rows; old preference keys and call signatures remain unchanged. */
 @Composable
-@ExperimentalMaterialApi
 fun PrefsListItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,

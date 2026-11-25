@@ -31,7 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.FloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.LinearProgressIndicator
@@ -625,8 +625,8 @@ fun ForumPage(
                                     }
                                 }
                             },
-                            backgroundColor = ExtendedTheme.colors.windowBackground,
-                            contentColor = ExtendedTheme.colors.primary,
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.navigationBarsPadding()
                         ) {
                             Icon(

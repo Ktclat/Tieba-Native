@@ -19,7 +19,6 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,7 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetValue
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material.SwipeableDefaults
 import androidx.compose.material.Text
 import androidx.compose.material.rememberModalBottomSheetState
@@ -375,8 +374,8 @@ class MainActivityV2 : BaseComposeActivity() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp),
-                    border = BorderStroke(1.dp, ExtendedTheme.colors.divider),
-                    shape = RoundedCornerShape(6.dp)
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = androidx.compose.material3.MaterialTheme.shapes.medium
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

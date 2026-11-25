@@ -2,20 +2,20 @@ package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import android.util.Log
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.huanchengfly.tieba.post.ui.common.prefs.LocalPrefsDataStore
 import com.huanchengfly.tieba.post.ui.common.prefs.roundToDP
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 //todo add decimal places as param?
@@ -36,7 +36,6 @@ import kotlinx.coroutines.launch
  * @param enabled If [enabled] is not true, this Pref cannot be checked/unchecked
  * @param leadingIcon Icon which is positioned at the start of the Pref
  */
-@ExperimentalMaterialApi
 @Composable
 fun SliderPref(
     key: String,
@@ -47,7 +46,7 @@ fun SliderPref(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     showValue: Boolean = false,
     steps: Int = 0,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null,
 ) {
@@ -56,29 +55,18 @@ fun SliderPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
+    val prefs by datastore.data.collectAsState(initial = null)
 
-    var value by remember { mutableStateOf(defaultValue) }
+    val saved = prefs?.get(selectionKey) ?: defaultValue
+    var value by remember(key, saved) { mutableFloatStateOf(saved) }
 
-    LaunchedEffect(Unit) {
-        prefs?.get(selectionKey)?.also { value = it }
-    }
-
-    LaunchedEffect(datastore.data) {
-        datastore.data.collectLatest { pref ->
-            pref[selectionKey]?.also {
-                value = it
-            }
-        }
-    }
-
-    fun edit() = run {
+    fun edit(newValue: Float) {
         scope.launch {
             try {
                 datastore.edit { preferences ->
-                    preferences[selectionKey] = value
+                    preferences[selectionKey] = newValue
                 }
-                onValueChangeFinished?.invoke(value)
+                onValueChangeFinished?.invoke(newValue)
             } catch (e: Exception) {
                 Log.e("SliderPref", "Could not write pref $key to database. ${e.printStackTrace()}")
             }
@@ -94,6 +82,7 @@ fun SliderPref(
             modifier = modifier,
             textColor = textColor,
             minimalHeight = true,
+            enabled = enabled,
             leadingIcon = leadingIcon,
         )
 
@@ -101,17 +90,17 @@ fun SliderPref(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
-        )
-        {
+        ) {
             Slider(
                 value = value,
                 onValueChange = { value = it },
                 modifier = Modifier
+                    .semantics { contentDescription = title }
                     .weight(2.1f)
                     .padding(start = 16.dp, end = 16.dp),
                 valueRange = valueRange,
                 steps = steps,
-                onValueChangeFinished = { edit() },
+                onValueChangeFinished = { edit(value) },
                 enabled = enabled
             )
 
@@ -125,8 +114,5 @@ fun SliderPref(
                 )
             }
         }
-
     }
-
-
 }

@@ -3,31 +3,22 @@ package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.toSize
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.huanchengfly.tieba.post.ui.common.prefs.LocalPrefsDataStore
 import com.huanchengfly.tieba.post.ui.common.prefs.ifNotNullThen
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -47,7 +38,6 @@ import kotlinx.coroutines.launch
  * @param enabled If false, this Pref cannot be clicked.
  */
 @ExperimentalComposeUiApi
-@ExperimentalMaterialApi
 @Composable
 fun EditTextPref(
     key: String,
@@ -59,8 +49,8 @@ fun EditTextPref(
     defaultValue: String = "",
     onValueSaved: ((String) -> Unit) = {},
     onValueChange: ((String) -> Unit) = {},
-    dialogBackgroundColor: Color = MaterialTheme.colors.background,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    dialogBackgroundColor: Color = MaterialTheme.colorScheme.surface,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     leadingIcon: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
 ) {
@@ -69,37 +59,17 @@ fun EditTextPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
+    val prefs by datastore.data.collectAsState(initial = null)
 
-    //value should only change when save button is clicked
-    var value by remember { mutableStateOf(defaultValue) }
-    //value of the TextField which changes every time the text is modified
-    var textVal by remember { mutableStateOf(value) }
+    val value = prefs?.get(selectionKey) ?: defaultValue
 
-    var dialogSize by remember { mutableStateOf(Size.Zero) }
-
-    // Set value initially if it exists in datastore
-    LaunchedEffect(Unit) {
-        prefs?.get(selectionKey)?.also {
-            value = it
-        }
-    }
-
-    LaunchedEffect(datastore.data) {
-        datastore.data.collectLatest { pref ->
-            pref[selectionKey]?.also {
-                value = it
-            }
-        }
-    }
-
-    fun edit() = run {
+    fun edit(valueToSave: String) {
         scope.launch {
             try {
                 datastore.edit { preferences ->
-                    preferences[selectionKey] = textVal
+                    preferences[selectionKey] = valueToSave
                 }
-                onValueSaved(textVal)
+                onValueSaved(valueToSave)
             } catch (e: Exception) {
                 Log.e(
                     "EditTextPref",
@@ -116,28 +86,18 @@ fun EditTextPref(
         textColor = textColor,
         enabled = enabled,
         leadingIcon = leadingIcon,
-        onClick = { if (enabled) dialogState.show() },
+        onClick = { dialogState.show() },
     )
 
-    if (dialogState.show) {
-        //reset
-        LaunchedEffect(null) {
-            textVal = value
-        }
-
+    if (dialogState.show && prefs != null) {
         PromptDialog(
             onConfirm = {
-                textVal = it
                 onValueChange(it)
-                edit()
-            },
-            modifier = Modifier.onGloballyPositioned {
-                dialogSize = it.size.toSize()
+                edit(it)
             },
             dialogState = dialogState,
-            initialValue = textVal,
+            initialValue = value,
             onValueChange = { newVal, _ ->
-                textVal = newVal
                 onValueChange(newVal)
                 true
             },
@@ -174,8 +134,7 @@ fun EditTextPref(
 //                            .padding(16.dp)
 //                            .weight(1f, fill = false),
 //                        onValueChange = {
-//                            textVal = it
-//                            onValueChange(it)
+//            //                            onValueChange(it)
 //                        }
 //                    )
 //
@@ -217,14 +176,14 @@ fun DialogHeader(dialogTitle: String?, dialogMessage: String?) {
         dialogTitle.ifNotNullThen {
             Text(
                 text = dialogTitle!!,
-                style = MaterialTheme.typography.h6
+                style = MaterialTheme.typography.titleLarge
             )
         }?.invoke()
 
         dialogMessage.ifNotNullThen {
             Text(
                 text = dialogMessage!!,
-                style = MaterialTheme.typography.subtitle1
+                style = MaterialTheme.typography.titleMedium
             )
         }?.invoke()
     }

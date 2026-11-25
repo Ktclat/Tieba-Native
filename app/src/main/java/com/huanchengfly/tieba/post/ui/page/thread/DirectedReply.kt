@@ -5,12 +5,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.common.LocalCommentLinkColor
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 
@@ -57,6 +59,7 @@ internal fun ReplyRecipient(reply: DirectedReply) {
     val label = stringResource(R.string.hint_reply, reply.recipient)
     val nameStart = label.lastIndexOf(reply.recipient)
     val userId = reply.userId
+    val nameColor = if (userId != null) LocalCommentLinkColor.current.takeOrElse { colors.primary } else colors.onSurface
     val modifier = if (userId != null) {
         val navigator = LocalNavigator.current
         Modifier.clickable(
@@ -68,7 +71,6 @@ internal fun ReplyRecipient(reply: DirectedReply) {
         text = buildAnnotatedString {
             append(label)
             if (nameStart >= 0) {
-                val nameColor = if (userId != null) colors.primary else colors.onSurface
                 addStyle(SpanStyle(color = nameColor), nameStart, nameStart + reply.recipient.length)
             }
         },

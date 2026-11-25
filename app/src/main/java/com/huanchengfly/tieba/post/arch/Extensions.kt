@@ -57,20 +57,19 @@ inline fun <reified T : UiState, A> StateFlow<T>.collectPartialAsState(
     prop1: KProperty1<T, A>,
 ): State<A> = key(this, prop1) {
     val projection = remember { mutableStateOf(prop1.get(value)) }
-    if (LocalMainTabActive.current) {
-        // Derived state in callers keeps this projection when a tab leaves the screen.
-        // Refresh its value during re-entry, before layout or the collector's first emission.
-        val activeProjection = remember {
-            projection.apply { this.value = prop1.get(this@collectPartialAsState.value) }
-        }
-        LaunchedEffect(activeProjection) {
-            this@collectPartialAsState.map { prop1.get(it) }
-                .distinctUntilChanged()
-                .flowOn(Dispatchers.IO)
-                .collect { activeProjection.value = it }
+    val active = LocalMainTabActive.current
+    // Callers may keep the projection in remembered derived state. Refresh the same
+    // holder before the first layout whenever its tab becomes active again.
+    val current = remember(active) {
+        if (active) projection.value = prop1.get(this@collectPartialAsState.value)
+        projection
+    }
+    LaunchedEffect(active) {
+        if (active) {
+            this@collectPartialAsState.collect { current.value = prop1.get(it) }
         }
     }
-    projection
+    current
 }
 
 @Composable

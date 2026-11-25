@@ -1,24 +1,39 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import android.util.Log
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.prefs.LocalPrefsDataStore
-import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.picker.ListSinglePicker
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
-import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 
 /**
@@ -39,7 +54,6 @@ import kotlinx.coroutines.launch
  * @param enabled If false, this Pref cannot be clicked and the Dialog cannot be shown.
  * @param entries Map of keys to values for entries that should be shown in the Dialog.
  */
-@ExperimentalMaterialApi
 @ExperimentalComposeUiApi
 @Composable
 fun ListPref(
@@ -50,29 +64,28 @@ fun ListPref(
     defaultValue: String? = null,
     onValueChange: ((String) -> Unit)? = null,
     useSelectedAsSummary: Boolean = false,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null,
     entries: Map<String, String> = emptyMap(), //TODO: Change to List?
     icons: Map<String, @Composable () -> Unit> = emptyMap(),
 ) {
-    val dialogState = rememberDialogState()
+    var showDialog by rememberSaveable { mutableStateOf(false) }
     val selectionKey = stringPreferencesKey(key)
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
+    val prefs by datastore.data.collectAsState(initial = null)
 
-    var selected = defaultValue
-    prefs?.get(selectionKey)?.also { selected = it } // starting value if it exists in datastore
+    val selected = prefs?.get(selectionKey) ?: defaultValue
 
-    fun edit(current: Pair<String, String>) = run {
-        selected = current.first
-        onValueChange?.invoke(current.first)
+    fun select(value: String) {
+        showDialog = false
+        onValueChange?.invoke(value)
         scope.launch {
             try {
                 datastore.edit { preferences ->
-                    preferences[selectionKey] = current.first
+                    preferences[selectionKey] = value
                 }
             } catch (e: Exception) {
                 Log.e("ListPref", "Could not write pref $key to database. ${e.printStackTrace()}")
@@ -90,82 +103,40 @@ fun ListPref(
         leadingIcon = leadingIcon,
         modifier = modifier,
         textColor = textColor,
-        enabled = true,
-        onClick = { if (enabled) dialogState.show() },
+        enabled = enabled,
+        onClick = { showDialog = true },
     )
 
-    val itemTitle = remember(entries) { entries.map { it.value }.toImmutableList() }
-    val itemValues = remember(entries) { entries.map { it.key }.toImmutableList() }
-
-    Dialog(
-        dialogState = dialogState,
-        title = { Text(text = title) },
-        buttons = {
-            DialogNegativeButton(text = stringResource(id = R.string.button_cancel))
-        }
-    ) {
-        ListSinglePicker(
-            itemTitles = itemTitle,
-            itemValues = itemValues,
-            selectedPosition = entries.keys.indexOf(selected),
-            onItemSelected = { _, title, value, _ ->
-                edit(current = value to title)
-                dismiss()
+    if (showDialog) {
+        val choices = remember(entries) { entries.toList() }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(title) },
+            text = {
+                LazyColumn(Modifier.selectableGroup()) {
+                    items(choices, key = { it.first }) { (value, label) ->
+                        val isSelected = value == selected
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(isSelected, role = Role.RadioButton) { select(value) }
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            icons[value]?.invoke()
+                            Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            RadioButton(selected = isSelected, onClick = null)
+                        }
+                    }
+                }
             },
-            modifier = Modifier.padding(bottom = 16.dp),
-            itemIcons = icons.toImmutableMap()
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text(stringResource(R.string.button_cancel))
+                }
+            },
         )
     }
-//    if (showDialog) {
-//        AlertDialog(
-//            onDismissRequest = { showDialog = false },
-//            text = {
-//                Column() {
-//                    Text(modifier = Modifier.padding(vertical = 16.dp), text = title)
-//                    LazyColumn {
-//                        items(entryList) { current ->
-//
-//                            val isSelected = selected == current.first
-//                            val onSelected = {
-//                                edit(current)
-//                            }
-//                            Row(
-//                                modifier = Modifier
-//                                    .fillMaxWidth()
-//                                    .selectable(
-//                                        selected = isSelected,
-//                                        onClick = { if (!isSelected) onSelected() }
-//                                    ),
-//                                verticalAlignment = CenterVertically,
-//                            ) {
-//                                RadioButton(
-//                                    selected = isSelected,
-//                                    onClick = { if (!isSelected) onSelected() },
-//                                    colors = RadioButtonDefaults.colors(selectedColor = selectionColor)
-//                                )
-//                                Text(
-//                                    text = current.second,
-//                                    style = MaterialTheme.typography.body2,
-//                                    color = textColor
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
-//            },
-//            confirmButton = {
-//                TextButton(
-//                    onClick = { showDialog = false },
-//                ) {
-//                    Text("Cancel", style = MaterialTheme.typography.body1, color = buttonColor)
-//                }
-//
-//            },
-//            backgroundColor = dialogBackgroundColor,
-//            contentColor = contentColor,
-//            properties = DialogProperties(
-//                usePlatformDefaultWidth = true
-//            ),
-//        )
-//    }
 }

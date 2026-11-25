@@ -14,11 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FractionalThreshold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -189,7 +189,7 @@ fun DefaultIndicator(
     releaseToLoadText: String = stringResource(id = R.string.release_to_load),
 ) {
     Surface(
-        elevation = 8.dp,
+        shadowElevation = 2.dp,
         shape = RoundedCornerShape(100),
         color = ExtendedTheme.colors.loadMoreIndicator,
         contentColor = ExtendedTheme.colors.text

@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -224,6 +225,9 @@ data class VideoContentRender(
     }
 }
 
+private fun AnnotatedString.Range<String>.isNavigable() =
+    (tag == "url" && item.isNotBlank()) || (tag == "user" && (item.toLongOrNull() ?: 0L) > 0L)
+
 @Composable
 fun PbContentText(
     text: String,
@@ -296,19 +300,25 @@ fun PbContentText(
     val context = LocalContext.current
     val navigator = LocalNavigator.current
 
+    val linkColor = LocalCommentLinkColor.current
+    val displayText = remember(text, linkColor) {
+        if (linkColor == Color.Unspecified) return@remember text
+        val links = text.getStringAnnotations(0, text.length).filter { it.isNavigable() }
+        if (links.isEmpty()) text else buildAnnotatedString {
+            append(text)
+            links.forEach { addStyle(SpanStyle(color = linkColor), it.start, it.end) }
+        }
+    }
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
     EmoticonText(
-        text = text,
+        text = displayText,
         modifier = modifier.pointerInput(text, navigator) {
             awaitEachGesture {
                 val change = awaitFirstDown()
                 val annotation =
                     layoutResult.value?.getOffsetForPosition(change.position)?.let { offset ->
                         text.getStringAnnotations(start = offset, end = offset)
-                            .firstOrNull {
-                                (it.tag == "url" && it.item.isNotBlank()) ||
-                                    (it.tag == "user" && (it.item.toLongOrNull() ?: 0L) > 0L)
-                            }
+                            .firstOrNull { it.isNavigable() }
                     }
                 if (annotation != null) {
                     if (change.pressed != change.previousPressed) change.consume()

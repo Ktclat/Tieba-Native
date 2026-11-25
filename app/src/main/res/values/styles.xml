@@ -2,7 +2,7 @@
 
     <style name="Widget" />
 
-    <style name="Widget.Button.Flat.Dense" parent="Widget.Material3.Button.TextButton">
+    <style name="Widget.Button.Flat.Dense" parent="Widget.Material3Expressive.Button.TextButton">
         <item name="android:minWidth">0dp</item>
         <item name="android:minHeight">0dp</item>
         <item name="android:padding">6dp</item>
@@ -14,7 +14,7 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="Widget.Button" parent="Widget.Material3.Button">
+    <style name="Widget.Button" parent="Widget.Material3Expressive.Button">
         <item name="android:minWidth">0dp</item>
         <item name="android:minHeight">0dp</item>
         <item name="android:padding">6dp</item>
@@ -28,7 +28,7 @@
         <item name="android:gravity">center</item>
     </style>
 
-    <style name="BottomSheetDialogStyle" parent="Theme.Design.BottomSheetDialog">
+    <style name="BottomSheetDialogStyle" parent="Theme.Material3.DayNight.BottomSheetDialog">
         <item name="android:windowFrame">@null</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowAnimationStyle">@style/Animation.Bottom</item>
@@ -447,11 +447,11 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
-    <style name="AlertDialog" parent="AlertDialog.AppCompat.Light">
+    <style name="AlertDialog" parent="MaterialAlertDialog.Material3Expressive">
         <item name="android:layout">@layout/layout_alert_dialog</item>
     </style>
 
-    <style name="AlertDialog.Dark" parent="AlertDialog.AppCompat">
+    <style name="AlertDialog.Dark" parent="MaterialAlertDialog.Material3Expressive">
         <item name="android:layout">@layout/layout_alert_dialog</item>
     </style>
 

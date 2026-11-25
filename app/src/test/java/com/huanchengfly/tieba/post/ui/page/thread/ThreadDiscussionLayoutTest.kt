@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -230,18 +232,22 @@ class ThreadDiscussionLayoutTest {
         show(width, font)
         awaitImage("trail-map")
         awaitImage("trail-profile")
+        node(App.INSTANCE.getString(R.string.title_thread_header, "269")).assertIsDisplayed()
+        compose.onNode(hasClickAction() and hasText(resource(R.string.text_all))).assertIsSelected()
         compose.captureReviewImage(view, "discussion-topic-$suffix.png")
         assertNoTopicDivider("discussion-topic-$suffix.png")
         val like = hasClickAction() and hasContentDescription(resource(R.string.title_agree))
         compose.onNode(like and hasText("404")).performTouchInput { click() }
         node(resource(R.string.title_see_lz)).performTouchInput { click() }
         compose.runOnIdle { assertTrue(filter) }
+        compose.onNode(hasClickAction() and hasText(resource(R.string.title_see_lz))).assertIsSelected()
         node(floor.content.single().text).assertDoesNotExist()
         node(resource(R.string.text_all)).performTouchInput { click() }
         compose.onNodeWithContentDescription(resource(R.string.btn_more)).performClick()
         node(resource(R.string.title_sort)).performTouchInput { click() }
         compose.runOnIdle { assertTrue(desc); assertFalse(menu) }
 
+        awaitImage("trail-profile")
         compose.runOnIdle { scroll(2, 140) }
         node(children[0].content.last().text).assertIsDisplayed()
         compose.captureReviewImage(view, "discussion-preview-$suffix.png")
@@ -249,6 +255,7 @@ class ThreadDiscussionLayoutTest {
         val secondRecipient = App.INSTANCE.getString(R.string.hint_reply, "@林间月")
         compose.onAllNodesWithText(firstRecipient, useUnmergedTree = true).assertCountEquals(1)
         compose.onNode(like and hasText("1")).performTouchInput { click() }
+        assertDiscussionLinkContrast(view, node(firstRecipient), "@青禾")
         node(firstRecipient).performTouchInput { click() }
         node(secondRecipient).performTouchInput { click() }
         node("林间月").performTouchInput { click() }
@@ -259,19 +266,35 @@ class ThreadDiscussionLayoutTest {
         }
         node(children[0].content.last().text).performTouchInput { click() }
         compose.runOnIdle { assertEquals(201L, opened) }
+        awaitImage("trail-profile")
         compose.runOnIdle { scroll(2, 0) }
         compose.captureReviewImage(view, "discussion-expanded-$suffix.png")
         compose.onNode(like and hasText("2")).performTouchInput { click() }
         node(secondRecipient).assertIsDisplayed().performTouchInput { click() }
-        node("回复 岸上风").assert(!hasClickAction())
-        node("雨天过桥小心。").assertExists()
-        node("我和 @青禾 都走过这条路。").assertExists()
         node(children[1].content.last().text).performTouchInput { longClick() }
         node("复制").performClick()
         compose.runOnIdle {
             assertEquals(listOf(12L, 201L, 202L), liked)
             assertEquals("回复 @林间月：石桥之后，缓坡一直到观景台。", copied)
             assertEquals(UserProfilePageDestination(20).route, routes.last())
+        }
+        compose.runOnIdle { scroll(4, 0) }
+        val ordinaryMention = "我和 @青禾 都走过这条路。"
+        val ordinary = node(ordinaryMention).assertIsDisplayed()
+        assertDiscussionLinkContrast(view, ordinary, "@青禾")
+        val layouts = mutableListOf<TextLayoutResult>()
+        ordinary.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { read -> check(read(layouts)) }
+        val mentionPosition = layouts.single().getBoundingBox(ordinaryMention.indexOf("青")).center
+        ordinary.performTouchInput { click(mentionPosition) }
+        compose.runOnIdle { assertEquals(UserProfilePageDestination(30).route, routes.last()) }
+
+        val navigationCount = routes.size
+        node("回复 岸上风").assert(!hasClickAction()).performTouchInput { click() }
+        node("雨天过桥小心。").performTouchInput { longClick() }
+        node("复制").performClick()
+        compose.runOnIdle {
+            assertEquals(navigationCount, routes.size)
+            assertEquals("回复 岸上风 :雨天过桥小心。", copied)
         }
     }
 
@@ -282,8 +305,8 @@ class ThreadDiscussionLayoutTest {
         try {
             val gap = media.bottom.toInt() + 1 until controls.top.toInt()
             assertTrue("The media and reply controls need breathing room", gap.count() >= 4)
+            val background = image.getPixel(0, gap.first)
             for (y in gap) {
-                val background = image.getPixel(0, y)
                 assertTrue("Unexpected rule between the topic and its replies", (20 until image.width - 20 step 4).all { x ->
                     image.getPixel(x, y) == background
                 })

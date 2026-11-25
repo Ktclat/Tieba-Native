@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -14,18 +15,25 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.MutableCreationExtras
+import kotlin.reflect.KClass
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.huanchengfly.tieba.post.arch.LocalMainTabActive
@@ -49,7 +57,6 @@ internal fun rememberMainTabSelection(initialId: String): MainTabSelection = rem
 ) { MainTabSelection(initialId) }
 
 /** Unvisited tabs have no composition. Only the selected child is measured, placed and drawn. */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun MainTabHost(
     selectedId: String,
@@ -63,8 +70,19 @@ internal fun MainTabHost(
                 var visited by remember { mutableStateOf(false) }
                 if (active || visited) {
                     if (active) SideEffect { visited = true }
-                    val visibility = if (active) Modifier else Modifier.clearAndSetSemantics { invisibleToUser() }
-                    Box(Modifier.layoutId(item.id).then(visibility), propagateMinConstraints = true) {
+                    val focusManager = LocalFocusManager.current
+                    var hasFocus by remember { mutableStateOf(false) }
+                    if (!active && hasFocus) SideEffect {
+                        if (hasFocus) focusManager.clearFocus(force = true)
+                    }
+                    val visibility = if (active) Modifier else Modifier.clearAndSetSemantics { hideFromAccessibility() }
+                    Box(
+                        Modifier.layoutId(item.id).then(visibility)
+                            .onFocusChanged { hasFocus = it.hasFocus }
+                            .focusProperties { onEnter = { if (!active) cancelFocusChange() } }
+                            .focusGroup(),
+                        propagateMinConstraints = true,
+                    ) {
                         MainTabLifecycle(active) {
                             CompositionLocalProvider(LocalMainTabActive provides active) {
                                 ProvideShouldLoad(active) { item.content() }
@@ -118,8 +136,17 @@ internal fun MainTabAccountScope(viewModel: MainViewModel, accountId: String?, c
         val defaults = parent as HasDefaultViewModelProviderFactory
         object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
             override val viewModelStore = viewModel.tabStoreFor(accountId)
-            override val defaultViewModelProviderFactory = factory ?: defaults.defaultViewModelProviderFactory
             override val defaultViewModelCreationExtras = defaults.defaultViewModelCreationExtras
+            override val defaultViewModelProviderFactory = object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T {
+                    // The parent navigation entry saves handles; give each account its own restored keys.
+                    val scopedExtras = MutableCreationExtras(extras)
+                    extras[ViewModelProvider.VIEW_MODEL_KEY]?.let { key ->
+                        scopedExtras[ViewModelProvider.VIEW_MODEL_KEY] = "main-tab/${accountId ?: "guest"}/$key"
+                    }
+                    return (factory ?: defaults.defaultViewModelProviderFactory).create(modelClass, scopedExtras)
+                }
+            }
         }
     }
     key(accountId) {

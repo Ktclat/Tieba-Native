@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
@@ -88,7 +88,7 @@ private fun ViewPhoto(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     color = ExtendedTheme.colors.accent,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(48.dp)

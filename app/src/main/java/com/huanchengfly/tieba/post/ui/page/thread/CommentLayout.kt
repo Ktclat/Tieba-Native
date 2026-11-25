@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
+import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -41,9 +42,11 @@ internal fun CommentLayout(
     header: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        header?.invoke()
-        ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
+    ProvideCommentLinkColor(MaterialTheme.colorScheme.surface) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            header?.invoke()
+            ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -130,6 +131,7 @@ import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.toJson
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
+import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.PbContentText
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.loadMoreIndicator
@@ -1670,52 +1672,54 @@ fun PostCard(
                     contentRenders.fastForEach { it.Render() }
 
                     if (showSubPosts && !immersiveMode && (visibleSubPosts.isNotEmpty() || moreReplies)) {
-                        M3Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = M3Theme.shapes.medium,
-                            color = M3Theme.colorScheme.surfaceContainerLow,
-                        ) {
-                            Column {
-                                visibleSubPosts.fastForEach { item ->
-                                    BlockableContent(
-                                        blocked = item.blocked,
-                                        blockedTip = {
-                                            Text(
-                                                text = stringResource(R.string.tip_blocked_sub_post),
-                                                style = M3Theme.typography.bodySmall,
-                                                color = M3Theme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                            )
-                                        },
-                                    ) {
-                                        SubPostItem(
-                                            subPostList = item.subPost,
-                                            subPostContent = item.subPostContent,
-                                            threadAuthorId = threadAuthorId,
-                                            onUserClick = onUserClick,
-                                            onAgree = onSubPostAgree,
-                                            onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
-                                            onOpenSubPosts = onOpenSubPosts,
-                                            onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
+                        ReplyPreviewGroup {
+                            visibleSubPosts.fastForEach { item ->
+                                BlockableContent(
+                                    blocked = item.blocked,
+                                    blockedTip = {
+                                        Text(
+                                            text = stringResource(R.string.tip_blocked_sub_post),
+                                            style = M3Theme.typography.bodySmall,
+                                            color = M3Theme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                         )
-                                    }
-                                }
-                                if (moreReplies) {
-                                    Text(
-                                        text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                        style = M3Theme.typography.labelLarge,
-                                        color = M3Theme.colorScheme.secondary,
-                                        modifier = Modifier.fillMaxWidth()
-                                            .clickable { onOpenSubPosts(0) }
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    },
+                                ) {
+                                    SubPostItem(
+                                        subPostList = item.subPost,
+                                        subPostContent = item.subPostContent,
+                                        threadAuthorId = threadAuthorId,
+                                        onUserClick = onUserClick,
+                                        onAgree = onSubPostAgree,
+                                        onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
+                                        onOpenSubPosts = onOpenSubPosts,
+                                        onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
                                     )
                                 }
+                            }
+                            if (moreReplies) {
+                                Text(
+                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
+                                    style = M3Theme.typography.labelLarge,
+                                    color = M3Theme.colorScheme.secondary,
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable { onOpenSubPosts(0) }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                )
                             }
                         }
                     }
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun ReplyPreviewGroup(content: @Composable ColumnScope.() -> Unit) {
+    val background = M3Theme.colorScheme.surfaceContainerLow
+    M3Surface(modifier = Modifier.fillMaxWidth(), shape = M3Theme.shapes.medium, color = background) {
+        ProvideCommentLinkColor(background) { Column(content = content) }
     }
 }
 

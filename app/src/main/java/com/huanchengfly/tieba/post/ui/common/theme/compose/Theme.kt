@@ -480,8 +480,9 @@ private fun AppContentTheme(content: @Composable () -> Unit) {
         source = upstreamColors,
         wallpaperColors = useDynamicTheme && !ThemeUtil.isTranslucentTheme(theme),
     )
-    val extendedColors = remember(upstreamColors, expressiveScheme) {
-        upstreamColors.applyExpressiveScheme(expressiveScheme)
+    val useSourceTopBar = LocalDisplayPreferences.current.toolbarPrimaryColor || ThemeUtil.isTranslucentTheme(theme)
+    val extendedColors = remember(upstreamColors, expressiveScheme, useSourceTopBar) {
+        upstreamColors.applyExpressiveScheme(expressiveScheme, useSourceTopBar)
     }
     val colors = getColorPalette(isDarkColorPalette, extendedColors)
 

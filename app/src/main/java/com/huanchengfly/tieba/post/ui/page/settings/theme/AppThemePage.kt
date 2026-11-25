@@ -26,7 +26,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Checkbox
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.MaterialTheme
@@ -248,20 +251,11 @@ fun AppThemePage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            customToolbarPrimaryColor =
-                                !customToolbarPrimaryColor
-                        }
-                    )
+                    .heightIn(min = 48.dp)
+                    .toggleable(value = customToolbarPrimaryColor, role = Role.Checkbox) { customToolbarPrimaryColor = it }
             ) {
                 Checkbox(
-                    checked = customToolbarPrimaryColor,
-                    onCheckedChange = {
-                        customToolbarPrimaryColor = it
-                    },
+                    checked = customToolbarPrimaryColor, onCheckedChange = null,
                 )
                 Text(text = stringResource(id = R.string.tip_toolbar_primary_color))
             }
@@ -272,20 +266,11 @@ fun AppThemePage(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                customStatusBarFontDark =
-                                    !customStatusBarFontDark
-                            }
-                        )
+                        .heightIn(min = 48.dp)
+                        .toggleable(value = customStatusBarFontDark, role = Role.Checkbox) { customStatusBarFontDark = it }
                 ) {
                     Checkbox(
-                        checked = customStatusBarFontDark,
-                        onCheckedChange = {
-                            customStatusBarFontDark = it
-                        },
+                        checked = customStatusBarFontDark, onCheckedChange = null,
                     )
                     Text(text = stringResource(id = R.string.tip_status_bar_font))
                 }

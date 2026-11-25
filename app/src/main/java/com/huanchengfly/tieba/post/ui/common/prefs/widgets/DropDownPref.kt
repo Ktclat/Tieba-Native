@@ -1,15 +1,19 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import android.util.Log
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -31,7 +35,6 @@ import kotlinx.coroutines.launch
  * @param enabled If false, this Pref cannot be clicked and the dropdown menu will not show.
  * @param entries Map of keys to values for entries that should be shown in the DropDown.
  */
-@ExperimentalMaterialApi
 @Composable
 fun DropDownPref(
     key: String,
@@ -42,7 +45,7 @@ fun DropDownPref(
     onValueChange: ((String) -> Unit)? = null,
     useSelectedAsSummary: Boolean = false,
     dropdownBackgroundColor: Color? = null,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null,
     entries: Map<String, String> = mapOf()
@@ -53,10 +56,9 @@ fun DropDownPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
+    val prefs by datastore.data.collectAsState(initial = null)
 
-    var value = defaultValue
-    prefs?.get(selectionKey)?.also { value = it } // starting value if it exists in datastore
+    val value = prefs?.get(selectionKey) ?: defaultValue
 
     fun edit(item: Map.Entry<String, String>) = run {
         scope.launch {
@@ -96,19 +98,14 @@ fun DropDownPref(
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = if (dropdownBackgroundColor != null) Modifier.background(dropdownBackgroundColor) else Modifier
+                containerColor = dropdownBackgroundColor ?: MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 entries.forEach { item ->
                     DropdownMenuItem(
-                        onClick = {
-                            edit(item)
-                        }
-                    ) {
-                        Text(
-                            text = item.value,
-                            style = MaterialTheme.typography.body1
-                        )
-                    }
+                        text = { Text(item.value) },
+                        modifier = Modifier.semantics { selected = item.key == value },
+                        onClick = { edit(item) },
+                    )
                 }
             }
         }

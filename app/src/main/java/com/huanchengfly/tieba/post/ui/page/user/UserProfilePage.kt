@@ -692,8 +692,6 @@ private fun UserProfileTabRow(
     pagerState: PagerState,
     modifier: Modifier = Modifier,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
     val tabTextStyle = MaterialTheme.typography.button.copy(
         fontWeight = FontWeight.Bold,
         fontSize = 13.sp,

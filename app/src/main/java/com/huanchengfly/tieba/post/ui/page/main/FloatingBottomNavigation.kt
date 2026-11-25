@@ -37,7 +37,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -176,7 +176,6 @@ fun FloatingBottomNavigation(
         color = themeColors.bottomBar,
         shape = RoundedCornerShape(32.dp),
         border = BorderStroke(0.75.dp, themeColors.textSecondary.copy(alpha = 0.16f)),
-        elevation = 0.dp,
     ) {
         BoxWithConstraints(Modifier.padding(5.dp).clip(RoundedCornerShape(26.dp))) {
             val tabWidth = maxWidth / navigationItems.size
