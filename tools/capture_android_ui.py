@@ -54,8 +54,20 @@ def labelled_nodes(tree, label):
                 yield node
 
 
-def find_label(label, timeout=45):
+def find_label(label, timeout=45, recover_launcher=False):
     def position(tree):
+        nonlocal recover_launcher
+        if recover_launcher:
+            system = [node for node in tree.iter("node") if node.get("package") == "android"]
+            launcher_anr = any(node.get("resource-id") == "android:id/alertTitle" and
+                               node.get("text") == "Pixel Launcher isn't responding" for node in system)
+            close = next((center(node) for node in system if node.get("resource-id") == "android:id/aerr_close"), None)
+            if launcher_anr and close and adb("shell", "getprop", "ro.kernel.qemu").strip() == b"1":
+                recover_launcher = False
+                print("Recovering from the emulator's Pixel Launcher boot ANR", flush=True)
+                adb("shell", "input", "tap", *(str(v) for v in close))
+                adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+                return None
         return next((center(node) for node in labelled_nodes(tree, label)), None)
 
     return wait_for_match(repr(label), position, timeout)
@@ -211,6 +223,7 @@ def run(apk, output):
     adb("shell", "input", "keyevent", "KEYCODE_WAKEUP")
     adb("shell", "wm", "dismiss-keyguard")
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+    find_label("随便看看", recover_launcher=True)
     capture(output, "01-home", "随便看看")
     tap("我")
     capture(output, "02-profile", "设置")

@@ -11,7 +11,7 @@ import subprocess
 import time
 from xml.etree import ElementTree
 
-from capture_android_ui import PACKAGE, adb, find_label, hierarchy, labelled_nodes
+from capture_android_ui import PACKAGE, adb, center, find_label, hierarchy, labelled_nodes
 
 
 def frame_rows(dump):
@@ -80,8 +80,20 @@ def verify_navigation(visible, output):
     output.with_suffix(".png").write_bytes(adb("exec-out", "screencap", "-p"))
     if shown != visible:
         raise RuntimeError(f"Expected bottom navigation visible={visible} at {output.name}")
-    if not visible and next(labelled_nodes(tree, "关于"), None) is None:
-        raise RuntimeError("The guest menu did not reach its About row")
+    positions = {}
+    for label in ("浏览记录", "主题选择", "设置", "关于"):
+        row = next(labelled_nodes(tree, label), None)
+        if row is not None:
+            positions[label] = center(row)[1]
+    if not positions:
+        raise RuntimeError(f"No guest profile menu items at {output.name}")
+    return positions
+
+
+def check_scroll(before, after, direction):
+    shared = before.keys() & after.keys()
+    if not any(direction * (after[label] - before[label]) > 12 for label in shared):
+        raise RuntimeError(f"No visible menu row moved in the expected direction: {before} -> {after}")
 
 
 def run_block(apk, directory):
@@ -91,7 +103,7 @@ def run_block(apk, directory):
     adb("install", "-g", str(apk), timeout=120)
     adb("shell", "wm", "size", "1080x2340")
     launch()
-    find_label("随便看看")
+    find_label("随便看看", recover_launcher=True)
     profile = find_label("我")
     press(profile)
     find_label("主题选择")
@@ -118,13 +130,15 @@ def run_block(apk, directory):
     # window so these real rows can scroll far enough to hide the bottom bar.
     adb("shell", "wm", "size", "840x735")
     launch()
-    press(find_label("我"))
+    press(find_label("我", recover_launcher=True))
     find_label("浏览记录")
-    verify_navigation(True, directory / "profile-before")
+    start = verify_navigation(True, directory / "profile-before")
     swipe(False)
-    verify_navigation(False, directory / "profile-hidden")
+    hidden = verify_navigation(False, directory / "profile-hidden")
+    check_scroll(start, hidden, -1)
     swipe(True)
-    verify_navigation(True, directory / "profile-restored")
+    restored = verify_navigation(True, directory / "profile-restored")
+    check_scroll(hidden, restored, 1)
 
     def scroll_profile():
         swipe(False)
