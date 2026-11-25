@@ -9,13 +9,13 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
-import androidx.appcompat.widget.AppCompatEditText;
+import com.google.android.material.textfield.TextInputEditText;
 import androidx.core.widget.TextViewCompat;
 
 import com.huanchengfly.tieba.post.R;
 import com.huanchengfly.tieba.post.ui.widgets.edittext.OperationManager;
 
-public class UndoableEditText extends AppCompatEditText {
+public class UndoableEditText extends TextInputEditText {
     private static final String KEY_SUPER = "KEY_SUPER";
     private static final String KEY_OPT = OperationManager.class.getCanonicalName();
     private final OperationManager mgr = new OperationManager(this);

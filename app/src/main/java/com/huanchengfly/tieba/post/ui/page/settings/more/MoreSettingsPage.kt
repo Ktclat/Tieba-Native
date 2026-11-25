@@ -2,8 +2,7 @@ package com.huanchengfly.tieba.post.ui.page.settings.more
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
@@ -46,7 +45,6 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
-@OptIn(ExperimentalMaterialApi::class)
 @Destination
 @Composable
 fun MoreSettingsPage(
@@ -60,7 +58,7 @@ fun MoreSettingsPage(
                 title = {
                     Text(
                         text = stringResource(id = R.string.title_settings_more),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {

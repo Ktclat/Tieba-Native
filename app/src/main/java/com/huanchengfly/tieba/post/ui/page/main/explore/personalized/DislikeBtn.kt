@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.runtime.Composable
@@ -37,7 +37,6 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.personalized.DislikeReason
 import com.huanchengfly.tieba.post.api.models.protos.personalized.ThreadPersonalized
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.items
@@ -78,7 +77,7 @@ fun Dislike(
                 ) {
                     Text(
                         text = stringResource(id = R.string.title_dislike),
-                        style = MaterialTheme.typography.subtitle1,
+                        style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(modifier = Modifier.width(32.dp))
@@ -86,16 +85,16 @@ fun Dislike(
                         text = stringResource(id = R.string.button_submit_dislike),
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(color = ExtendedTheme.colors.primary)
+                            .background(color = MaterialTheme.colorScheme.primary)
                             .clickable {
                                 dismiss()
                                 onDislike(clickTime, selectedReasons.toImmutableList())
                             }
                             .padding(vertical = 4.dp, horizontal = 8.dp),
-                        color = ExtendedTheme.colors.onAccent,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.subtitle2,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                 }
                 VerticalGrid(
@@ -116,10 +115,10 @@ fun Dislike(
                         span = { if (it.get { dislikeId } == 7) 2 else 1 }
                     ) {
                         val backgroundColor by animateColorAsState(
-                            targetValue = if (selectedReasons.contains(it)) ExtendedTheme.colors.primary else ExtendedTheme.colors.chip
+                            targetValue = if (selectedReasons.contains(it)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                         val contentColor by animateColorAsState(
-                            targetValue = if (selectedReasons.contains(it)) ExtendedTheme.colors.onAccent else ExtendedTheme.colors.onChip
+                            targetValue = if (selectedReasons.contains(it)) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = it.get { dislikeReason },
@@ -138,7 +137,7 @@ fun Dislike(
                             color = contentColor,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.subtitle2,
+                            style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -155,7 +154,7 @@ fun Dislike(
             Icon(
                 imageVector = Icons.Rounded.KeyboardArrowDown,
                 contentDescription = null,
-                tint = ExtendedTheme.colors.textSecondary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

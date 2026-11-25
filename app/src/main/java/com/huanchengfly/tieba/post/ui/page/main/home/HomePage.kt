@@ -1,9 +1,14 @@
 package com.huanchengfly.tieba.post.ui.page.main.home
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,7 +19,6 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,11 +32,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -40,9 +42,6 @@ import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -62,19 +61,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.google.accompanist.placeholder.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -82,15 +74,13 @@ import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.collectPreferenceAsState
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
+import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
@@ -98,7 +88,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyVerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.TextButton
+import androidx.compose.material3.TextButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.accountNavIconIfCompact
@@ -114,61 +104,29 @@ import kotlinx.coroutines.launch
 private val ListSingleKey = booleanPreferencesKey("listSingle")
 private val ShowHistoryForumKey = booleanPreferencesKey("homePageShowHistoryForum")
 
-@Preview("SearchBoxPreview")
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun SearchBoxPreview() {
-    SearchBox(
-        backgroundColor = Color(0xFFF8F8F8),
-        contentColor = Color(0xFFBFBFBF),
-        onClick =  {}
-    )
-}
-
-@Composable
-fun SearchBox(
-    modifier: Modifier = Modifier,
-    backgroundColor: Color = ExtendedTheme.colors.chip,
-    contentColor: Color = ExtendedTheme.colors.textSecondary,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .background(ExtendedTheme.colors.topBar)
-            .padding(horizontal = 18.dp, vertical = 10.dp)
-    ) {
-        Material3Surface(
-            color = backgroundColor,
-            contentColor = contentColor,
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(
-                0.8.dp,
-                ExtendedTheme.colors.textSecondary.copy(alpha = 0.10f),
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-        ) {
+internal fun SearchBox(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    SearchBar(
+        state = rememberSearchBarState(),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        inputField = {
             Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = SearchBarDefaults.InputFieldHeight)
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = CenterVertically,
-                modifier = Modifier
-                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(CenterVertically)
-                        .size(21.dp),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
+                Icon(Icons.Rounded.Search, contentDescription = null)
                 Text(
-                    text = stringResource(id = R.string.hint_search),
-                    modifier = Modifier.align(CenterVertically),
-                    fontSize = 14.sp
+                    stringResource(R.string.hint_search),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -208,19 +166,18 @@ private fun ForumItemPlaceholder(
                     .clip(CircleShape)
                     .size(40.dp)
                     .align(CenterVertically)
-                    .placeholder(visible = true, color = ExtendedTheme.colors.chip),
+                    .loadingPlaceholder(visible = true),
             )
             Spacer(modifier = Modifier.width(14.dp))
         }
         Text(
-            color = ExtendedTheme.colors.text,
+            color = MaterialTheme.colorScheme.onSurface,
             text = "",
             modifier = Modifier
                 .weight(1f)
                 .align(CenterVertically)
-                .placeholder(visible = true, color = ExtendedTheme.colors.chip),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
+                .loadingPlaceholder(visible = true),
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -228,18 +185,17 @@ private fun ForumItemPlaceholder(
             modifier = Modifier
                 .width(54.dp)
                 .background(
-                    color = ExtendedTheme.colors.chip,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     shape = RoundedCornerShape(3.dp)
                 )
                 .padding(vertical = 4.dp)
                 .align(CenterVertically)
-                .placeholder(visible = true, color = ExtendedTheme.colors.chip)
+                .loadingPlaceholder(visible = true)
         ) {
             Text(
                 text = "0",
-                color = ExtendedTheme.colors.onChip,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.align(Center)
             )
         }
@@ -256,37 +212,26 @@ private fun ForumItemMenuContent(
     onUnfollow: () -> Unit,
 ) {
     DropdownMenuItem(
+        text = { Text(stringResource(if (isTopForum) R.string.menu_top_del else R.string.menu_top)) },
         onClick = {
-            if (isTopForum) {
-                onDeleteTopForum()
-            } else {
-                onAddTopForum()
-            }
+            if (isTopForum) onDeleteTopForum() else onAddTopForum()
             menuState.expanded = false
-        }
-    ) {
-        if (isTopForum) {
-            Text(text = stringResource(id = R.string.menu_top_del))
-        } else {
-            Text(text = stringResource(id = R.string.menu_top))
-        }
-    }
+        },
+    )
     DropdownMenuItem(
+        text = { Text(stringResource(R.string.title_copy_forum_name)) },
         onClick = {
             onCopyName()
             menuState.expanded = false
-        }
-    ) {
-        Text(text = stringResource(id = R.string.title_copy_forum_name))
-    }
+        },
+    )
     DropdownMenuItem(
+        text = { Text(stringResource(R.string.button_unfollow)) },
         onClick = {
             onUnfollow()
             menuState.expanded = false
-        }
-    ) {
-        Text(text = stringResource(id = R.string.button_unfollow))
-    }
+        },
+    )
 }
 
 @Composable
@@ -306,13 +251,12 @@ private fun ForumItemContent(
             }
         }
         Text(
-            color = ExtendedTheme.colors.text,
+            color = MaterialTheme.colorScheme.onSurface,
             text = item.forumName,
             modifier = Modifier
                 .weight(1f)
                 .align(CenterVertically),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -320,7 +264,7 @@ private fun ForumItemContent(
             modifier = Modifier
                 .width(54.dp)
                 .background(
-                    color = ExtendedTheme.colors.chip,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     shape = RoundedCornerShape(3.dp)
                 )
                 .padding(vertical = 4.dp)
@@ -331,9 +275,8 @@ private fun ForumItemContent(
             ) {
                 Text(
                     text = "Lv.${item.levelId}",
-                    color = ExtendedTheme.colors.onChip,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(CenterVertically)
                 )
                 if (item.isSign) {
@@ -344,7 +287,7 @@ private fun ForumItemContent(
                         modifier = Modifier
                             .size(12.dp)
                             .align(CenterVertically),
-                        tint = ExtendedTheme.colors.onChip
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -386,7 +329,6 @@ private fun ForumItem(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun HomePage(
     viewModel: HomeViewModel = pageViewModel<HomeUiIntent, HomeViewModel>(listOf(HomeUiIntent.Refresh)),
@@ -476,14 +418,11 @@ fun HomePage(
         },
         modifier = Modifier.fillMaxSize(),
     ) { contentPaddings ->
-        val pullRefreshState = rememberPullRefreshState(
-            refreshing = isLoading,
-            onRefresh = { viewModel.send(HomeUiIntent.Refresh) }
-        )
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = { viewModel.send(HomeUiIntent.Refresh) },
             modifier = Modifier
-                .pullRefresh(pullRefreshState)
-                .padding(contentPaddings)
+                .padding(contentPaddings),
         ) {
             Column {
                 SearchBox(modifier = Modifier.padding(bottom = 4.dp)) {
@@ -572,7 +511,7 @@ fun HomePage(
                                                         .padding(horizontal = 4.dp)
                                                         .height(IntrinsicSize.Min)
                                                         .clip(RoundedCornerShape(100))
-                                                        .background(color = ExtendedTheme.colors.chip)
+                                                        .background(color = MaterialTheme.colorScheme.surfaceContainerHighest)
                                                         .clickable {
                                                             navigator.navigate(
                                                                 ForumPageDestination(
@@ -592,8 +531,7 @@ fun HomePage(
                                                     )
                                                     Text(
                                                         text = it.title,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
+                                                        style = MaterialTheme.typography.labelMedium,
                                                         modifier = Modifier.padding(end = 4.dp)
                                                     )
                                                 }
@@ -675,14 +613,6 @@ fun HomePage(
                     }
                 }
             }
-
-            PullRefreshIndicator(
-                refreshing = isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                contentColor = ExtendedTheme.colors.primary,
-            )
         }
     }
 }
@@ -704,10 +634,7 @@ private fun HomePageSkeletonScreen(
             ) {
                 Header(
                     text = stringResource(id = R.string.title_top_forum),
-                    modifier = Modifier.placeholder(
-                        visible = true,
-                        color = ExtendedTheme.colors.chip
-                    ),
+                    modifier = Modifier.loadingPlaceholder(visible = true),
                     invert = true
                 )
             }
@@ -728,10 +655,7 @@ private fun HomePageSkeletonScreen(
             Column {
                 Header(
                     text = stringResource(id = R.string.forum_list_title),
-                    modifier = Modifier.placeholder(
-                        visible = true,
-                        color = ExtendedTheme.colors.chip
-                    ),
+                    modifier = Modifier.loadingPlaceholder(visible = true),
                     invert = true
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -767,14 +691,14 @@ fun EmptyScreen(
                     modifier = Modifier
                         .size(124.dp)
                         .clip(RoundedCornerShape(38.dp))
-                        .background(ExtendedTheme.colors.chip),
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Forum,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = ExtendedTheme.colors.accent,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -783,8 +707,8 @@ fun EmptyScreen(
             if (!loggedIn) {
                 Text(
                     text = stringResource(id = R.string.home_empty_login),
-                    style = MaterialTheme.typography.body1,
-                    color = ExtendedTheme.colors.textSecondary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }

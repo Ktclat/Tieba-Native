@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.search.forum
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -11,12 +13,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,8 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchForumBean
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
@@ -39,7 +39,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchForumPage(
     keyword: String,
@@ -54,10 +54,7 @@ fun SearchForumPage(
 
     val exactMatchForum = state.exactMatchForum
     val fuzzyMatchForumList = state.fuzzyMatchForumList
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = state.isRefreshing,
-        onRefresh = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) }
-    )
+    val pullRefreshState = rememberPullToRefreshState()
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
@@ -75,7 +72,7 @@ fun SearchForumPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)
+                .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) })
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (exactMatchForum != null) {
@@ -83,7 +80,7 @@ fun SearchForumPage(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(ExtendedTheme.colors.background)
+                                .background(MaterialTheme.colorScheme.surface)
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Chip(
@@ -106,7 +103,7 @@ fun SearchForumPage(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(ExtendedTheme.colors.background)
+                                .background(MaterialTheme.colorScheme.surface)
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Chip(
@@ -126,12 +123,10 @@ fun SearchForumPage(
                 }
             }
 
-            PullRefreshIndicator(
-                refreshing = state.isRefreshing,
+            PullToRefreshDefaults.LoadingIndicator(
+                isRefreshing = state.isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                contentColor = ExtendedTheme.colors.primary,
             )
         }
     }
@@ -163,12 +158,12 @@ private fun SearchForumItem(
         ) {
             Text(
                 text = stringResource(id = R.string.title_forum, item.forumNameShow.orEmpty()),
-                style = MaterialTheme.typography.subtitle1
+                style = MaterialTheme.typography.titleMedium
             )
             if (!item.intro.isNullOrEmpty()) {
                 Text(
                     text = item.slogan.orEmpty(),
-                    style = MaterialTheme.typography.body2,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1
                 )
             }

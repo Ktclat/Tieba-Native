@@ -13,7 +13,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import com.huanchengfly.tieba.post.ui.common.prefs.LocalPrefsDataStore
-import com.huanchengfly.tieba.post.ui.widgets.compose.Switch
+import androidx.compose.material3.Switch
 import kotlinx.coroutines.launch
 
 @Composable

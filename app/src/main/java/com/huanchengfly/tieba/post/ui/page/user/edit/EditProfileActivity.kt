@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.user.edit
 
+import androidx.compose.material3.MaterialTheme
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -28,10 +29,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.runtime.Composable
@@ -63,14 +64,13 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.github.panpf.sketch.compose.AsyncImage
-import com.google.accompanist.placeholder.material.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.BaseActivity
 import com.huanchengfly.tieba.post.arch.collectIn
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
@@ -279,7 +279,7 @@ fun EditProfileCard(
     onIntroChange: ((String) -> Unit)? = null,
     onUploadPortrait: (() -> Unit)? = null,
     onModifySex: (() -> Unit)? = null,
-    color: Color = ExtendedTheme.colors.background,
+    color: Color = MaterialTheme.colorScheme.surface,
 ) {
     val context = LocalContext.current
     Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = color)) {
@@ -293,7 +293,7 @@ fun EditProfileCard(
                     .size(64.dp)
                     .clip(CircleShape)
                     .align(Alignment.CenterHorizontally)
-                    .placeholder(visible = loading)
+                    .loadingPlaceholder(visible = loading)
             ) {
                 AsyncImage(
                     imageUri = StringUtil.getAvatarUrl(portrait),
@@ -343,7 +343,7 @@ fun EditProfileCard(
 
                 Text(
                     text = stringResource(id = R.string.title_username),
-                    color = ExtendedTheme.colors.textDisabled,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier.constrainAs(nameTitle) {
                         top.linkTo(parent.top)
                         bottom.linkTo(nameContent.bottom)
@@ -352,7 +352,7 @@ fun EditProfileCard(
                 )
                 Text(
                     text = name,
-                    color = ExtendedTheme.colors.textDisabled,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier
                         .constrainAs(nameContent) {
                             top.linkTo(nameTitle.top)
@@ -361,12 +361,12 @@ fun EditProfileCard(
                             end.linkTo(parent.end)
                             width = Dimension.fillToConstraints
                         }
-                        .placeholder(visible = loading)
+                        .loadingPlaceholder(visible = loading)
                 )
 
                 Text(
                     text = stringResource(id = R.string.title_nickname),
-                    color = ExtendedTheme.colors.textDisabled,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier.constrainAs(nickNameTitle) {
                         top.linkTo(nameTitle.bottom, margin = 16.dp)
                         start.linkTo(parent.start)
@@ -381,7 +381,7 @@ fun EditProfileCard(
                             end.linkTo(parent.end)
                             width = Dimension.fillToConstraints
                         }
-                        .placeholder(visible = loading)
+                        .loadingPlaceholder(visible = loading)
                 ) {
                     BaseTextField(
                         value = nickName,
@@ -394,7 +394,7 @@ fun EditProfileCard(
 
                 Text(
                     text = stringResource(id = R.string.profile_sex),
-                    color = ExtendedTheme.colors.textDisabled,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier.constrainAs(sexTitle) {
                         top.linkTo(nickNameTitle.bottom, margin = 16.dp)
                         start.linkTo(parent.start)
@@ -413,7 +413,7 @@ fun EditProfileCard(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) { onModifySex?.invoke() }
-                        .placeholder(visible = loading)
+                        .loadingPlaceholder(visible = loading)
                 ) {
                     Text(
                         text = stringResource(
@@ -423,13 +423,13 @@ fun EditProfileCard(
                                 else -> R.string.profile_sex_unset
                             }
                         ),
-                        color = ExtendedTheme.colors.text,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_round_chevron_right),
                         contentDescription = null,
-                        tint = ExtendedTheme.colors.textSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .size(16.dp)
                             .align(Alignment.CenterVertically)
@@ -438,7 +438,7 @@ fun EditProfileCard(
 
                 Text(
                     text = stringResource(id = R.string.title_intro),
-                    color = ExtendedTheme.colors.textDisabled,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier.constrainAs(introTitle) {
                         top.linkTo(sexTitle.bottom, margin = 16.dp)
                         start.linkTo(parent.start)
@@ -458,7 +458,7 @@ fun EditProfileCard(
                             end.linkTo(parent.end)
                             width = Dimension.fillToConstraints
                         }
-                        .placeholder(visible = loading),
+                        .loadingPlaceholder(visible = loading),
                 )
             }
         }

@@ -101,9 +101,6 @@ libraries:
     ui-test-junit4:
       alias: compose-ui-test-junit4
       version: <no-spec>
-    ui-tooling:
-      alias: compose-ui-tooling
-      version: <no-spec>
     ui-test-manifest:
       alias: compose-ui-test-manifest
       version: <no-spec>
@@ -131,10 +128,6 @@ libraries:
     wire-runtime:
       alias: wire-runtime
       version-ref: wire
-  com.godaddy.android.colorpicker:
-    compose-color-picker:
-      alias: godaddy-color-picker
-      version: 0.7.0
   com.airbnb.android:
     lottie:
       alias: airbnb-lottie
@@ -163,7 +156,7 @@ libraries:
       alias: androidx-media3-ui
       version-ref: androidx-media3-exoplayer
   io.github.raamcosta.compose-destinations:
-    animations-core:
+    core:
       alias: compose-destinations-core
       version: 1.10.0
     ksp:
@@ -191,14 +184,11 @@ libraries:
     accompanist-drawablepainter:
       alias: accompanist-drawablepainter
       version-ref: accompanist
-    accompanist-insets-ui:
-      alias: accompanist-insets-ui
-      version-ref: accompanist
     accompanist-systemuicontroller:
       alias: accompanist-systemuicontroller
       version-ref: accompanist
-    accompanist-placeholder-material:
-      alias: accompanist-placeholder-material
+    accompanist-placeholder:
+      alias: accompanist-placeholder
       version-ref: accompanist
   io.github.panpf.sketch3:
     sketch:
@@ -228,9 +218,6 @@ libraries:
       alias: compose-animation-graphics
       version: <no-spec>
   androidx.compose.material:
-    material:
-      alias: compose-material
-      version: <no-spec>
     material-icons-core:
       alias: compose-material-icons-core
       version: <no-spec>
@@ -244,7 +231,7 @@ libraries:
   androidx.constraintlayout:
     constraintlayout-compose:
       alias: androidx-constraintlayout-compose
-      version: 1.0.1
+      version: 1.1.1
     constraintlayout:
       alias: androidx-constraintlayout
       version: 2.1.4
@@ -346,9 +333,6 @@ libraries:
   org.litepal.android:
     kotlin:
       version: 3.0.0
-  com.jaredrummler:
-    colorpicker:
-      version: 1.1.0
   com.github.lwj1994:
     Matisse:
       alias: github.matisse

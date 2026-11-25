@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
@@ -156,7 +155,7 @@ fun SearchPage(
                     Box(
                         modifier = Modifier
                             .height(64.dp)
-                            .background(ExtendedTheme.colors.topBar)
+                            .background(MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         SearchTopBar(
@@ -321,7 +320,7 @@ fun PreviewSearchBox() {
         Box(
             modifier = Modifier
                 .height(64.dp)
-                .background(ExtendedTheme.colors.topBar)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(vertical = 8.dp, horizontal = 16.dp)
         ) {
             SearchTopBar(

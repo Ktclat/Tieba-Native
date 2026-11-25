@@ -1,15 +1,11 @@
 package com.huanchengfly.tieba.post.components.dialogs;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
-import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.huanchengfly.tieba.post.R;
 import com.huanchengfly.tieba.post.interfaces.OnDeniedCallback;
@@ -17,30 +13,18 @@ import com.huanchengfly.tieba.post.interfaces.OnGrantedCallback;
 import com.huanchengfly.tieba.post.models.PermissionBean;
 import com.huanchengfly.tieba.post.utils.SharedPreferencesUtil;
 
-public class PermissionDialog extends AlertDialog implements View.OnClickListener {
+public class PermissionDialog {
     public static final int STATE_DENIED = 2;
     public static final int STATE_ALLOW = 1;
     public static final int STATE_UNSET = 0;
-    private final TextView titleView;
-    private final ImageView iconView;
-    private final Button allowBtn;
-    private final Button deniedBtn;
-    private final CheckBox checkBox;
+    private final Context context;
     private PermissionBean permissionBean;
     private OnGrantedCallback onGrantedCallback;
     private OnDeniedCallback onDeniedCallback;
 
     public PermissionDialog(@NonNull Context context, @NonNull PermissionBean permissionBean) {
-        super(context, false, null);
-        View contentView = View.inflate(context, R.layout.dialog_permission, null);
-        setPermissionBean(permissionBean);
-        titleView = contentView.findViewById(R.id.permission_title);
-        iconView = contentView.findViewById(R.id.permission_icon);
-        allowBtn = contentView.findViewById(R.id.permission_actions_allow);
-        deniedBtn = contentView.findViewById(R.id.permission_actions_denied);
-        checkBox = contentView.findViewById(R.id.permission_actions_checkbox);
-        setView(contentView);
-        initView();
+        this.context = context;
+        this.permissionBean = permissionBean;
     }
 
     public PermissionBean getPermissionBean() {
@@ -70,50 +54,21 @@ public class PermissionDialog extends AlertDialog implements View.OnClickListene
         return this;
     }
 
-    private void initView() {
-        if (permissionBean == null) {
-            throw new IllegalArgumentException();
+    private void onDecision(boolean allow, boolean remember) {
+        if (remember) {
+            SharedPreferencesUtil.get(context, SharedPreferencesUtil.SP_PERMISSION).edit()
+                    .putInt(permissionBean.getData() + "_" + permissionBean.getId(), allow ? STATE_ALLOW : STATE_DENIED)
+                    .apply();
         }
-        titleView.setText(permissionBean.getTitle());
-        iconView.setImageResource(permissionBean.getIcon());
-        allowBtn.setOnClickListener(this);
-        deniedBtn.setOnClickListener(this);
-    }
-
-    @SuppressLint("ApplySharedPref")
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.permission_actions_allow:
-                if (getOnGrantedCallback() != null) {
-                    getOnGrantedCallback().onGranted(checkBox.isChecked());
-                }
-                if (checkBox.isChecked()) {
-                    SharedPreferencesUtil.get(v.getContext(), SharedPreferencesUtil.SP_PERMISSION)
-                            .edit()
-                            .putInt(permissionBean.getData() + "_" + permissionBean.getId(), STATE_ALLOW)
-                            .commit();
-                }
-                dismiss();
-                break;
-            case R.id.permission_actions_denied:
-                if (getOnDeniedCallback() != null) {
-                    getOnDeniedCallback().onDenied(checkBox.isChecked());
-                }
-                if (checkBox.isChecked()) {
-                    SharedPreferencesUtil.get(v.getContext(), SharedPreferencesUtil.SP_PERMISSION)
-                            .edit()
-                            .putInt(permissionBean.getData() + "_" + permissionBean.getId(), STATE_DENIED)
-                            .commit();
-                }
-                dismiss();
-                break;
+        if (allow && onGrantedCallback != null) {
+            onGrantedCallback.onGranted(remember);
+        } else if (!allow && onDeniedCallback != null) {
+            onDeniedCallback.onDenied(remember);
         }
     }
 
-    @Override
     public void show() {
-        int state = SharedPreferencesUtil.get(getContext(), SharedPreferencesUtil.SP_PERMISSION).getInt(permissionBean.getData() + "_" + permissionBean.getId(), STATE_UNSET);
+        int state = SharedPreferencesUtil.get(context, SharedPreferencesUtil.SP_PERMISSION).getInt(permissionBean.getData() + "_" + permissionBean.getId(), STATE_UNSET);
         if (state != STATE_UNSET) {
             if (state == STATE_ALLOW) {
                 if (getOnGrantedCallback() != null) {
@@ -125,7 +80,16 @@ public class PermissionDialog extends AlertDialog implements View.OnClickListene
                 }
             }
         } else {
-            super.show();
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context);
+            View content = View.inflate(builder.getContext(), R.layout.dialog_permission, null);
+            CheckBox remember = content.findViewById(R.id.permission_actions_checkbox);
+            builder.setTitle(permissionBean.getTitle())
+                    .setIcon(permissionBean.getIcon())
+                    .setView(content)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.button_allow, (dialog, which) -> onDecision(true, remember.isChecked()))
+                    .setNegativeButton(R.string.button_denied, (dialog, which) -> onDecision(false, remember.isChecked()))
+                    .show();
         }
     }
 

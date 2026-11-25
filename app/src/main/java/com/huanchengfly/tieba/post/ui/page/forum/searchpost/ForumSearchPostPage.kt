@@ -1,5 +1,9 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.forum.searchpost
 
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -14,14 +18,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,14 +46,11 @@ import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumSearchPostPageDestination
 import com.huanchengfly.tieba.post.ui.page.search.SearchHistorySection
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
-import com.huanchengfly.tieba.post.ui.widgets.compose.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -64,7 +65,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Destination
 @Composable
 fun ForumSearchPostPage(
@@ -148,10 +149,7 @@ fun ForumSearchPostPage(
         }
     }
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = ::refresh
-    )
+    val pullRefreshState = rememberPullToRefreshState()
     val lazyListState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -195,7 +193,7 @@ fun ForumSearchPostPage(
                     Box(
                         modifier = Modifier
                             .height(64.dp)
-                            .background(ExtendedTheme.colors.topBar)
+                            .background(MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         SearchTopBar(
@@ -236,7 +234,7 @@ fun ForumSearchPostPage(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pullRefresh(pullRefreshState)
+                                .pullToRefresh(isRefreshing = isRefreshing, state = pullRefreshState, onRefresh = ::refresh)
                         ) {
                             LoadMoreLayout(
                                 isLoading = isLoadingMore,
@@ -258,7 +256,7 @@ fun ForumSearchPostPage(
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier
-                                                .background(ExtendedTheme.colors.background)
+                                                .background(MaterialTheme.colorScheme.surface)
                                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                                                 .clickable(
                                                     interactionSource = remember { MutableInteractionSource() },
@@ -357,10 +355,8 @@ fun ForumSearchPostPage(
                                                 }.forEachIndexed { index, composable ->
                                                     composable()
                                                     if (index < filterTypeMapping.size - 1) {
-                                                        HorizontalDivider(
-                                                            modifier = Modifier.padding(
-                                                                horizontal = 8.dp
-                                                            )
+                                                        VerticalDivider(
+                                                            modifier = Modifier.padding(horizontal = 8.dp).height(16.dp)
                                                         )
                                                     }
                                                 }
@@ -370,12 +366,10 @@ fun ForumSearchPostPage(
                                 }
                             }
 
-                            PullRefreshIndicator(
-                                refreshing = isRefreshing,
+                            PullToRefreshDefaults.LoadingIndicator(
+                                isRefreshing = isRefreshing,
                                 state = pullRefreshState,
                                 modifier = Modifier.align(Alignment.TopCenter),
-                                backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                                contentColor = ExtendedTheme.colors.primary,
                             )
                         }
                     }

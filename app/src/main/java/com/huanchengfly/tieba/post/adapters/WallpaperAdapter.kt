@@ -10,6 +10,7 @@ class WallpaperAdapter(context: Context) : BaseSingleTypeAdapter<String>(context
     override fun getItemLayoutId(): Int = R.layout.item_wallpaper
 
     override fun convert(viewHolder: MyViewHolder, item: String, position: Int) {
+        viewHolder.itemView.contentDescription = viewHolder.itemView.context.getString(R.string.wallpaper_position, position + 1)
         ImageUtil.load(
             viewHolder.getView(R.id.image_view),
             ImageUtil.LOAD_TYPE_SMALL_PIC,

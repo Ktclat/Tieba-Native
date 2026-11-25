@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +51,7 @@ fun SeekBar(
     onSeekStopped: (stoppedProgress: Long) -> Unit = {},
     seekerPopup: @Composable () -> Unit = {},
     showSeekerDuration: Boolean = true,
-    color: Color = MaterialTheme.colors.primary,
+    color: Color = MaterialTheme.colorScheme.primary,
     secondaryColor: Color = Color.White.copy(alpha = 0.6f)
 ) {
     // if there is an ongoing drag, only dragging progress is evaluated.
@@ -155,8 +155,7 @@ fun SeekBar(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.Center),
-                        progress = secondaryProgress.coerceAtMost(max)
-                            .toFloat() / max.coerceAtLeast(1L).toFloat(),
+                        progress = { secondaryProgress.coerceAtMost(max).toFloat() / max.coerceAtLeast(1L) },
                         color = secondaryColor
                     )
                 }
@@ -216,7 +215,7 @@ fun SeekBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.Center),
-                    progress = percentage,
+                    progress = { percentage },
                     color = color
                 )
             }
@@ -227,7 +226,7 @@ fun SeekBar(
 @Composable
 fun Indicator(
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colors.primary,
+    color: Color = MaterialTheme.colorScheme.primary,
 ) {
     Canvas(modifier = modifier) {
         val radius = size.height / 2

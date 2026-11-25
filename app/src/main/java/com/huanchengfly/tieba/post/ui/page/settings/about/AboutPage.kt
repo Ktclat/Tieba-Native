@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,7 +33,6 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.BuildConfig
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
@@ -58,7 +57,7 @@ fun AboutPage(
                     Text(
                         text = stringResource(id = R.string.title_about),
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -94,10 +93,10 @@ fun AboutPage(
                 TextButton(
                     shape = RoundedCornerShape(100),
                     colors = ButtonDefaults.textButtonColors(
-                        containerColor = ExtendedTheme.colors.text.copy(
+                        containerColor = MaterialTheme.colorScheme.onSurface.copy(
                             alpha = 0.1f
                         ),
-                        contentColor = ExtendedTheme.colors.text
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     onClick = {
                         launchUrl(context, navigator, "https://github.com/HuanCheng65/TiebaLite")
@@ -109,8 +108,8 @@ fun AboutPage(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(id = R.string.tip_about, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.caption,
-                    color = ExtendedTheme.colors.textSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

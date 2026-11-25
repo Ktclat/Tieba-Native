@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.adapters;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,7 +27,7 @@ public class TranslucentThemeColorAdapter extends RecyclerView.Adapter<MyViewHol
             Color.parseColor("#FF512DA8")
     };
     private final WeakReference<Context> mContextWeakReference;
-    private List<Integer> mColors;
+    private final List<Integer> mColors = new ArrayList<>();
     private OnItemClickListener<Integer> mOnItemClickListener;
     private int mSelectedColor;
 
@@ -49,8 +48,13 @@ public class TranslucentThemeColorAdapter extends RecyclerView.Adapter<MyViewHol
         return mContextWeakReference.get();
     }
 
+    public void setSelectedColor(int color) {
+        mSelectedColor = color;
+        notifyDataSetChanged();
+    }
+
     public void setPalette(Palette palette) {
-        mColors = new ArrayList<>();
+        mColors.clear();
         int[] colors = new int[]{
                 palette.getVibrantColor(Color.TRANSPARENT),
                 palette.getMutedColor(Color.TRANSPARENT),
@@ -68,7 +72,7 @@ public class TranslucentThemeColorAdapter extends RecyclerView.Adapter<MyViewHol
     @NonNull
     @Override
     public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new MyViewHolder(getContext(), R.layout.item_theme_color);
+        return new MyViewHolder(parent.getContext(), R.layout.item_theme_color, parent);
     }
 
     @Override
@@ -82,7 +86,8 @@ public class TranslucentThemeColorAdapter extends RecyclerView.Adapter<MyViewHol
         });
         MaterialCardView preview = holder.getView(R.id.theme_preview);
         preview.setCardBackgroundColor(mColors.get(position));
-        preview.setStrokeColor(ColorStateList.valueOf(mColors.get(position)));
+        holder.itemView.setSelected(mSelectedColor == mColors.get(position));
+        holder.itemView.setContentDescription(String.format(java.util.Locale.ROOT, "#%08X", mColors.get(position)));
         if (mSelectedColor == mColors.get(position)) {
             holder.setVisibility(R.id.theme_selected, View.VISIBLE);
         } else {

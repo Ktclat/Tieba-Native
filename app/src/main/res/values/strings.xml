@@ -527,4 +527,7 @@
     <string name="release_to_load_latest_posts">松开加载最新回复</string>
     <string name="pull_to_load_latest_posts">继续上拉加载最新回复</string>
     <string name="settings_home_page_show_history_forum">首页显示最近逛的吧</string>
+    <string name="wallpaper_position">壁纸 %1$d</string>
+    <string name="play_voice">播放语音</string>
+    <string name="pause_voice">暂停语音</string>
 </resources>

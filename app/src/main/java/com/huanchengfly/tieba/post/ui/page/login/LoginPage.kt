@@ -11,12 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.SnackbarDuration
-import androidx.compose.material.SnackbarHostState
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.webview.MyWebChromeClient
 import com.huanchengfly.tieba.post.ui.page.webview.MyWebViewClient
 import com.huanchengfly.tieba.post.ui.page.webview.isInternalHost
@@ -161,8 +160,8 @@ fun LoginPage(
                                 text = currentHost,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                color = ExtendedTheme.colors.onTopBarSecondary,
-                                style = MaterialTheme.typography.caption
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
@@ -173,13 +172,12 @@ fun LoginPage(
                     ClickMenu(
                         menuContent = {
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_refresh)) },
                                 onClick = {
                                     webViewNavigator.reload()
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_refresh))
-                            }
+                            )
                         },
                         menuState = menuState,
                         triggerShape = CircleShape
@@ -227,7 +225,7 @@ fun LoginPage(
 
             if (isLoading) {
                 LinearProgressIndicator(
-                    progress = animatedProgress,
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

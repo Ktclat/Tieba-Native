@@ -12,15 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentAlpha
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.SlowMotionVideo
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -55,7 +55,6 @@ import com.huanchengfly.tieba.post.pxToSp
 import com.huanchengfly.tieba.post.pxToSpFloat
 import com.huanchengfly.tieba.post.spToPxFloat
 import com.huanchengfly.tieba.post.ui.common.PbContentText
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.utils.EmoticonManager
 import com.huanchengfly.tieba.post.utils.EmoticonUtil.emoticonString
 import com.huanchengfly.tieba.post.utils.calcLineHeightPx
@@ -132,7 +131,7 @@ fun EmoticonText(
 ) {
     val textColor = color.takeOrElse {
         style.color.takeOrElse {
-            LocalContentColor.current.copy(alpha = LocalContentAlpha.current)
+            LocalContentColor.current
         }
     }
     val mergedStyle = style.merge(
@@ -198,7 +197,7 @@ fun IconText(
 ) {
     val textColor = color.takeOrElse {
         style.color.takeOrElse {
-            LocalContentColor.current.copy(alpha = LocalContentAlpha.current)
+            LocalContentColor.current
         }
     }
     val mergedStyle = style.merge(
@@ -231,7 +230,7 @@ fun IconText(
                             Icons.Rounded.Link,
                             contentDescription = stringResource(id = R.string.link),
                             modifier = Modifier.size(sizeDp),
-                            tint = ExtendedTheme.colors.accent,
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 ),
@@ -246,7 +245,7 @@ fun IconText(
                             Icons.Rounded.SlowMotionVideo,
                             contentDescription = stringResource(id = R.string.desc_video),
                             modifier = Modifier.size(sizeDp),
-                            tint = ExtendedTheme.colors.accent,
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 ),
@@ -261,31 +260,31 @@ fun IconText(
                             Icons.Rounded.AccountCircle,
                             contentDescription = stringResource(id = R.string.user),
                             modifier = Modifier.size(sizeDp),
-                            tint = ExtendedTheme.colors.accent,
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 ),
             )
         }
     Text(
-        text,
-        modifier,
-        color,
-        fontSize,
-        fontStyle,
-        fontWeight,
-        fontFamily,
-        letterSpacing,
-        textDecoration,
-        textAlign,
-        lineHeight,
-        overflow,
-        softWrap,
-        maxLines,
-        minLines,
-        iconInlineContent + inlineContent,
-        onTextLayout,
-        style
+        text = text,
+        modifier = modifier,
+        color = color,
+        fontSize = fontSize,
+        fontStyle = fontStyle,
+        fontWeight = fontWeight,
+        fontFamily = fontFamily,
+        letterSpacing = letterSpacing,
+        textDecoration = textDecoration,
+        textAlign = textAlign,
+        lineHeight = lineHeight,
+        overflow = overflow,
+        softWrap = softWrap,
+        maxLines = maxLines,
+        minLines = minLines,
+        inlineContent = iconInlineContent + inlineContent,
+        onTextLayout = onTextLayout,
+        style = style,
     )
 }
 
@@ -351,8 +350,8 @@ fun buildChipInlineContent(
     padding: PaddingValues = PaddingValues(vertical = 2.dp, horizontal = 4.dp),
     textStyle: TextStyle = LocalTextStyle.current,
     chipTextStyle: TextStyle = LocalTextStyle.current,
-    backgroundColor: Color = ExtendedTheme.colors.chip,
-    color: Color = ExtendedTheme.colors.onChip
+    backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    color: Color = MaterialTheme.colorScheme.onSecondaryContainer
 ): InlineTextContent {
     val textMeasurer = rememberTextMeasurer()
     val textSize = remember(text, textStyle) { textMeasurer.measure(text, textStyle).size }
@@ -424,7 +423,7 @@ fun HighlightText(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
     highlightKeywords: List<String> = emptyList(),
-    highlightColor: Color = ExtendedTheme.colors.primary,
+    highlightColor: Color = MaterialTheme.colorScheme.primary,
     highlightStyle: TextStyle = style,
 ) {
     HighlightText(
@@ -476,7 +475,7 @@ fun HighlightText(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
     highlightKeywords: List<String> = emptyList(),
-    highlightColor: Color = ExtendedTheme.colors.primary,
+    highlightColor: Color = MaterialTheme.colorScheme.primary,
     highlightStyle: TextStyle = style,
 ) {
     val mergedHighlightStyle = remember(highlightStyle, highlightColor) {

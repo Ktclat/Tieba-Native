@@ -3,6 +3,7 @@ package com.huanchengfly.tieba.post.activities
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
@@ -11,13 +12,7 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.SeekBar
-import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.annotation.ColorInt
-import androidx.coordinatorlayout.widget.CoordinatorLayout
-import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,6 +25,11 @@ import com.github.panpf.sketch.request.LoadResult
 import com.github.panpf.sketch.request.execute
 import com.github.panpf.sketch.resize.Scale
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.slider.Slider
+import com.huanchengfly.tieba.post.components.dialogs.showThemeColorPicker
 import com.gyf.immersionbar.ImmersionBar
 import com.huanchengfly.tieba.post.*
 import com.huanchengfly.tieba.post.App.Companion.translucentBackground
@@ -42,19 +42,23 @@ import com.huanchengfly.tieba.post.components.dividers.HorizontalSpacesDecoratio
 import com.huanchengfly.tieba.post.components.transformations.SketchBlurTransformation
 import com.huanchengfly.tieba.post.interfaces.OnItemClickListener
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
-import com.huanchengfly.tieba.post.ui.widgets.theme.TintMaterialButton
 import com.huanchengfly.tieba.post.utils.*
 import com.huanchengfly.tieba.post.utils.ThemeUtil.TRANSLUCENT_THEME_DARK
 import com.huanchengfly.tieba.post.utils.ThemeUtil.TRANSLUCENT_THEME_LIGHT
-import com.jaredrummler.android.colorpicker.ColorPickerDialog
-import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlin.math.roundToInt
 import java.io.File
 
-class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBarChangeListener,
-    ColorPickerDialogListener {
+class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
+    private var previewJob: Job? = null
+    private val selectedColor: Int get() = appPreferences.translucentPrimaryColor
+        ?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+        ?: ThemeUtils.getColorById(this, R.color.default_color_primary)
     private var mUri: Uri? = null
     private var alpha = 0
     private var blur = 0
@@ -72,17 +76,11 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
     @BindView(R.id.progress)
     lateinit var mProgress: View
 
-    @BindView(R.id.dark_color)
-    lateinit var darkColorBtn: TintMaterialButton
-
-    @BindView(R.id.light_color)
-    lateinit var lightColorBtn: TintMaterialButton
-
     @BindView(R.id.button_back)
     lateinit var backBtn: View
 
     @BindView(R.id.bottom_sheet)
-    lateinit var bottomSheet: LinearLayout
+    lateinit var bottomSheet: View
 
     @BindView(R.id.button_finish)
     lateinit var finishBtn: View
@@ -94,7 +92,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
     lateinit var experimentalTipView: View
 
     @BindView(R.id.color_theme)
-    lateinit var colorTheme: ViewGroup
+    lateinit var colorTheme: MaterialButtonToggleGroup
 
     private val selectImageLauncher = registerPickMediasLauncher { (_, uris) ->
         if (uris.isNotEmpty()) {
@@ -198,13 +196,16 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
     }
 
     private fun refreshBackground() {
+        previewJob?.cancel()
         mProgress.visibility = View.VISIBLE
         if (mUri == null) {
-            findViewById<View>(R.id.background).setBackgroundColor(Color.BLACK)
+            findViewById<View>(R.id.background).setBackgroundColor(
+                MaterialColors.getColor(findViewById(R.id.background), com.google.android.material.R.attr.colorSurface)
+            )
             mProgress.visibility = View.GONE
             return
         }
-        launch {
+        previewJob = launch {
             val result = DisplayRequest(this@TranslucentThemeActivity, mUri.toString()) {
                 resizeScale(Scale.CENTER_CROP)
                 if (blur > 0) {
@@ -217,8 +218,8 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
                 mPalette = Palette.from(ImageUtil.drawableToBitmap(result.drawable)).generate()
                 mTranslucentThemeColorAdapter.setPalette(mPalette)
                 mSelectColor.visibility = View.VISIBLE
-                mProgress.visibility = View.GONE
             }
+            mProgress.visibility = View.GONE
         }
     }
 
@@ -250,8 +251,6 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
         listOf(
             findViewById(R.id.custom_color),
             findViewById(R.id.select_pic),
-            darkColorBtn,
-            lightColorBtn,
             backBtn,
             finishBtn
         ).forEach {
@@ -259,7 +258,9 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
         }
         wallpapers =
             CacheUtil.getCache(this, "recommend_wallpapers", List::class.java) as List<String>?
-        colorTheme.enableChangingLayoutTransition()
+        colorTheme.bindThemeMode(appPreferences.translucentBackgroundTheme == TRANSLUCENT_THEME_DARK) { dark ->
+            appPreferences.translucentBackgroundTheme = if (dark) TRANSLUCENT_THEME_DARK else TRANSLUCENT_THEME_LIGHT
+        }
         wallpaperAdapter.setOnItemClickListener { _, item, _ ->
             launchUCrop(Uri.parse(item))
         }
@@ -275,8 +276,11 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
         recommendWallpapersRv.adapter = wallpaperAdapter
         recommendWallpapersRv.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        applyWallpaperAccent(findViewById(R.id.background), selectedColor)
+        mTranslucentThemeColorAdapter.setSelectedColor(selectedColor)
         mTranslucentThemeColorAdapter.onItemClickListener =
             OnItemClickListener { _: View?, themeColor: Int, _: Int, _: Int ->
+                applyWallpaperAccent(findViewById(R.id.background), themeColor)
                 appPreferences.translucentPrimaryColor = toString(themeColor)
                 maskView.post { ThemeUtils.refreshUI(this, this) }
             }
@@ -291,29 +295,37 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
         }
         alpha = appPreferences.translucentBackgroundAlpha
         blur = appPreferences.translucentBackgroundBlur
-        (findViewById<SeekBar>(R.id.alpha)).apply {
-            progress = this@TranslucentThemeActivity.alpha
-            setOnSeekBarChangeListener(this@TranslucentThemeActivity)
+        val updatePreview = Runnable { refreshBackground() }
+        val preview = findViewById<View>(R.id.background)
+        fun bindSlider(id: Int, initial: Int, update: (Int) -> Unit) {
+            findViewById<Slider>(id).apply {
+                value = initial.toFloat().coerceIn(valueFrom, valueTo)
+                setLabelFormatter { it.roundToInt().toString() }
+                addOnChangeListener { _, newValue, fromUser ->
+                    if (fromUser) {
+                        update(newValue.roundToInt())
+                        preview.removeCallbacks(updatePreview)
+                        preview.postDelayed(updatePreview, 150)
+                    }
+                }
+            }
         }
-        (findViewById<SeekBar>(R.id.blur)).apply {
-            progress = this@TranslucentThemeActivity.blur
-            setOnSeekBarChangeListener(this@TranslucentThemeActivity)
-        }
+        bindSlider(R.id.alpha, alpha) { alpha = it }
+        bindSlider(R.id.blur, blur) { blur = it }
         mProgress.setOnTouchListener { _: View?, _: MotionEvent? -> true }
         mProgress.visibility = View.GONE
         val file = File(filesDir, "cropped_background.jpg")
         if (file.exists()) {
             mUri = Uri.fromFile(file)
-            invalidateFinishBtn()
         }
-        val bottomSheetBehavior =
-            (bottomSheet.layoutParams as CoordinatorLayout.LayoutParams).behavior as BottomSheetBehavior
+        invalidateFinishBtn()
+        val bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet)
         bottomSheetBehavior.addBottomSheetCallback(object :
             BottomSheetBehavior.BottomSheetCallback() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {}
 
             override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                maskView.alpha = slideOffset
+                maskView.alpha = 0.32f * slideOffset.coerceIn(0f, 1f)
                 maskView.visibility = if (slideOffset < 0.01f) {
                     View.GONE
                 } else {
@@ -326,7 +338,6 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
         refreshBackground()
-        refreshTheme()
         fetchWallpapers()
     }
 
@@ -336,17 +347,10 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
                 .wallpapersAsync()
                 .doIfSuccess {
                     CacheUtil.putCache(this@TranslucentThemeActivity, "recommend_wallpapers", it)
-                    wallpapers = it
+                    withContext(Main.immediate) { wallpapers = it }
                 }
         }
     }
-
-    override fun onColorSelected(dialogId: Int, color: Int) {
-        appPreferences.translucentPrimaryColor = toString(color)
-        ThemeUtils.refreshUI(this, this)
-    }
-
-    override fun onDialogDismissed(dialogId: Int) {}
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
@@ -399,52 +403,6 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
         }
     }
 
-    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
-    override fun onStartTrackingTouch(seekBar: SeekBar) {}
-    override fun onStopTrackingTouch(seekBar: SeekBar) {
-        when (seekBar.id) {
-            R.id.alpha -> alpha = seekBar.progress
-            R.id.blur -> blur = seekBar.progress
-        }
-        refreshBackground()
-    }
-
-    private fun refreshTheme() {
-        when (appPreferences.translucentBackgroundTheme) {
-            TRANSLUCENT_THEME_DARK -> {
-                darkColorBtn.setBackgroundTintResId(R.color.default_color_accent)
-                darkColorBtn.setTextColorResId(R.color.white)
-                darkColorBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    ContextCompat.getDrawable(this, R.drawable.ic_round_check_circle),
-                    null,
-                    null,
-                    null
-                )
-                lightColorBtn.setBackgroundTintResId(R.color.color_divider)
-                lightColorBtn.setTextColorResId(R.color.color_text_secondary)
-                lightColorBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    null,
-                    null,
-                    null,
-                    null
-                )
-            }
-            TRANSLUCENT_THEME_LIGHT -> {
-                darkColorBtn.setBackgroundTintResId(R.color.color_divider)
-                darkColorBtn.setTextColorResId(R.color.color_text_secondary)
-                darkColorBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null)
-                lightColorBtn.setBackgroundTintResId(R.color.default_color_accent)
-                lightColorBtn.setTextColorResId(R.color.white)
-                lightColorBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    ContextCompat.getDrawable(this, R.drawable.ic_round_check_circle),
-                    null,
-                    null,
-                    null
-                )
-            }
-        }
-    }
-
     override fun finish() {
         ImageCacheUtil.clearImageMemoryCache(this)
         super.finish()
@@ -474,27 +432,12 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
                 selectImageLauncher.launch(PickMediasRequest(mediaType = PickMediasRequest.ImageOnly))
             }
             R.id.custom_color -> {
-                val primaryColorPicker = ColorPickerDialog.newBuilder()
-                    .setDialogTitle(R.string.title_color_picker_primary)
-                    .setDialogType(ColorPickerDialog.TYPE_CUSTOM)
-                    .setShowAlphaSlider(true)
-                    .setDialogId(0)
-                    .setAllowPresets(false)
-                    .setColor(ThemeUtils.getColorById(this, R.color.default_color_primary))
-                    .create()
-                primaryColorPicker.setColorPickerDialogListener(this)
-                primaryColorPicker.show(
-                    supportFragmentManager,
-                    "ColorPicker_TranslucentThemePrimaryColor"
-                )
-            }
-            R.id.dark_color -> {
-                appPreferences.translucentBackgroundTheme = TRANSLUCENT_THEME_DARK
-                refreshTheme()
-            }
-            R.id.light_color -> {
-                appPreferences.translucentBackgroundTheme = TRANSLUCENT_THEME_LIGHT
-                refreshTheme()
+                showThemeColorPicker(this, selectedColor) { color ->
+                    applyWallpaperAccent(findViewById(R.id.background), color)
+                    appPreferences.translucentPrimaryColor = toString(color)
+                    mTranslucentThemeColorAdapter.setSelectedColor(color)
+                    ThemeUtils.refreshUI(this, this)
+                }
             }
         }
     }
@@ -561,5 +504,43 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener, OnSeekBar
                 Color.blue(color)
             )
         }
+    }
+}
+/** The wallpaper's exact sampled color is shown in its swatch. Its tonal roles color the controls. */
+internal fun applyWallpaperAccent(root: View, seed: Int) {
+    val roles = MaterialColors.getColorRoles(root.context, seed)
+    val accent = ColorStateList.valueOf(roles.accent)
+    for (id in listOf(R.id.select_pic, R.id.button_finish)) {
+        root.findViewById<MaterialButton>(id).apply {
+            backgroundTintList = accent
+            setTextColor(roles.onAccent)
+            iconTint = ColorStateList.valueOf(roles.onAccent)
+        }
+    }
+    for (id in listOf(R.id.custom_color, R.id.experimental_tip)) {
+        root.findViewById<MaterialButton>(id).apply {
+            setTextColor(roles.accent)
+            iconTint = accent
+        }
+    }
+    val inactive = ColorStateList.valueOf(
+        MaterialColors.getColor(root, com.google.android.material.R.attr.colorSurfaceContainerHighest)
+    )
+    for (id in listOf(R.id.alpha, R.id.blur)) {
+        root.findViewById<Slider>(id).apply {
+            thumbTintList = accent
+            trackActiveTintList = accent
+            trackInactiveTintList = inactive
+        }
+    }
+}
+
+internal fun MaterialButtonToggleGroup.bindThemeMode(dark: Boolean, onChange: (Boolean) -> Unit) {
+    val selected = if (dark) R.id.dark_color else R.id.light_color
+    check(selected)
+    findViewById<MaterialButton>(selected).setIconResource(R.drawable.ic_round_check)
+    addOnButtonCheckedListener { _, id, checked ->
+        findViewById<MaterialButton>(id).setIconResource(if (checked) R.drawable.ic_round_check else 0)
+        if (checked) onChange(id == R.id.dark_color)
     }
 }

@@ -1,16 +1,14 @@
 package com.huanchengfly.tieba.post.ui.common.prefs
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.runtime.Composable
@@ -22,7 +20,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 
 val LocalPrefsDataStore: ProvidableCompositionLocal<DataStore<Preferences>> =
@@ -37,19 +34,18 @@ val LocalPrefsDataStore: ProvidableCompositionLocal<DataStore<Preferences>> =
 fun PrefsScreen(
     dataStore: DataStore<Preferences>,
     modifier: Modifier = Modifier,
-    dividerThickness: Dp = 1.dp,
+    dividerThickness: Dp = 0.dp,
     dividerIndent: Dp = 0.dp,
     content: PrefsScope.() -> Unit
 ) {
     val prefsScope = PrefsScopeImpl().apply(content)
-    val colors = ExtendedTheme.colors
 
     CompositionLocalProvider(LocalPrefsDataStore provides dataStore) {
         Container {
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 items(prefsScope.prefsItems.size, key = { "setting-$it" }) { index ->
                     val groupHeader = prefsScope.headerIndexes.contains(index)
@@ -57,16 +53,20 @@ fun PrefsScreen(
                         prefsScope.footerIndexes.contains(index - 1)
                     when {
                         groupHeader -> prefsScope.getPrefsItem(index)()
-                        groupSpacer -> Spacer(Modifier.height(2.dp))
+                        groupSpacer -> Spacer(Modifier.height(10.dp))
                         else -> Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = run {
+                                val outer = Material3Theme.shapes.large.topStart
+                                val inner = Material3Theme.shapes.extraSmall.topStart
+                                val first = index == 0 || index - 1 in prefsScope.headerIndexes || index - 1 in prefsScope.footerIndexes
+                                val last = index == prefsScope.prefsItems.lastIndex || index in prefsScope.footerIndexes || index + 1 in prefsScope.headerIndexes
+                                val top = if (first) outer else inner
+                                val bottom = if (last) outer else inner
+                                RoundedCornerShape(top, top, bottom, bottom)
+                            },
                             color = Material3Theme.colorScheme.surfaceContainerLow,
                             tonalElevation = 0.dp,
-                            border = BorderStroke(
-                                0.75.dp,
-                                Material3Theme.colorScheme.outlineVariant.copy(alpha = 0.7f)
-                            ),
                         ) {
                             Column {
                                 prefsScope.getPrefsItem(index)()

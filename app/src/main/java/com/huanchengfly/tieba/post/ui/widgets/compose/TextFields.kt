@@ -1,33 +1,17 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.ContentAlpha
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.Text
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedContentColor
 
 @Composable
 fun BaseTextField(
@@ -43,31 +27,20 @@ fun BaseTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    colors: TextFieldColors = TextFieldDefaults.textFieldColors(),
-    decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit = { innerTextField ->
-        Box(contentAlignment = Alignment.CenterStart) {
-            PlaceholderDecoration(value.isEmpty(), colors.placeholderColor(enabled).value, placeholder)
-            innerTextField()
-        }
-    },
 ) {
-    val textColor = textStyle.color.takeOrElse { colors.textColor(enabled).value }
-    BasicTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.background(colors.backgroundColor(enabled).value),
+        modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
-        textStyle = textStyle.merge(TextStyle(color = textColor)),
-        cursorBrush = SolidColor(colors.cursorColor().value),
+        textStyle = textStyle,
+        placeholder = placeholder,
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        interactionSource = interactionSource,
         singleLine = singleLine,
         maxLines = maxLines,
-        decorationBox = decorationBox,
     )
 }
 
@@ -88,135 +61,36 @@ fun CounterTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    colors: CounterTextFieldColors = TextFieldDefaults.counterTextFieldColors(),
 ) {
-    val maxLengthRestrictEnable = maxLength < Int.MAX_VALUE
-    BaseTextField(
+    fun counted(c: Char) = countWhitespace || !c.isWhitespace()
+    OutlinedTextField(
         value = value,
-        onValueChange = {
-            val count = it.count(countWhitespace)
-            if (!maxLengthRestrictEnable || count <= maxLength) onValueChange(it)
-            else {
-                onValueChange(it.substring(0 until maxLength))
-                onLengthBeyondRestrict?.invoke(it)
+        onValueChange = { next ->
+            var count = 0
+            val overflowAt = next.indexOfFirst { counted(it) && ++count > maxLength }
+            if (overflowAt < 0) onValueChange(next) else {
+                onValueChange(next.take(overflowAt))
+                onLengthBeyondRestrict?.invoke(next)
             }
         },
         modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
         textStyle = textStyle,
+        placeholder = placeholder,
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        interactionSource = interactionSource,
         singleLine = singleLine,
         maxLines = maxLines,
-        colors = colors,
-        decorationBox = { innerTextField ->
-            ConstraintLayout {
-                val (innerTextFieldBox, counter) = createRefs()
-                Box(
-                    modifier = Modifier.constrainAs(innerTextFieldBox) {
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                        top.linkTo(parent.top)
-                        width = Dimension.fillToConstraints
-                    }
-                ) {
-                    PlaceholderDecoration(value.isEmpty(), colors.placeholderColor(enabled).value, placeholder)
-                    innerTextField()
-                }
-                Text(
-                    text = "${value.count(countWhitespace)}${if (maxLengthRestrictEnable) "/$maxLength" else ""}",
-                    color = colors.counterColor(enabled).value,
-                    fontSize = 12.sp,
-                    modifier = Modifier.constrainAs(counter) {
-                        top.linkTo(innerTextFieldBox.bottom, 8.dp)
-                        end.linkTo(parent.end, 4.dp)
-                        bottom.linkTo(parent.bottom)
-                    },
-                )
-            }
+        supportingText = {
+            val count = value.count(::counted)
+            Text(if (maxLength == Int.MAX_VALUE) count.toString() else "$count/$maxLength")
         },
     )
 }
 
-private fun String.count(countWhitespace: Boolean = true): Int = count { !it.isWhitespace() || countWhitespace }
-
-@Composable
-fun PlaceholderDecoration(show: Boolean, placeholderColor: Color, placeholder: @Composable (() -> Unit)? = null) {
-    if (placeholder != null && show) ProvideContentColor(color = placeholderColor, content = placeholder)
-}
-
 @Composable
 fun ProvideContentColor(color: Color, alpha: Float = color.alpha, content: @Composable () -> Unit) {
-    // Both the new M3 labels and legacy M2 labels must receive identical effective alpha/color.
-    ProvideUnifiedContentColor(color, alpha, content)
-}
-
-@Stable
-interface TextFieldColors {
-    @Composable fun textColor(enabled: Boolean): State<Color>
-    @Composable fun backgroundColor(enabled: Boolean): State<Color>
-    @Composable fun placeholderColor(enabled: Boolean): State<Color>
-    @Composable fun cursorColor(): State<Color>
-}
-
-@Stable
-interface CounterTextFieldColors : TextFieldColors {
-    @Composable fun counterColor(enabled: Boolean): State<Color>
-}
-
-@Immutable
-private open class DefaultTextFieldColors(
-    private val textColor: Color,
-    private val disabledTextColor: Color,
-    private val cursorColor: Color,
-    private val backgroundColor: Color,
-    private val placeholderColor: Color,
-    private val disabledPlaceholderColor: Color,
-) : TextFieldColors {
-    @Composable override fun textColor(enabled: Boolean): State<Color> = rememberUpdatedState(if (enabled) textColor else disabledTextColor)
-    @Composable override fun backgroundColor(enabled: Boolean): State<Color> = rememberUpdatedState(backgroundColor)
-    @Composable override fun placeholderColor(enabled: Boolean): State<Color> = rememberUpdatedState(if (enabled) placeholderColor else disabledPlaceholderColor)
-    @Composable override fun cursorColor(): State<Color> = rememberUpdatedState(cursorColor)
-}
-
-@Immutable
-private class DefaultCounterTextFieldColors(
-    textColor: Color,
-    disabledTextColor: Color,
-    cursorColor: Color,
-    backgroundColor: Color,
-    placeholderColor: Color,
-    disabledPlaceholderColor: Color,
-    private val counterColor: Color,
-    private val disabledCounterColor: Color,
-) : DefaultTextFieldColors(textColor, disabledTextColor, cursorColor, backgroundColor, placeholderColor, disabledPlaceholderColor), CounterTextFieldColors {
-    @Composable override fun counterColor(enabled: Boolean): State<Color> = rememberUpdatedState(if (enabled) counterColor else disabledCounterColor)
-}
-
-object TextFieldDefaults {
-    @Composable
-    fun textFieldColors(
-        textColor: Color = ExtendedTheme.colors.text,
-        disabledTextColor: Color = textColor.copy(alpha = ContentAlpha.disabled),
-        backgroundColor: Color = Color.Transparent,
-        cursorColor: Color = ExtendedTheme.colors.accent,
-        placeholderColor: Color = ExtendedTheme.colors.textSecondary.copy(alpha = ContentAlpha.medium),
-        disabledPlaceholderColor: Color = placeholderColor.copy(alpha = ContentAlpha.disabled),
-    ): TextFieldColors = DefaultTextFieldColors(textColor, disabledTextColor, cursorColor, backgroundColor, placeholderColor, disabledPlaceholderColor)
-
-    @Composable
-    fun counterTextFieldColors(
-        textColor: Color = ExtendedTheme.colors.text,
-        disabledTextColor: Color = textColor.copy(alpha = ContentAlpha.disabled),
-        backgroundColor: Color = Color.Transparent,
-        cursorColor: Color = ExtendedTheme.colors.accent,
-        placeholderColor: Color = ExtendedTheme.colors.text.copy(alpha = ContentAlpha.medium),
-        disabledPlaceholderColor: Color = placeholderColor.copy(alpha = ContentAlpha.disabled),
-        counterColor: Color = ExtendedTheme.colors.text.copy(alpha = ContentAlpha.medium),
-        disabledCounterColor: Color = counterColor.copy(alpha = ContentAlpha.disabled),
-    ): CounterTextFieldColors = DefaultCounterTextFieldColors(textColor, disabledTextColor, cursorColor, backgroundColor, placeholderColor, disabledPlaceholderColor, counterColor, disabledCounterColor)
+    CompositionLocalProvider(LocalContentColor provides color.copy(alpha = alpha), content = content)
 }

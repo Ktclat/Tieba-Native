@@ -22,10 +22,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
@@ -55,7 +55,6 @@ import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.components.dialogs.PermissionDialog
 import com.huanchengfly.tieba.post.models.PermissionBean
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
@@ -178,8 +177,8 @@ fun WebViewPage(
                                 text = currentHost,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                color = ExtendedTheme.colors.onTopBarSecondary,
-                                style = MaterialTheme.typography.caption
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
@@ -190,15 +189,15 @@ fun WebViewPage(
                     ClickMenu(
                         menuContent = {
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_copy_link)) },
                                 onClick = {
                                     val url = webViewState.webView?.url ?: initialUrl
                                     TiebaUtil.copyText(context, url)
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_copy_link))
-                            }
+                            )
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_open_in_browser)) },
                                 onClick = {
                                     val uri = (webViewState.webView?.url ?: initialUrl).toUri()
                                     context.startActivity(
@@ -209,17 +208,14 @@ fun WebViewPage(
                                     )
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_open_in_browser))
-                            }
+                            )
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_refresh)) },
                                 onClick = {
                                     webViewNavigator.reload()
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_refresh))
-                            }
+                            )
                         },
                         menuState = menuState,
                         triggerShape = CircleShape
@@ -260,7 +256,7 @@ fun WebViewPage(
 
             if (isLoading) {
                 LinearProgressIndicator(
-                    progress = animatedProgress,
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

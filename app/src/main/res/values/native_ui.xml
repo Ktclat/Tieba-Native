@@ -13,8 +13,9 @@
     <string name="native_font_reset">默认字号</string>
     <string name="native_font_save">保存字号</string>
     <string name="native_font_saving">正在保存…</string>
-    <string name="native_font_apply_hint">保存后，原生 Compose 页面会自动采用新字号，无需重启应用。</string>
     <string name="native_font_load_failed">无法读取字号设置，请重试。</string>
     <string name="native_font_save_failed">字号未能保存，请重试；原设置未改变。</string>
     <string name="native_font_retry">重试</string>
+    <string name="navigation_unread_count">%1$s 条未读消息</string>
+    <string name="navigation_unread">有未读消息</string>
 </resources>

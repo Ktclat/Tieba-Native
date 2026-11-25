@@ -51,13 +51,13 @@ import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.models.PhotoViewData
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity.Companion.EXTRA_PHOTO_VIEW_DATA
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.NetworkUtil
-import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 
 private fun shouldLoadImage(context: Context, skipNetworkCheck: Boolean, imageLoadSettings: Int): Boolean {
     return skipNetworkCheck
@@ -236,7 +236,7 @@ fun NetworkImage(
     }
     val enableClick = remember(photoViewData, shouldLoad) { photoViewData != null || !shouldLoad }
 
-    val darken = ExtendedTheme.colors.isNightMode && preferences.darkenImages
+    val darken = LocalAppDarkTheme.current && preferences.darkenImages
     val colorMask = remember(darken) {
         if (darken) {
             MaskTransformation(Color.parseColor("#99000000"))

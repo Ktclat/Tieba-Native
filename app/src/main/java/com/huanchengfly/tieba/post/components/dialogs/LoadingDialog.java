@@ -7,24 +7,26 @@ import android.widget.TextView;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.huanchengfly.tieba.post.R;
 
-public class LoadingDialog extends AlertDialog {
-    private final Context mContext;
-    private TextView loadingTipView;
+public class LoadingDialog {
+    private final AlertDialog dialog;
+    private final TextView loadingTipView;
 
     public LoadingDialog(Context context) {
-        super(context);
-        this.mContext = context;
-        initView();
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context);
+        View content = View.inflate(builder.getContext(), R.layout.dialog_loading, null);
+        loadingTipView = content.findViewById(R.id.dialog_loading_tip);
+        dialog = builder.setView(content).setCancelable(false).create();
     }
 
-    private void initView() {
-        View contentView = View.inflate(mContext, R.layout.dialog_loading, null);
-        loadingTipView = contentView.findViewById(R.id.dialog_loading_tip);
-        setCancelable(false);
-        setView(contentView);
-        setTipText(R.string.text_loading);
+    public void show() {
+        dialog.show();
+    }
+
+    public void dismiss() {
+        dialog.dismiss();
     }
 
     public void setTipText(@StringRes int resId) {

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.thread
 
 import android.util.Log
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,27 +36,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton as M3IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.TonalToggleButton
-import androidx.compose.material3.Surface as M3Surface
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.MaterialTheme as M3Theme
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ModalBottomSheetLayout
-import androidx.compose.material.ModalBottomSheetValue
-import androidx.compose.material.ProvideTextStyle
-import androidx.compose.material.SnackbarDuration
-import androidx.compose.material.SnackbarResult
-import androidx.compose.material.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
@@ -74,11 +72,11 @@ import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material.rememberModalBottomSheetState
-import androidx.compose.material.rememberScaffoldState
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -87,6 +85,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -133,22 +132,19 @@ import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.PbContentText
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.loadMoreIndicator
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
-import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsSheetPageDestination
+import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
+import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -194,7 +190,7 @@ fun PostAgreeBtn(
     modifier: Modifier = Modifier
 ) {
     val animatedColor by animateColorAsState(
-        targetValue = if (hasAgreed) ExtendedTheme.colors.accent else ExtendedTheme.colors.textSecondary,
+        targetValue = if (hasAgreed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "postAgreeBtnColor"
     )
     TextButton(
@@ -217,7 +213,7 @@ fun PostAgreeBtn(
                 Text(
                     text = agreeNum.getShortNumString(),
                     color = animatedColor,
-                    style = M3Theme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -241,8 +237,8 @@ private fun ThreadMenuToggle(
         label = text,
         leadingIcon = icon,
         modifier = modifier,
-        shape = M3Theme.shapes.large,
-        colors = FilterChipDefaults.filterChipColors(containerColor = M3Theme.colorScheme.surfaceContainer),
+        shape = MaterialTheme.shapes.large,
+        colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = null,
     )
 }
@@ -276,10 +272,10 @@ private fun ThreadLoadMoreIndicator(
     hasMore: Boolean,
 ) {
     Surface(
-        elevation = 8.dp,
+        shadowElevation = 2.dp,
         shape = RoundedCornerShape(100),
-        color = ExtendedTheme.colors.loadMoreIndicator,
-        contentColor = ExtendedTheme.colors.text
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Row(
             modifier = Modifier
@@ -288,13 +284,13 @@ private fun ThreadLoadMoreIndicator(
                 .animateContentSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ProvideTextStyle(value = MaterialTheme.typography.body2.copy(fontSize = 13.sp)) {
+            ProvideTextStyle(value = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)) {
                 when {
                     isLoading -> {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 3.dp,
-                            color = ExtendedTheme.colors.primary
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -333,7 +329,7 @@ private fun ThreadLoadMoreIndicator(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Destination(
     deepLinks = [
         DeepLink(uriPattern = "tblite://thread/{threadId}"),
@@ -377,7 +373,7 @@ fun ThreadPage(
         )
         viewModel.initialized = true
     }
-    val scaffoldState = rememberScaffoldState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val data by viewModel.uiState.collectPartialAsState(
         prop1 = ThreadUiState::data,
         initial = persistentListOf()
@@ -505,10 +501,8 @@ fun ThreadPage(
     var waitLoadSuccessAndScrollToFirstReply by remember { mutableStateOf(scrollToReply) }
 
     val lazyListState = rememberLazyListState()
-    val bottomSheetState = rememberModalBottomSheetState(
-        initialValue = ModalBottomSheetValue.Hidden,
-        skipHalfExpanded = true
-    )
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val lastVisibilityPost by remember {
         derivedStateOf {
             data.firstOrNull { (post) ->
@@ -524,22 +518,10 @@ fun ThreadPage(
     }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val openBottomSheet = {
-        coroutineScope.launch {
-            bottomSheetState.show()
+    fun closeBottomSheet() {
+        coroutineScope.launch { bottomSheetState.hide() }.invokeOnCompletion {
+            if (!bottomSheetState.isVisible) menuOpen = false
         }
-    }
-    val closeBottomSheet = {
-        coroutineScope.launch {
-            bottomSheetState.hide()
-        }
-    }
-
-    MyBackHandler(
-        enabled = bottomSheetState.isVisible,
-        currentScreen = ThreadPageDestination
-    ) {
-        closeBottomSheet()
     }
 
     viewModel.onEvent<ThreadUiEvent.ScrollToFirstReply> {
@@ -559,12 +541,12 @@ fun ThreadPage(
         }
     }
     viewModel.onEvent<ThreadUiEvent.AddFavoriteSuccess> {
-        scaffoldState.snackbarHostState.showSnackbar(
+        snackbarHostState.showSnackbar(
             context.getString(R.string.message_add_favorite_success, it.floor)
         )
     }
     viewModel.onEvent<ThreadUiEvent.RemoveFavoriteSuccess> {
-        scaffoldState.snackbarHostState.showSnackbar(
+        snackbarHostState.showSnackbar(
             context.getString(R.string.message_remove_favorite_success)
         )
     }
@@ -619,7 +601,7 @@ fun ThreadPage(
         Text(text = stringResource(R.string.message_update_collect_mark, readFloorBeforeBack))
     }
     MyBackHandler(
-        enabled = isCollected && !bottomSheetState.isVisible,
+        enabled = isCollected && !menuOpen,
         currentScreen = ThreadPageDestination
     ) {
         readFloorBeforeBack = lastVisibilityPost?.get { floor } ?: 0
@@ -700,10 +682,10 @@ fun ThreadPage(
 
     LaunchedEffect(Unit) {
         if (from == ThreadPageFrom.FROM_STORE && extra is ThreadPageFromStoreExtra && extra.maxPid != postId) {
-            val result = scaffoldState.snackbarHostState.showSnackbar(
+            val result = snackbarHostState.showSnackbar(
                 context.getString(R.string.message_store_thread_update, extra.maxFloor),
                 context.getString(R.string.button_load_new),
-                SnackbarDuration.Long
+                duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.send(
@@ -754,9 +736,7 @@ fun ThreadPage(
         }
     }
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = {
+    val refreshPosts = {
             viewModel.send(
                 ThreadUiIntent.LoadFirstPage(
                     threadId,
@@ -766,7 +746,7 @@ fun ThreadPage(
                 )
             )
         }
-    )
+    val pullRefreshState = rememberPullToRefreshState()
 
     @Composable
     fun PostCard(
@@ -840,7 +820,7 @@ fun ThreadPage(
             onOpenSubPosts = {
                 if (curForumId != null) {
                     navigator.navigate(
-                        SubPostsSheetPageDestination(
+                        SubPostsPageDestination(
                             forumId = curForumId,
                             threadId = threadId,
                             postId = item.get { id },
@@ -895,8 +875,8 @@ fun ThreadPage(
                         Text(
                             text = stringResource(id = R.string.below_is_latest_post),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = M3Theme.typography.labelLarge,
-                            color = M3Theme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -921,8 +901,8 @@ fun ThreadPage(
                         Text(
                             text = stringResource(id = R.string.above_is_latest_post),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = M3Theme.typography.labelLarge,
-                            color = M3Theme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -957,7 +937,7 @@ fun ThreadPage(
             }
         ) {
             MyScaffold(
-                scaffoldState = scaffoldState,
+                snackbarHostState = snackbarHostState,
                 topBar = {
                     TopBar(
                         forum = forum,
@@ -997,23 +977,17 @@ fun ThreadPage(
                                 )
                             )
                         },
-                        onClickMore = {
-                            if (bottomSheetState.isVisible) {
-                                closeBottomSheet()
-                            } else {
-                                openBottomSheet()
-                            }
-                        },
+                        onClickMore = { menuOpen = true },
                         hasAgreed = hasThreadAgreed,
                         agreeNum = threadAgreeNum,
                     )
                 },
             ) { paddingValues ->
-                ModalBottomSheetLayout(
-                    sheetState = bottomSheetState,
-                    sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                    sheetBackgroundColor = ExtendedTheme.colors.windowBackground,
-                    sheetContent = {
+                if (menuOpen) {
+                    ModalBottomSheet(
+                        onDismissRequest = { menuOpen = false },
+                        sheetState = bottomSheetState,
+                    ) {
                         ThreadMenu(
                             isSeeLz = isSeeLz,
                             isCollected = isCollected,
@@ -1120,258 +1094,253 @@ fun ThreadPage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 16.dp)
-                                .defaultMinSize(minHeight = 1.dp)
-                        )
-                    },
-                    scrimColor = Color.Transparent,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .pullRefresh(state = pullRefreshState, enabled = enablePullRefresh)
-                    ) {
-                        LoadMoreLayout(
-                            isLoading = isLoadingMore,
-                            onLoadMore = {
-                                if (hasMore) {
-                                    viewModel.send(
-                                        ThreadUiIntent.LoadMore(
-                                            threadId = threadId,
-                                            page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
-                                            else currentPageMax + 1,
-                                            forumId = forumId,
-                                            postId = nextPagePostId,
-                                            seeLz = isSeeLz,
-                                            sortType = curSortType,
-                                            postIds = data.map { it.post.get { id } }
-                                        )
-                                    )
-                                } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
-                                    viewModel.send(
-                                        ThreadUiIntent.LoadLatestPosts(
-                                            threadId = threadId,
-                                            curLatestPostId = data.last().post.get { id },
-                                            forumId = curForumId,
-                                            seeLz = isSeeLz,
-                                            sortType = curSortType
-                                        )
-                                    )
-                                }
-                            },
-                            loadEnd = loadMoreEnd,
-                            indicator = { isLoading, loadMoreEnd, willLoad ->
-                                ThreadLoadMoreIndicator(
-                                    isLoading,
-                                    loadMoreEnd,
-                                    willLoad,
-                                    hasMore
-                                )
-                            },
-                            lazyListState = lazyListState,
-                            isEmpty = data.isEmpty(),
-                            preloadCount = loadMorePreloadCount,
-                        ) {
-                            MyLazyColumn(
-                                state = lazyListState,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                item(key = "FirstPost") {
-                                    if (firstPost != null) {
-                                        Container {
-                                            Column {
-                                                PostCard(
-                                                    postHolder = firstPost!!,
-                                                    contentRenders = firstPostContentRenders,
-                                                    threadAuthorId = author?.get { id } ?: 0L,
-                                                    canDelete = { it.author_id == user.get { id } },
-                                                    immersiveMode = isImmersiveMode,
-                                                    isCollected = {
-                                                        it.id == thread?.get { collectMarkPid }
-                                                            ?.toLongOrNull()
-                                                    },
-                                                    showSubPosts = false,
-                                                    onUserClick = {
-                                                        navigator.navigate(
-                                                            UserProfilePageDestination(
-                                                                it.id
-                                                            )
-                                                        )
-                                                    },
-                                                    onReplyClick = {
-                                                        navigator.navigate(
-                                                            ReplyPageDestination(
-                                                                forumId = curForumId ?: 0,
-                                                                forumName = forum?.get { name }
-                                                                    .orEmpty(),
-                                                                threadId = threadId,
-                                                            )
-                                                        )
-                                                    },
-                                                    onMenuCopyClick = {
-                                                        navigator.navigate(
-                                                            CopyTextDialogPageDestination(it)
-                                                        )
-                                                    },
-                                                    onMenuFavoriteClick = {
-                                                        viewModel.send(
-                                                            ThreadUiIntent.AddFavorite(
-                                                                threadId,
-                                                                it.id,
-                                                                it.floor
-                                                            )
-                                                        )
-                                                    },
-                                                ) {
-                                                    deletePost = null
-                                                    confirmDeleteDialogState.show()
-                                                }
-
-                                                thread?.getNullableImmutable { origin_thread_info }
-                                                    .takeIf { thread?.get { is_share_thread } == 1 }
-                                                    ?.let {
-                                                        OriginThreadCard(
-                                                            originThreadInfo = it,
-                                                            modifier = Modifier
-                                                                .padding(horizontal = 16.dp)
-                                                                .padding(bottom = 16.dp)
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .background(ExtendedTheme.colors.floorCard)
-                                                                .clickable {
-                                                                    navigator.navigate(
-                                                                        ThreadPageDestination(
-                                                                            threadId = it.get { tid.toLong() },
-                                                                            forumId = it.get { fid },
-                                                                        )
-                                                                    )
-                                                                }
-                                                                .padding(16.dp)
-                                                        )
-                                                    }
-
-                                            }
-                                        }
-                                    }
-                                }
-                                stickyHeader(key = "ThreadHeader") {
-                                    Container {
-                                        ThreadRepliesHeader(
-                                            replyCount = ((thread?.get { replyNum } ?: 1) - 1).coerceAtLeast(0),
-                                            seeLz = isSeeLz,
-                                            onFilterChange = { onlyAuthor ->
-                                                viewModel.send(
-                                                    ThreadUiIntent.LoadFirstPage(
-                                                        threadId = threadId, forumId = forumId,
-                                                        seeLz = onlyAuthor, sortType = curSortType,
-                                                    )
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                                if (curSortType == ThreadSortType.SORT_TYPE_DESC) {
-                                    latestPosts(true)
-                                }
-                                item(key = "LoadPreviousBtn") {
-                                    if (hasPrevious) {
-                                        Container {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        viewModel.send(
-                                                            ThreadUiIntent.LoadPrevious(
-                                                                threadId,
-                                                                max(currentPageMax - 1, 1),
-                                                                forumId,
-                                                                postId = data
-                                                                    .first()
-                                                                    .post
-                                                                    .get { id },
-                                                                seeLz = isSeeLz,
-                                                                sortType = curSortType,
-                                                                postIds = data.map { it.post.get { id } }
-                                                            )
-                                                        )
-                                                    }
-                                                    .padding(8.dp),
-                                                horizontalArrangement = Arrangement.Center,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.AlignVerticalTop,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                Text(
-                                                    text = stringResource(id = R.string.btn_load_previous),
-                                                    color = ExtendedTheme.colors.text,
-                                                    fontSize = 14.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                if (!isRefreshing && data.isEmpty()) {
-                                    item(key = "EmptyTip") {
-                                        Container {
-                                            TipScreen(
-                                                title = { Text(text = stringResource(id = R.string.title_empty)) },
-                                                image = {
-                                                    val composition by rememberLottieComposition(
-                                                        LottieCompositionSpec.RawRes(R.raw.lottie_empty_box)
-                                                    )
-                                                    LottieAnimation(
-                                                        composition = composition,
-                                                        iterations = LottieConstants.IterateForever,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .aspectRatio(2f)
-                                                    )
-                                                },
-                                                actions = {
-                                                    if (canReload) {
-                                                        Button(onClick = { reload() }) {
-                                                            Text(text = stringResource(id = R.string.btn_refresh))
-                                                        }
-                                                    }
-                                                },
-                                                modifier = Modifier.fillMaxSize(),
-                                                scrollable = false
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    items(
-                                        items = data,
-                                        key = { (item) -> "Post_${item.get { id }}" }
-                                    ) { (item, blocked, renders, subPosts) ->
-                                        Container {
-                                            PostCard(
-                                                item,
-                                                renders,
-                                                subPosts,
-                                                blocked
-                                            )
-                                        }
-                                    }
-                                }
-                                if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
-                                    latestPosts(false)
-                                }
-                            }
-                        }
-
-                        PullRefreshIndicator(
-                            refreshing = isRefreshing,
-                            state = pullRefreshState,
-                            modifier = Modifier.align(Alignment.TopCenter),
-                            backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                            contentColor = ExtendedTheme.colors.primary,
                         )
                     }
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues)
+                        .pullToRefresh(
+                            isRefreshing = isRefreshing, state = pullRefreshState,
+                            enabled = enablePullRefresh, onRefresh = refreshPosts,
+                        )
+                ) {
+                    LoadMoreLayout(
+                        isLoading = isLoadingMore,
+                        onLoadMore = {
+                            if (hasMore) {
+                                viewModel.send(
+                                    ThreadUiIntent.LoadMore(
+                                        threadId = threadId,
+                                        page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
+                                        else currentPageMax + 1,
+                                        forumId = forumId,
+                                        postId = nextPagePostId,
+                                        seeLz = isSeeLz,
+                                        sortType = curSortType,
+                                        postIds = data.map { it.post.get { id } }
+                                    )
+                                )
+                            } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
+                                viewModel.send(
+                                    ThreadUiIntent.LoadLatestPosts(
+                                        threadId = threadId,
+                                        curLatestPostId = data.last().post.get { id },
+                                        forumId = curForumId,
+                                        seeLz = isSeeLz,
+                                        sortType = curSortType
+                                    )
+                                )
+                            }
+                        },
+                        loadEnd = loadMoreEnd,
+                        indicator = { isLoading, loadMoreEnd, willLoad ->
+                            ThreadLoadMoreIndicator(
+                                isLoading,
+                                loadMoreEnd,
+                                willLoad,
+                                hasMore
+                            )
+                        },
+                        lazyListState = lazyListState,
+                        isEmpty = data.isEmpty(),
+                        preloadCount = loadMorePreloadCount,
+                    ) {
+                        MyLazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            item(key = "FirstPost") {
+                                if (firstPost != null) {
+                                    Container {
+                                        Column {
+                                            PostCard(
+                                                postHolder = firstPost!!,
+                                                contentRenders = firstPostContentRenders,
+                                                threadAuthorId = author?.get { id } ?: 0L,
+                                                canDelete = { it.author_id == user.get { id } },
+                                                immersiveMode = isImmersiveMode,
+                                                isCollected = {
+                                                    it.id == thread?.get { collectMarkPid }
+                                                        ?.toLongOrNull()
+                                                },
+                                                showSubPosts = false,
+                                                onUserClick = {
+                                                    navigator.navigate(
+                                                        UserProfilePageDestination(
+                                                            it.id
+                                                        )
+                                                    )
+                                                },
+                                                onReplyClick = {
+                                                    navigator.navigate(
+                                                        ReplyPageDestination(
+                                                            forumId = curForumId ?: 0,
+                                                            forumName = forum?.get { name }
+                                                                .orEmpty(),
+                                                            threadId = threadId,
+                                                        )
+                                                    )
+                                                },
+                                                onMenuCopyClick = {
+                                                    navigator.navigate(
+                                                        CopyTextDialogPageDestination(it)
+                                                    )
+                                                },
+                                                onMenuFavoriteClick = {
+                                                    viewModel.send(
+                                                        ThreadUiIntent.AddFavorite(
+                                                            threadId,
+                                                            it.id,
+                                                            it.floor
+                                                        )
+                                                    )
+                                                },
+                                            ) {
+                                                deletePost = null
+                                                confirmDeleteDialogState.show()
+                                            }
+
+                                            thread?.getNullableImmutable { origin_thread_info }
+                                                .takeIf { thread?.get { is_share_thread } == 1 }
+                                                ?.let {
+                                                    OriginThreadCard(
+                                                        originThreadInfo = it,
+                                                        modifier = Modifier
+                                                            .padding(horizontal = 16.dp)
+                                                            .padding(bottom = 16.dp)
+                                                            .clip(RoundedCornerShape(6.dp))
+                                                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                                                            .clickable {
+                                                                navigator.navigate(
+                                                                    ThreadPageDestination(
+                                                                        threadId = it.get { tid.toLong() },
+                                                                        forumId = it.get { fid },
+                                                                    )
+                                                                )
+                                                            }
+                                                            .padding(16.dp)
+                                                    )
+                                                }
+
+                                        }
+                                    }
+                                }
+                            }
+                            stickyHeader(key = "ThreadHeader") {
+                                Container {
+                                    ThreadRepliesHeader(
+                                        replyCount = ((thread?.get { replyNum } ?: 1) - 1).coerceAtLeast(0),
+                                        seeLz = isSeeLz,
+                                        onFilterChange = { onlyAuthor ->
+                                            viewModel.send(
+                                                ThreadUiIntent.LoadFirstPage(
+                                                    threadId = threadId, forumId = forumId,
+                                                    seeLz = onlyAuthor, sortType = curSortType,
+                                                )
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                            if (curSortType == ThreadSortType.SORT_TYPE_DESC) {
+                                latestPosts(true)
+                            }
+                            item(key = "LoadPreviousBtn") {
+                                if (hasPrevious) {
+                                    Container {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    viewModel.send(
+                                                        ThreadUiIntent.LoadPrevious(
+                                                            threadId,
+                                                            max(currentPageMax - 1, 1),
+                                                            forumId,
+                                                            postId = data
+                                                                .first()
+                                                                .post
+                                                                .get { id },
+                                                            seeLz = isSeeLz,
+                                                            sortType = curSortType,
+                                                            postIds = data.map { it.post.get { id } }
+                                                        )
+                                                    )
+                                                }
+                                                .padding(8.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.AlignVerticalTop,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = stringResource(id = R.string.btn_load_previous),
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            if (!isRefreshing && data.isEmpty()) {
+                                item(key = "EmptyTip") {
+                                    Container {
+                                        TipScreen(
+                                            title = { Text(text = stringResource(id = R.string.title_empty)) },
+                                            image = {
+                                                val composition by rememberLottieComposition(
+                                                    LottieCompositionSpec.RawRes(R.raw.lottie_empty_box)
+                                                )
+                                                LottieAnimation(
+                                                    composition = composition,
+                                                    iterations = LottieConstants.IterateForever,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .aspectRatio(2f)
+                                                )
+                                            },
+                                            actions = {
+                                                if (canReload) {
+                                                    Button(onClick = { reload() }) {
+                                                        Text(text = stringResource(id = R.string.btn_refresh))
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxSize(),
+                                            scrollable = false
+                                        )
+                                    }
+                                }
+                            } else {
+                                items(
+                                    items = data,
+                                    key = { (item) -> "Post_${item.get { id }}" }
+                                ) { (item, blocked, renders, subPosts) ->
+                                    Container {
+                                        PostCard(
+                                            item,
+                                            renders,
+                                            subPosts,
+                                            blocked
+                                        )
+                                    }
+                                }
+                            }
+                            if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
+                                latestPosts(false)
+                            }
+                        }
+                    }
+
+                    PullToRefreshDefaults.LoadingIndicator(
+                        isRefreshing = isRefreshing,
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
                 }
             }
         }
@@ -1391,10 +1360,9 @@ private fun TopBar(
                 if (forum.get { name }.isNotBlank()) {
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 48.dp)
                             .height(IntrinsicSize.Min)
                             .clip(RoundedCornerShape(100))
-                            .background(ExtendedTheme.colors.chip)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .clickable(onClick = onForumClick)
                             .padding(4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1410,7 +1378,7 @@ private fun TopBar(
                         Text(
                             text = stringResource(id = R.string.title_forum, it.get { name }),
                             fontSize = 14.sp,
-                            color = ExtendedTheme.colors.text,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 8.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -1429,8 +1397,8 @@ private fun TopBar(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange: (Boolean) -> Unit) {
-    val scheme = M3Theme.colorScheme
-    M3Surface(color = scheme.surface) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(color = scheme.surface) {
         FlowRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1439,7 +1407,7 @@ internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange
             Text(
                 text = stringResource(R.string.title_thread_header, replyCount.toString()),
                 modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() },
-                style = M3Theme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium,
             )
             Row(
                 modifier = Modifier.selectableGroup(),
@@ -1476,7 +1444,7 @@ internal fun ThreadBottomBar(
     hasAgreed: Boolean = false,
     agreeNum: Long = 0,
 ) {
-    M3Surface(modifier = modifier.fillMaxWidth(), color = M3Theme.colorScheme.surfaceContainer) {
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -1501,7 +1469,7 @@ internal fun ThreadBottomBar(
                     }
                 } else Spacer(Modifier.weight(1f))
                 PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
-                M3IconButton(onClick = onClickMore) {
+                IconButton(onClick = onClickMore) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
                 }
             }
@@ -1576,57 +1544,50 @@ fun PostCard(
             menuContent = {
                 if (!context.appPreferences.hideReply) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.btn_reply)) },
                         onClick = {
                             onReplyClick(post)
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.btn_reply))
-                    }
+                    )
                 }
                 if (onMenuCopyClick != null) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.menu_copy)) },
                         onClick = {
                             onMenuCopyClick(post.content.plainText)
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.menu_copy))
-                    }
+                    )
                 }
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.title_report)) },
                     onClick = {
                         coroutineScope.launch {
                             TiebaUtil.reportPost(context, navigator, post.id.toString())
                         }
                         menuState.expanded = false
                     }
-                ) {
-                    Text(text = stringResource(id = R.string.title_report))
-                }
+                )
                 if (onMenuFavoriteClick != null) {
                     DropdownMenuItem(
+                        text = {
+                            Text(stringResource(if (isCollected(post)) R.string.title_collect_on else R.string.title_collect_floor))
+                        },
                         onClick = {
                             onMenuFavoriteClick(post)
                             menuState.expanded = false
                         }
-                    ) {
-                        if (isCollected(post)) {
-                            Text(text = stringResource(id = R.string.title_collect_on))
-                        } else {
-                            Text(text = stringResource(id = R.string.title_collect_floor))
-                        }
-                    }
+                    )
                 }
                 if (canDelete(post) && onMenuDeleteClick != null) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.title_delete)) },
                         onClick = {
                             onMenuDeleteClick(post)
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.title_delete))
-                    }
+                    )
                 }
             }
         ) {
@@ -1650,8 +1611,8 @@ fun PostCard(
                     if (showTitle) {
                         Text(
                             text = post.title,
-                            style = M3Theme.typography.titleLarge,
-                            color = ExtendedTheme.colors.text,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
 
@@ -1679,8 +1640,8 @@ fun PostCard(
                                     blockedTip = {
                                         Text(
                                             text = stringResource(R.string.tip_blocked_sub_post),
-                                            style = M3Theme.typography.bodySmall,
-                                            color = M3Theme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                         )
                                     },
@@ -1700,8 +1661,8 @@ fun PostCard(
                             if (moreReplies) {
                                 Text(
                                     text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                    style = M3Theme.typography.labelLarge,
-                                    color = M3Theme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.fillMaxWidth()
                                         .clickable { onOpenSubPosts(0) }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1717,8 +1678,8 @@ fun PostCard(
 
 @Composable
 private fun ReplyPreviewGroup(content: @Composable ColumnScope.() -> Unit) {
-    val background = M3Theme.colorScheme.surfaceContainerLow
-    M3Surface(modifier = Modifier.fillMaxWidth(), shape = M3Theme.shapes.medium, color = background) {
+    val background = MaterialTheme.colorScheme.surfaceContainerLow
+    Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = background) {
         ProvideCommentLinkColor(background) { Column(content = content) }
     }
 }
@@ -1743,34 +1704,31 @@ internal fun SubPostItem(
         menuContent = {
             if (!context.appPreferences.hideReply && onReplyClick != null) {
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.title_reply)) },
                     onClick = {
                         onReplyClick(subPostList.get())
                         menuState.expanded = false
                     }
-                ) {
-                    Text(text = stringResource(id = R.string.title_reply))
-                }
+                )
             }
             if (onMenuCopyClick != null) {
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.menu_copy)) },
                     onClick = {
                         onMenuCopyClick(subPostList.get())
                         menuState.expanded = false
                     }
-                ) {
-                    Text(text = stringResource(id = R.string.menu_copy))
-                }
+                )
             }
             DropdownMenuItem(
+                text = { Text(text = stringResource(id = R.string.title_report)) },
                 onClick = {
                     coroutineScope.launch {
                         TiebaUtil.reportPost(context, navigator, subPostList.get { id }.toString())
                     }
                     menuState.expanded = false
                 }
-            ) {
-                Text(text = stringResource(id = R.string.title_report))
-            }
+            )
         },
         shape = RoundedCornerShape(0),
         onClick = {
@@ -1802,7 +1760,7 @@ internal fun SubPostItem(
             )
             if (body.isNotEmpty()) {
                 PbContentText(
-                    text = body, style = M3Theme.typography.bodyMedium, color = M3Theme.colorScheme.onSurface,
+                    text = body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis, maxLines = 4,
                 )
             }
@@ -1840,7 +1798,7 @@ internal fun ThreadMenu(
                 .height(4.dp)
                 .fillMaxWidth(0.25f)
                 .clip(RoundedCornerShape(100))
-                .background(ExtendedTheme.colors.chip)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         )
         VerticalGrid(
             column = 2,
@@ -1936,28 +1894,28 @@ internal fun ThreadMenu(
             ListMenuItem(
                 icon = Icons.Rounded.RocketLaunch,
                 text = stringResource(id = R.string.title_jump_page),
-                iconColor = ExtendedTheme.colors.text,
+                iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onJumpPageClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
                 icon = Icons.Rounded.Share,
                 text = stringResource(id = R.string.title_share),
-                iconColor = ExtendedTheme.colors.text,
+                iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onShareClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
                 icon = Icons.Rounded.ContentCopy,
                 text = stringResource(id = R.string.title_copy_link),
-                iconColor = ExtendedTheme.colors.text,
+                iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onCopyLinkClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
                 icon = Icons.Rounded.Report,
                 text = stringResource(id = R.string.title_report),
-                iconColor = ExtendedTheme.colors.text,
+                iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onReportClick,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1965,7 +1923,7 @@ internal fun ThreadMenu(
                 ListMenuItem(
                     icon = Icons.Rounded.Delete,
                     text = stringResource(id = R.string.title_delete),
-                    iconColor = ExtendedTheme.colors.text,
+                    iconColor = MaterialTheme.colorScheme.onSurface,
                     onClick = onDeleteClick,
                     modifier = Modifier.fillMaxWidth(),
                 )

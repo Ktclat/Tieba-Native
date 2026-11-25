@@ -4,8 +4,6 @@ import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.material3.MaterialTheme as Material3Theme
-import androidx.compose.material3.Surface as Material3Surface
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -27,9 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -38,6 +33,12 @@ import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
 import androidx.compose.material.icons.rounded.SwapCalls
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme as Material3Theme
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
@@ -48,11 +49,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -63,9 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastForEachIndexed
-import com.google.accompanist.placeholder.PlaceholderHighlight
-import com.google.accompanist.placeholder.material.fade
-import com.google.accompanist.placeholder.material.placeholder
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.Media
@@ -82,7 +80,7 @@ import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.findActivity
 import com.huanchengfly.tieba.post.goToActivity
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity
 import com.huanchengfly.tieba.post.ui.utils.getPhotoViewData
@@ -95,8 +93,6 @@ import com.huanchengfly.tieba.post.utils.EmoticonUtil.emoticonString
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
-import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedTextStyle
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.math.max
@@ -129,7 +125,7 @@ private fun UserHeader(
                     nickname = user.get { nameShow },
                     color = LocalContentColor.current
                 ),
-                color = ExtendedTheme.colors.text
+                color = Material3Theme.colorScheme.onSurface
             )
         },
         onClick = onClick,
@@ -177,7 +173,7 @@ fun UserHeader(
                     nickname = nameShow,
                     color = LocalContentColor.current
                 ),
-                color = ExtendedTheme.colors.text
+                color = Material3Theme.colorScheme.onSurface
             )
         },
         onClick = onClick,
@@ -279,7 +275,7 @@ fun ThreadContent(
         if (showTitle) {
             withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                 if (isGood) {
-                    withStyle(style = SpanStyle(color = ExtendedTheme.colors.accent)) {
+                    withStyle(style = SpanStyle(color = Material3Theme.colorScheme.primary)) {
                         append(stringResource(id = R.string.tip_good))
                     }
                     append(" ")
@@ -328,9 +324,9 @@ fun FeedCardPlaceholder() {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .placeholder(
+                    .loadingPlaceholder(
                         visible = true,
-                        highlight = PlaceholderHighlight.fade(),
+
                     )
             )
 
@@ -342,9 +338,9 @@ fun FeedCardPlaceholder() {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .placeholder(
+                    .loadingPlaceholder(
                         visible = true,
-                        highlight = PlaceholderHighlight.fade(),
+
                     )
             )
         },
@@ -372,7 +368,7 @@ fun ForumInfoChip(
         modifier = Modifier
             .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(4.dp))
-            .background(color = ExtendedTheme.colors.chip)
+            .background(color = Material3Theme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -391,7 +387,7 @@ fun ForumInfoChip(
         Text(
             text = stringResource(id = R.string.title_forum_name, name),
             style = Material3Theme.typography.bodyMedium,
-            color = ExtendedTheme.colors.onChip,
+            color = Material3Theme.colorScheme.onSecondaryContainer,
             fontSize = 12.sp,
         )
     }
@@ -407,7 +403,7 @@ private fun MediaPlaceholder(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(ExtendedTheme.colors.chip)
+            .background(Material3Theme.colorScheme.secondaryContainer)
             .clickable(
                 enabled = onClick != null
             ) { onClick?.invoke() }
@@ -415,14 +411,14 @@ private fun MediaPlaceholder(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ProvideContentColor(color = ExtendedTheme.colors.onChip) {
+        ProvideContentColor(color = Material3Theme.colorScheme.onSecondaryContainer) {
             Box(
                 modifier = Modifier.size(16.dp),
             ) {
                 icon()
             }
-            ProvideUnifiedTextStyle(
-                style = Material3Theme.typography.titleSmall,
+            ProvideTextStyle(
+                value = Material3Theme.typography.titleSmall,
                 content = text
             )
         }
@@ -688,7 +684,7 @@ fun ThreadReplyBtn(
         },
         modifier = modifier,
         onClick = onClick,
-        color = ExtendedTheme.colors.textSecondary,
+        color = Material3Theme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -700,7 +696,7 @@ fun ThreadAgreeBtn(
     modifier: Modifier = Modifier,
 ) {
     val contentColor =
-        if (hasAgree) ExtendedTheme.colors.primary else ExtendedTheme.colors.textSecondary
+        if (hasAgree) Material3Theme.colorScheme.primary else Material3Theme.colorScheme.onSurfaceVariant
     val animatedColor by animateColorAsState(contentColor, label = "agreeBtnContentColor")
 
     ActionBtn(
@@ -745,7 +741,7 @@ fun ThreadShareBtn(
         },
         modifier = modifier,
         onClick = onClick,
-        color = ExtendedTheme.colors.textSecondary,
+        color = Material3Theme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -932,9 +928,9 @@ private fun ActionBtnPlaceholder(
             text = "Button",
             style = Material3Theme.typography.labelMedium,
             modifier = Modifier
-                .placeholder(
+                .loadingPlaceholder(
                     visible = true,
-                    highlight = PlaceholderHighlight.fade(),
+
                 ),
         )
     }
@@ -964,7 +960,7 @@ private fun ActionBtn(
                 icon()
             }
             Spacer(modifier = Modifier.width(8.dp))
-            ProvideUnifiedTextStyle(Material3Theme.typography.labelMedium) {
+            ProvideTextStyle(Material3Theme.typography.labelMedium) {
                 text()
             }
         }
@@ -1045,6 +1041,6 @@ fun FeedCardPreview() {
         ),
         onClick = {},
         onAgree = {},
-        modifier = Modifier.background(ExtendedTheme.colors.card)
+        modifier = Modifier.background(Material3Theme.colorScheme.surfaceContainerLow)
     )
 }

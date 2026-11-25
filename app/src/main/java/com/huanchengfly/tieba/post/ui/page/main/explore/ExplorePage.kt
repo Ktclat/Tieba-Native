@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.huanchengfly.tieba.post.ui.page.main.explore
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -6,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material3.Tab
@@ -21,16 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
 import com.huanchengfly.tieba.post.ui.page.main.explore.concern.ConcernPage
@@ -38,8 +36,7 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.hot.HotPage
 import com.huanchengfly.tieba.post.ui.page.main.explore.personalized.PersonalizedPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
-import com.huanchengfly.tieba.post.ui.widgets.compose.PagerTabIndicator
-import com.huanchengfly.tieba.post.ui.widgets.compose.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.accountNavIconIfCompact
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
@@ -51,7 +48,7 @@ import kotlinx.coroutines.launch
 @Immutable
 data class ExplorePageItem(
     val id: String,
-    val name: @Composable (selected: Boolean) -> Unit,
+    val name: @Composable () -> Unit,
     val content: @Composable () -> Unit,
 )
 
@@ -63,24 +60,18 @@ private fun ColumnScope.ExplorePageTab(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    TabRow(
+    PrimaryTabRow(
         selectedTabIndex = pagerState.currentPage,
-        indicator = { tabPositions ->
-            PagerTabIndicator(
-                pagerState = pagerState,
-                tabPositions = tabPositions
-            )
-        },
         divider = {},
-        backgroundColor = Color.Transparent,
-        contentColor = ExtendedTheme.colors.onTopBar,
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .align(Alignment.CenterHorizontally)
             .width(76.dp * pages.size),
     ) {
         pages.fastForEachIndexed { index, item ->
             Tab(
-                text = { item.name(pagerState.currentPage == index) },
+                text = item.name,
                 selected = pagerState.currentPage == index,
                 onClick = {
                     if (pagerState.currentPage == index) {
@@ -92,19 +83,6 @@ private fun ColumnScope.ExplorePageTab(
             )
         }
     }
-}
-
-@Composable
-private fun TabText(
-    text: String,
-    selected: Boolean
-) {
-    val style = MaterialTheme.typography.button.copy(
-        letterSpacing = 0.75.sp,
-        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-        textAlign = TextAlign.Center
-    )
-    androidx.compose.material3.Text(text = text, style = style)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -119,17 +97,17 @@ fun ExplorePage() {
         listOfNotNull(
             if (loggedIn) ExplorePageItem(
                 "concern",
-                { TabText(text = stringResource(id = R.string.title_concern), selected = it) },
+                { Text(stringResource(R.string.title_concern)) },
                 { ConcernPage() }
             ) else null,
             ExplorePageItem(
                 "personalized",
-                { TabText(text = stringResource(id = R.string.title_personalized), selected = it) },
+                { Text(stringResource(R.string.title_personalized)) },
                 { PersonalizedPage() }
             ),
             ExplorePageItem(
                 "hot",
-                { TabText(text = stringResource(id = R.string.title_hot), selected = it) },
+                { Text(stringResource(R.string.title_hot)) },
                 { HotPage() }
             ),
         ).toImmutableList()

@@ -19,16 +19,14 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,8 +54,6 @@ import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.threadBottomBar
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
@@ -92,7 +88,6 @@ import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.spec.DestinationStyleBottomSheet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 
@@ -120,33 +115,6 @@ fun SubPostsPage(
     }
 }
 
-@Destination(
-    style = DestinationStyleBottomSheet::class
-)
-@Composable
-fun SubPostsSheetPage(
-    navigator: DestinationsNavigator,
-    threadId: Long,
-    forumId: Long = 0L,
-    postId: Long = 0L,
-    subPostId: Long = 0L,
-    loadFromSubPost: Boolean = false,
-    viewModel: SubPostsViewModel = pageViewModel()
-) {
-    ProvideNavigator(navigator) {
-        SubPostsContent(
-            viewModel = viewModel,
-            forumId = forumId,
-            threadId = threadId,
-            postId = postId,
-            subPostId = subPostId,
-            loadFromSubPost = loadFromSubPost,
-            isSheet = true,
-            onNavigateUp = { navigator.navigateUp() }
-        )
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SubPostsContent(
@@ -156,7 +124,6 @@ internal fun SubPostsContent(
     postId: Long,
     subPostId: Long = 0L,
     loadFromSubPost: Boolean = false,
-    isSheet: Boolean = false,
     onNavigateUp: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.current
@@ -307,32 +274,30 @@ internal fun SubPostsContent(
                                 id = R.string.title_sub_posts,
                                 it.get { floor })
                         } ?: stringResource(id = R.string.title_sub_posts_default),
-                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6)
+                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateUp) {
                             Icon(
-                                imageVector = if (isSheet) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(id = R.string.btn_close)
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(id = R.string.button_back)
                             )
                         }
                     },
                     actions = {
-                        if (!isSheet) {
-                            IconButton(onClick = {
-                                navigator.navigate(
-                                    ThreadPageDestination(
-                                        forumId = forumId,
-                                        threadId = threadId,
-                                        postId = postId
-                                    )
+                        IconButton(onClick = {
+                            navigator.navigate(
+                                ThreadPageDestination(
+                                    forumId = forumId,
+                                    threadId = threadId,
+                                    postId = postId
                                 )
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.OpenInBrowser,
-                                    contentDescription = stringResource(id = R.string.btn_open_origin_thread)
-                                )
-                            }
+                            )
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.OpenInBrowser,
+                                contentDescription = stringResource(id = R.string.btn_open_origin_thread)
+                            )
                         }
                     }
                 )
@@ -340,7 +305,7 @@ internal fun SubPostsContent(
             bottomBar = {
                 if (account != null && !LocalContext.current.appPreferences.hideReply) {
                     Column(
-                        modifier = Modifier.background(ExtendedTheme.colors.threadBottomBar)
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Row(
                             modifier = Modifier
@@ -359,7 +324,7 @@ internal fun SubPostsContent(
                                     .padding(vertical = 8.dp)
                                     .weight(1f)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(ExtendedTheme.colors.bottomBarSurface)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
                                     .clickable {
                                         val fid = forum?.get { id } ?: forumId
                                         val forumName = forum?.get { name }
@@ -378,8 +343,8 @@ internal fun SubPostsContent(
                             ) {
                                 Text(
                                     text = stringResource(id = R.string.tip_reply_thread),
-                                    style = MaterialTheme.typography.caption,
-                                    color = ExtendedTheme.colors.onBottomBarSurface,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
                         }
@@ -523,11 +488,11 @@ internal fun SubPostsContent(
 
 @Composable
 internal fun SubPostsHeading(totalCount: Int) {
-    val colors = M3Theme.colorScheme
+    val colors = MaterialTheme.colorScheme
     Surface(modifier = Modifier.fillMaxWidth(), color = colors.surfaceContainerLow) {
         Text(
             text = stringResource(R.string.title_sub_posts_header, totalCount),
-            style = M3Theme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall,
             color = colors.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).semantics { heading() },
         )
@@ -589,43 +554,39 @@ internal fun SubPostItem(
             menuContent = {
                 if (!context.appPreferences.hideReply) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.btn_reply)) },
                         onClick = {
                             onReplyClick(subPost.get())
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.btn_reply))
-                    }
+                    )
                 }
                 if (onMenuCopyClick != null) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.menu_copy)) },
                         onClick = {
                             onMenuCopyClick(contentRenders.joinToString("\n") { it.toString() })
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.menu_copy))
-                    }
+                    )
                 }
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.title_report)) },
                     onClick = {
                         coroutineScope.launch {
                             TiebaUtil.reportPost(context, navigator, subPost.get { id }.toString())
                         }
                         menuState.expanded = false
                     }
-                ) {
-                    Text(text = stringResource(id = R.string.title_report))
-                }
+                )
                 if (canDelete(subPost.get()) && onMenuDeleteClick != null) {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.title_delete)) },
                         onClick = {
                             onMenuDeleteClick(subPost.get())
                             menuState.expanded = false
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.title_delete))
-                    }
+                    )
                 }
             },
             onClick = { onReplyClick(subPost.get()) }.takeUnless { context.appPreferences.hideReply }

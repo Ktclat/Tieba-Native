@@ -1,35 +1,34 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.gestures.Orientation
+import android.os.SystemClock
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.FractionalThreshold
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,24 +37,16 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.loadMoreIndicator
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.sample
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
-private val LoadDistance = 70.dp
+private val LoadThreshold = 70.dp
+private const val RepeatPullIntervalMs = 500L
 
-@OptIn(ExperimentalMaterialApi::class, FlowPreview::class)
 @Composable
 fun LoadMoreLayout(
     isLoading: Boolean,
@@ -64,120 +55,100 @@ fun LoadMoreLayout(
     enableLoadMore: Boolean = true,
     loadEnd: Boolean = false,
     indicator: @Composable (Boolean, Boolean, Boolean) -> Unit = { loading, end, willLoad ->
-        DefaultIndicator(
-            isLoading = loading,
-            loadEnd = end,
-            willLoad = willLoad
-        )
+        DefaultIndicator(isLoading = loading, loadEnd = end, willLoad = willLoad)
     },
     lazyListState: LazyListState? = null,
     isEmpty: Boolean = lazyListState?.layoutInfo?.totalItemsCount == 0,
     preloadCount: Int = 1,
     content: @Composable () -> Unit,
 ) {
-    val loadDistance = with(LocalDensity.current) { LoadDistance.toPx() }
-
-    val curOnLoadMore by rememberUpdatedState(newValue = onLoadMore)
-    var lastTriggerTime by remember { mutableLongStateOf(0L) }
-    var waitingStateReset by remember { mutableStateOf(false) }
-    val loadMoreFlow = remember {
-        MutableSharedFlow<Long>(
-            extraBufferCapacity = 1,
-            onBufferOverflow = BufferOverflow.DROP_LATEST
-        )
+    val enabled = LocalShouldLoad.current && enableLoadMore
+    val threshold = with(LocalDensity.current) { LoadThreshold.toPx() }
+    val endInView by remember(lazyListState, preloadCount, isEmpty) {
+        derivedStateOf {
+            val layout = lazyListState?.layoutInfo
+            val last = layout?.visibleItemsInfo?.lastOrNull()?.index
+            if (!isEmpty && preloadCount > 0 && last != null && last >= layout.totalItemsCount - preloadCount) {
+                layout.totalItemsCount
+            } else -1
+        }
     }
-    val coroutineScope = rememberCoroutineScope()
-    val active = LocalShouldLoad.current
-    LaunchedEffect(active, loadMoreFlow) {
-        if (active) {
-            loadMoreFlow.sample(500).collect {
-                curOnLoadMore()
-                waitingStateReset = true
-                lastTriggerTime = it
-            }
+    var lastRequestedEnd by remember(lazyListState) { mutableIntStateOf(-1) }
+    var lastRequestTime by remember(lazyListState) { mutableLongStateOf(-RepeatPullIntervalMs) }
+    val requestPage by rememberUpdatedState {
+        lastRequestedEnd = endInView
+        lastRequestTime = SystemClock.elapsedRealtime()
+        onLoadMore()
+    }
+
+    // A failed request can be retried by pulling or revisiting the end. Recomposition alone
+    // must not repeatedly request the same page while the list is sitting at the bottom.
+    LaunchedEffect(endInView, enabled, isLoading, loadEnd) {
+        if (endInView == -1) {
+            lastRequestedEnd = -1
+        } else if (enabled && !loadEnd && !isLoading && endInView != lastRequestedEnd) {
+            requestPage()
         }
     }
 
-    val canLoadMore = active && enableLoadMore && !loadEnd
-    val curIsEmpty by rememberUpdatedState(newValue = isEmpty)
-    val curIsLoading by rememberUpdatedState(newValue = isLoading)
-    val curCanLoadMore by rememberUpdatedState(newValue = canLoadMore)
-    val curPreloadCount by rememberUpdatedState(newValue = preloadCount)
-
-    // 处理列表滚动到底部时自动加载更多
-    val curLazyListState by rememberUpdatedState(newValue = lazyListState)
-    LaunchedEffect(curLazyListState, active) {
-        if (!active) return@LaunchedEffect
-        curLazyListState?.let { state ->
-            snapshotFlow {
-                val shouldPreload =
-                    !curIsEmpty && curCanLoadMore && !curIsLoading && curPreloadCount > 0
-                val isInPreloadRange =
-                    state.layoutInfo.visibleItemsInfo.isNotEmpty() &&
-                        state.layoutInfo.visibleItemsInfo.last().index >= state.layoutInfo.totalItemsCount - curPreloadCount
-                shouldPreload && isInPreloadRange
-            }
-                .distinctUntilChanged()
-                .collect {
-                    if (it) {
-                        val curTime = System.currentTimeMillis()
-                        coroutineScope.launch {
-                            loadMoreFlow.emit(curTime)
-                        }
-                        curTime - lastTriggerTime >= 500
-                    }
-                }
+    val onRelease by rememberUpdatedState {
+        if (enabled && !isLoading && !loadEnd && SystemClock.elapsedRealtime() - lastRequestTime >= RepeatPullIntervalMs) {
+            requestPage()
         }
     }
-
-    val swipeableState = rememberSwipeableState(false) { newValue ->
-        if (newValue && !curIsLoading && curCanLoadMore) {
-            val curTime = System.currentTimeMillis()
-            coroutineScope.launch {
-                loadMoreFlow.emit(curTime)
-            }
-            curTime - lastTriggerTime >= 500
-        } else !newValue
-    }
-
-    val isStateReset by remember { derivedStateOf { abs(swipeableState.offset.value - loadDistance) < 1f } }
-    LaunchedEffect(waitingStateReset, isStateReset) {
-        if (waitingStateReset && isStateReset) {
-            waitingStateReset = false
-        }
-    }
-
-    LaunchedEffect(isLoading) { if (!isLoading) swipeableState.animateTo(isLoading) }
-
+    val canPull = enabled && !isLoading
+    val gesture = remember(threshold, canPull) { LoadMoreGesture(threshold) { onRelease() } }
     Box(
-        modifier = Modifier
-            .nestedScroll(swipeableState.LoadPreDownPostUpNestedScrollConnection)
-            .swipeable(
-                state = swipeableState,
-                anchors = mapOf(
-                    loadDistance to false,
-                    -loadDistance to true,
-                ),
-                thresholds = { _, _ -> FractionalThreshold(0.5f) },
-                orientation = Orientation.Vertical,
-                enabled = active && enableLoadMore && !waitingStateReset,
-            )
-            .fillMaxSize()
-            .then(modifier)
+        modifier = modifier.fillMaxSize().then(if (canPull) Modifier.nestedScroll(gesture) else Modifier)
     ) {
         content()
-
-        Box(modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .offset { IntOffset(0, swipeableState.offset.value.roundToInt()) }
+        AnimatedVisibility(
+            visible = enabled && (isLoading || gesture.pulled > 0f),
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
         ) {
-            if (enableLoadMore && swipeableState.offset.value != loadDistance) {
-                indicator(isLoading, loadEnd, swipeableState.targetValue)
-            }
+            Box(Modifier.padding(8.dp)) { indicator(isLoading, loadEnd, gesture.pulled >= threshold) }
         }
     }
 }
 
+/** Consumes only upward overscroll left by a child, and lets a downward drag retract the footer. */
+private class LoadMoreGesture(
+    private val threshold: Float,
+    private val onLoad: () -> Unit,
+) : NestedScrollConnection {
+    var pulled by mutableFloatStateOf(0f)
+        private set
+
+    private fun consume(delta: Float): Offset {
+        val newPull = (pulled - delta).coerceIn(0f, threshold * 2f)
+        val consumed = pulled - newPull
+        pulled = newPull
+        return Offset(0f, consumed)
+    }
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        return if (source == NestedScrollSource.UserInput && available.y > 0 && pulled > 0f) {
+            consume(available.y)
+        } else Offset.Zero
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        return if (source == NestedScrollSource.UserInput && available.y < 0) {
+            consume(available.y)
+        } else Offset.Zero
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        if (pulled == 0f) return Velocity.Zero
+        if (pulled >= threshold) onLoad()
+        pulled = 0f
+        return Velocity(0f, available.y.coerceAtMost(0f))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DefaultIndicator(
     isLoading: Boolean,
@@ -188,79 +159,23 @@ fun DefaultIndicator(
     pullToLoadText: String = stringResource(id = R.string.pull_to_load),
     releaseToLoadText: String = stringResource(id = R.string.release_to_load),
 ) {
-    Surface(
-        shadowElevation = 2.dp,
-        shape = RoundedCornerShape(100),
-        color = ExtendedTheme.colors.loadMoreIndicator,
-        contentColor = ExtendedTheme.colors.text
-    ) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(
-            modifier = Modifier
-                .height(IntrinsicSize.Min)
-                .padding(10.dp)
-                .animateContentSize(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 3.dp,
-                    color = ExtendedTheme.colors.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = loadingText, modifier = Modifier.padding(horizontal = 8.dp))
-            } else if (loadEnd) {
-                Text(text = loadEndText, modifier = Modifier.padding(horizontal = 8.dp))
-            } else {
-                Text(
-                    text = if (willLoad) releaseToLoadText else pullToLoadText,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-            }
+            if (isLoading) LoadingIndicator(modifier = Modifier.size(24.dp))
+            Text(
+                text = when {
+                    isLoading -> loadingText
+                    loadEnd -> loadEndText
+                    willLoad -> releaseToLoadText
+                    else -> pullToLoadText
+                },
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }
-
-private val <T> SwipeableState<T>.LoadPreDownPostUpNestedScrollConnection: NestedScrollConnection
-    get() = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            val delta = available.toFloat()
-            return if (delta > 0 && source == NestedScrollSource.Drag) {
-                performDrag(delta).toOffset()
-            } else {
-                Offset.Zero
-            }
-        }
-
-        override fun onPostScroll(
-            consumed: Offset,
-            available: Offset,
-            source: NestedScrollSource
-        ): Offset {
-            return if (source == NestedScrollSource.Drag) {
-                performDrag(available.toFloat()).toOffset()
-            } else {
-                Offset.Zero
-            }
-        }
-
-        override suspend fun onPreFling(available: Velocity): Velocity {
-            val toFling = Offset(available.x, available.y).toFloat()
-            return if (toFling > 0 && offset.value < maxBound) {
-                performFling(velocity = toFling)
-                // since we go to the anchor with tween settling, consume all for the best UX
-                available
-            } else {
-                Velocity.Zero
-            }
-        }
-
-        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-            performFling(velocity = Offset(available.x, available.y).toFloat())
-            return available
-        }
-
-        private fun Float.toOffset(): Offset = Offset(0f, this)
-
-        private fun Offset.toFloat(): Float = this.y
-    }

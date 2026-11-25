@@ -6,15 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,23 +20,22 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material3.TopAppBar as M3TopAppBar
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideMaterial3Content
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar as M3TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -56,7 +52,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.emitGlobalEvent
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass.Companion.Compact
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
@@ -64,6 +60,18 @@ import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.compose.calcStatusBarColor
+
+@Composable
+private fun toolbarContainerColor(): Color {
+    val colors = MaterialTheme.colorScheme
+    return if (LocalDisplayPreferences.current.toolbarPrimaryColor) colors.primary else colors.surface
+}
+
+@Composable
+private fun toolbarContentColor(): Color {
+    val colors = MaterialTheme.colorScheme
+    return if (LocalDisplayPreferences.current.toolbarPrimaryColor) colors.onPrimary else colors.onSurface
+}
 
 @Composable
 fun accountNavIconIfCompact(): (@Composable () -> Unit)? =
@@ -99,54 +107,54 @@ fun AccountNavIcon(
             menuContent = {
                 val allAccounts = AccountUtil.allAccounts
                 allAccounts.forEach {
-                    DropdownMenuItem(onClick = { AccountUtil.switchAccount(context, it.id) }) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .size(Sizes.Small)
-                        ) {
-                            Avatar(
-                                data = StringUtil.getAvatarUrl(it.portrait),
-                                contentDescription = stringResource(id = R.string.title_switch_account_long_press),
-                                size = Sizes.Small,
-                            )
-                            if (currentAccount.id == it.id) {
-                                Icon(
-                                    imageVector = Icons.Rounded.CheckCircle,
-                                    contentDescription = stringResource(id = R.string.desc_current_account),
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(color = Color.Black.copy(0.35f))
-                                        .padding(8.dp)
+                    DropdownMenuItem(
+                        onClick = { AccountUtil.switchAccount(context, it.id) },
+                        text = { Text(text = it.nameShow ?: it.name) },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .size(Sizes.Small)
+                            ) {
+                                Avatar(
+                                    data = StringUtil.getAvatarUrl(it.portrait),
+                                    contentDescription = stringResource(id = R.string.title_switch_account_long_press),
+                                    size = Sizes.Small,
                                 )
+                                if (currentAccount.id == it.id) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = stringResource(id = R.string.desc_current_account),
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(color = Color.Black.copy(0.35f))
+                                            .padding(8.dp)
+                                    )
+                                }
                             }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = it.nameShow ?: it.name)
-                    }
+                        },
+                    )
                 }
-                VerticalDivider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 DropdownMenuItem(
-                    onClick = {
-                        navigator.navigate(LoginPageDestination)
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(id = R.string.title_new_account),
-                        tint = ExtendedTheme.colors.onChip,
-                        modifier = Modifier
-                            .size(Sizes.Small)
-                            .clip(CircleShape)
-                            .background(color = ExtendedTheme.colors.chip)
-                            .padding(8.dp),
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(text = stringResource(id = R.string.title_new_account))
-                }
+                    onClick = { navigator.navigate(LoginPageDestination) },
+                    text = { Text(text = stringResource(R.string.title_new_account)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(id = R.string.title_new_account),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier
+                                .size(Sizes.Small)
+                                .clip(CircleShape)
+                                .background(color = MaterialTheme.colorScheme.secondaryContainer)
+                                .padding(8.dp),
+                        )
+                    },
+                )
             },
             menuState = menuState,
             onClick = onClick,
@@ -167,7 +175,7 @@ fun ActionItem(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    ProvideContentColor(color = ExtendedTheme.colors.onTopBar) {
+    ProvideContentColor(color = toolbarContentColor()) {
         IconButton(onClick = onClick) {
             Icon(
                 imageVector = icon,
@@ -179,7 +187,7 @@ fun ActionItem(
 
 @Composable
 fun BackNavigationIcon(onBackPressed: () -> Unit) {
-    ProvideContentColor(color = ExtendedTheme.colors.onTopBar) {
+    ProvideContentColor(color = toolbarContentColor()) {
         IconButton(onClick = onBackPressed) {
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_round_arrow_back),
@@ -193,7 +201,7 @@ fun BackNavigationIcon(onBackPressed: () -> Unit) {
     "Use the non deprecated overload",
     ReplaceWith(
         """TitleCentredToolbar(
-                title = { Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6) },
+                title = { Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge) },
                 modifier = modifier,
                 insets = insets,
                 navigationIcon = navigationIcon,
@@ -201,8 +209,8 @@ fun BackNavigationIcon(onBackPressed: () -> Unit) {
                 content = content
             )""",
         "androidx.compose.ui.text.font.FontWeight",
-        "androidx.compose.material.MaterialTheme",
-        "androidx.compose.material.Text"
+        "androidx.compose.material3.MaterialTheme",
+        "androidx.compose.material3.Text"
     )
 )
 @Composable
@@ -240,15 +248,15 @@ fun TitleCentredToolbar(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    ProvideMaterial3Content(title)
+                    title()
                 },
-                navigationIcon = { ProvideMaterial3Content { navigationIcon?.invoke() } },
-                actions = { ProvideMaterial3Content { actions() } },
+                navigationIcon = { navigationIcon?.invoke() },
+                actions = { actions() },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ExtendedTheme.colors.topBar,
-                    titleContentColor = ExtendedTheme.colors.onTopBar,
-                    navigationIconContentColor = ExtendedTheme.colors.onTopBar,
-                    actionIconContentColor = ExtendedTheme.colors.onTopBar,
+                    containerColor = toolbarContainerColor(),
+                    titleContentColor = toolbarContentColor(),
+                    navigationIconContentColor = toolbarContentColor(),
+                    actionIconContentColor = toolbarContentColor(),
                 ),
                 windowInsets = WindowInsets(0, 0, 0, 0),
             )
@@ -282,16 +290,16 @@ fun Toolbar(
     title: @Composable (() -> Unit),
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
-    backgroundColor: Color = ExtendedTheme.colors.topBar,
-    contentColor: Color = ExtendedTheme.colors.onTopBar,
+    backgroundColor: Color = toolbarContainerColor(),
+    contentColor: Color = toolbarContentColor(),
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     TopAppBarContainer(
         topBar = {
             M3TopAppBar(
-                title = { ProvideMaterial3Content(title) },
-                actions = { ProvideMaterial3Content { actions() } },
-                navigationIcon = { ProvideMaterial3Content { navigationIcon?.invoke() } },
+                title = { title() },
+                actions = { actions() },
+                navigationIcon = { navigationIcon?.invoke() },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = backgroundColor,
                     titleContentColor = contentColor,
@@ -324,7 +332,7 @@ fun TopAppBarContainer(
         Spacer(
             modifier = statusBarModifier
                 .fillMaxWidth()
-                .background(color = ExtendedTheme.colors.topBar.calcStatusBarColor())
+                .background(color = toolbarContainerColor().calcStatusBarColor())
         )
         Column(
             modifier = Modifier
@@ -344,7 +352,7 @@ fun TopAppBarContainer(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(color = ExtendedTheme.colors.topBar),
+                    .background(color = toolbarContainerColor()),
             ) {
                 content()
             }

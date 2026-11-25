@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -29,8 +28,8 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -45,7 +44,7 @@ internal fun CommentLayout(
     ProvideCommentLinkColor(MaterialTheme.colorScheme.surface) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             header?.invoke()
-            ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) { content() }
         }
     }
 }
@@ -163,7 +162,7 @@ internal fun CommentMetadata(time: Long?, floor: Int? = null, ipAddress: String?
     if (postedAt == null && visibleFloor == null && ip.isEmpty()) return
 
     val scheme = MaterialTheme.colorScheme
-    val secondary = ExtendedTheme.colors.textSecondary.takeOrElse { scheme.onSurfaceVariant }
+    val secondary = scheme.onSurfaceVariant
     val labelStyle = MaterialTheme.typography.labelMedium
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -193,9 +192,8 @@ internal fun CommentAuthorName(
     val bawu = bawuType?.trim().orEmpty()
     if (userName.isBlank() && userLevel <= 0 && !isLz && bawu.isEmpty()) return
 
-    val colors = ExtendedTheme.colors
     val scheme = MaterialTheme.colorScheme
-    val textColor = colors.text.takeOrElse { scheme.onSurface }
+    val textColor = scheme.onSurface
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -215,12 +213,12 @@ internal fun CommentAuthorName(
             )
         }
         if (bawu.isNotEmpty()) {
-            CommentBadge(bawu, colors.primary.takeOrElse { scheme.primary }, textColor)
+            CommentBadge(bawu, scheme.primary, textColor)
         }
         if (isLz) {
             CommentBadge(
                 stringResource(R.string.tip_lz),
-                colors.accent.takeOrElse { scheme.secondary },
+                scheme.secondary,
                 textColor,
             )
         }

@@ -68,13 +68,11 @@ class HomeViewModel : BaseViewModel<HomeUiIntent, HomePartialChange, HomeUiState
             )
         }
 
-        @Suppress("USELESS_CAST")
-        private fun produceRefreshPartialChangeFlow(): Flow<HomePartialChange.Refresh> =
-            HistoryUtil.getFlow(HistoryUtil.TYPE_FORUM, 0)
-                .zip(
-                    TiebaApi.getInstance().forumRecommendNewFlow()
-                ) { historyForums, forumRecommend ->
-                    val forums = forumRecommend.data_?.like_forum?.map {
+        private fun produceRefreshPartialChangeFlow(): Flow<HomePartialChange.Refresh> {
+            val history = HistoryUtil.getFlow(HistoryUtil.TYPE_FORUM, 0)
+            val refresh: Flow<HomePartialChange.Refresh> = if (AccountUtil.isLoggedIn()) {
+                history.zip(TiebaApi.getInstance().forumRecommendNewFlow()) { historyForums, response ->
+                    val forums = response.data_?.like_forum.orEmpty().map {
                         HomeUiState.Forum(
                             it.avatar,
                             it.forum_id.toString(),
@@ -82,18 +80,20 @@ class HomeViewModel : BaseViewModel<HomeUiIntent, HomePartialChange, HomeUiState
                             it.is_sign == 1,
                             it.level_id.toString()
                         )
-                    } ?: emptyList()
-                    val topForums = mutableListOf<HomeUiState.Forum>()
-                    val topForumsDB = LitePal.findAll(TopForum::class.java).map { it.forumId }
-                    topForums.addAll(forums.filter { topForumsDB.contains(it.forumId) })
+                    }
+                    val pinnedIds = LitePal.findAll(TopForum::class.java).map { it.forumId }.toSet()
                     HomePartialChange.Refresh.Success(
-                        forums,
-                        topForums,
-                        historyForums
-                    ) as HomePartialChange.Refresh
+                        forums = forums,
+                        topForums = forums.filter { it.forumId in pinnedIds },
+                        historyForums = historyForums,
+                    )
                 }
-                .onStart { emit(HomePartialChange.Refresh.Start) }
+            } else {
+                history.map { HomePartialChange.Refresh.Success(emptyList(), emptyList(), it) }
+            }
+            return refresh.onStart { emit(HomePartialChange.Refresh.Start) }
                 .catch { emit(HomePartialChange.Refresh.Failure(it)) }
+        }
 
         @Suppress("USELESS_CAST")
         private fun produceRefreshHistoryPartialChangeFlow(): Flow<HomePartialChange.RefreshHistory> =

@@ -14,54 +14,44 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material3.Surface as M3Surface
-import androidx.compose.material3.Icon as M3Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme as M3Theme
-import androidx.compose.material.Text
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity
 import com.huanchengfly.tieba.post.ui.common.PbContentText
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -95,7 +85,7 @@ fun QuotePostCard(
     ) {
         HighlightText(
             text = quoteContentString,
-            style = MaterialTheme.typography.body2,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             highlightKeywords = (keyword?.split(" ") ?: emptyList()).toImmutableList()
@@ -105,7 +95,7 @@ fun QuotePostCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
-                .background(ExtendedTheme.colors.card)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
                 .clickable {
                     onMainPostClick(mainPost)
                 },
@@ -136,7 +126,7 @@ fun MainPostCard(
     ) {
         HighlightText(
             text = titleString,
-            style = MaterialTheme.typography.subtitle2,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -145,7 +135,7 @@ fun MainPostCard(
         if (mainPost.content.isNotBlank()) {
             PbContentText(
                 text = mainPost.content,
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -264,7 +254,7 @@ fun SearchThreadItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
-                            .background(ExtendedTheme.colors.floorCard)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .clickable {
                                 onQuotePostClick(item.postInfo)
                             },
@@ -277,7 +267,7 @@ fun SearchThreadItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
-                            .background(ExtendedTheme.colors.floorCard)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .clickable {
                                 onMainPostClick(item.mainPost)
                             },
@@ -396,6 +386,7 @@ fun SearchMedia(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBox(
     keyword: String,
@@ -406,57 +397,40 @@ fun SearchBox(
     prependIcon: @Composable () -> Unit = {},
     appendIcon: @Composable () -> Unit = {},
     focusRequester: FocusRequester = remember { FocusRequester() },
-    shape: Shape = RoundedCornerShape(22.dp),
-    color: Color = M3Theme.colorScheme.surfaceContainerHigh,
-    contentColor: Color = M3Theme.colorScheme.onSurface,
-    elevation: Dp = 0.dp,
 ) {
-    // Keep IME composition and selection during typing. A suggestion replaces the whole query.
-    var editingValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(keyword, TextRange(keyword.length)))
+    val state = rememberTextFieldState(keyword)
+    val externalKeyword by rememberUpdatedState(keyword)
+    val change by rememberUpdatedState(onKeywordChange)
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(keyword) {
+        if (state.text.toString() != keyword) state.setTextAndPlaceCursorAtEnd(keyword)
     }
-    val field = if (keyword == editingValue.text) editingValue else TextFieldValue(keyword, TextRange(keyword.length))
-    SideEffect { if (field != editingValue) editingValue = field }
-    var isFocused by remember { mutableStateOf(false) }
-    M3Surface(modifier = modifier, shape = shape, color = color, contentColor = contentColor, tonalElevation = elevation) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            prependIcon()
-            BasicTextField(
-                value = field,
-                onValueChange = {
-                    editingValue = it
-                    if (it.text != keyword) onKeywordChange(it.text)
-                },
-                modifier = Modifier.weight(1f).fillMaxHeight()
-                    .padding(horizontal = 4.dp)
-                    .focusRequester(focusRequester)
-                    .onFocusEvent { isFocused = it.isFocused },
-                singleLine = true,
-                textStyle = M3Theme.typography.bodyLarge.copy(color = contentColor),
-                cursorBrush = SolidColor(M3Theme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit(keyword) }),
-                decorationBox = { input ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (keyword.isEmpty()) placeholder()
-                        input()
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { if (it != externalKeyword) change(it) }
+    }
+
+    SearchBarDefaults.InputField(
+        state = state,
+        onSearch = onKeywordSubmit,
+        expanded = focused,
+        onExpandedChange = {},
+        modifier = modifier.focusRequester(focusRequester).onFocusEvent { focused = it.isFocused },
+        placeholder = placeholder,
+        leadingIcon = prependIcon,
+        trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                appendIcon()
+                if (keyword.isNotEmpty() && focused) {
+                    IconButton(onClick = { onKeywordChange("") }) {
+                        M3Icon(Icons.Rounded.Clear, stringResource(R.string.button_clear))
                     }
-                },
-            )
-            appendIcon()
-            if (keyword.isNotEmpty() && isFocused) {
-                IconButton(onClick = { onKeywordChange("") }) {
-                    M3Icon(Icons.Rounded.Clear, stringResource(R.string.button_clear))
+                }
+                if (keyword.isNotBlank()) {
+                    IconButton(onClick = { onKeywordSubmit(keyword) }) {
+                        M3Icon(Icons.Rounded.Search, stringResource(R.string.button_search))
+                    }
                 }
             }
-            if (keyword.isNotBlank()) {
-                IconButton(onClick = { onKeywordSubmit(keyword) }) {
-                    M3Icon(Icons.Rounded.Search, stringResource(R.string.button_search))
-                }
-            }
-        }
-    }
+        },
+    )
 }
