@@ -1,13 +1,24 @@
 package com.huanchengfly.tieba.post.ui.page.thread
 
 import android.app.Application
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.api.models.protos.PbContent
 import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.SubPost
@@ -15,12 +26,14 @@ import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.subPosts
 import com.huanchengfly.tieba.post.arch.wrapImmutable
+import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -88,5 +101,56 @@ class CommentActionsTest {
             assertEquals(listOf("user-10", "user-20", "like", "reply-45", "open-81", "reply-45-81",
                 reply.content.single().text), actions)
         }
+    }
+
+    @Test
+    fun hidingRepliesPreservesTotalAndLeavesNoExtraDividerOrEmptyPanel() {
+        runBlocking {
+            App.INSTANCE.dataStore.edit { it[booleanPreferencesKey("hideBlockedContent")] = true }
+        }
+        val first = SubPostItemData(
+            SubPostList(id = 10).wrapImmutable(), AnnotatedString("可见回复"), blocked = false,
+        )
+        val hidden = SubPostItemData(
+            SubPostList(id = 11).wrapImmutable(), AnnotatedString("隐藏回复"), blocked = true,
+        )
+        var previews by mutableStateOf(persistentListOf(first))
+        var total by mutableStateOf(1)
+        compose.setContent {
+            TiebaLiteTheme {
+                ProvideNavigator(EmptyDestinationsNavigator) {
+                    Box(Modifier.testTag("floor")) {
+                        PostCard(
+                            postHolder = Post(id = 1, floor = 2, sub_post_number = total).wrapImmutable(),
+                            contentRenders = persistentListOf(TextContentRender("楼层正文")),
+                            subPosts = previews,
+                        )
+                    }
+                }
+            }
+        }
+
+        fun height() = compose.onNodeWithTag("floor").fetchSemanticsNode().boundsInRoot.height
+        val oneReplyHeight = height()
+        compose.runOnIdle {
+            previews = persistentListOf(first, hidden)
+            total = 2
+        }
+        compose.onNodeWithText("隐藏回复", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("查看全部", substring = true).assertDoesNotExist()
+        assertEquals(oneReplyHeight, height(), 0f)
+
+        compose.runOnIdle {
+            previews = persistentListOf(hidden)
+            total = 3
+        }
+        compose.onNodeWithText("查看全部 3 条回复").assertExists()
+        compose.runOnIdle { total = 1 }
+        val hiddenOnlyHeight = height()
+        compose.runOnIdle {
+            previews = persistentListOf()
+            total = 0
+        }
+        assertEquals(height(), hiddenOnlyHeight, 0f)
     }
 }

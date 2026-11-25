@@ -161,6 +161,7 @@ internal fun NotificationCard(
                         CommentHeader(
                             name = AnnotatedString(name),
                             portrait = author?.portrait,
+                            authorId = authorId,
                             time = time,
                             onAuthorClick = if (authorId != null) {
                                 { onNavigate(UserProfilePageDestination(authorId)) }
