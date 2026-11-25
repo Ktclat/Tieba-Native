@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.hot
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import android.graphics.Typeface
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -14,16 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ContentAlpha
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.Icon
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,19 +33,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.placeholder.material.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.hasAgree
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.OrangeA700
 import com.huanchengfly.tieba.post.ui.common.theme.compose.RedA700
 import com.huanchengfly.tieba.post.ui.common.theme.compose.White
 import com.huanchengfly.tieba.post.ui.common.theme.compose.Yellow
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.HotTopicListPageDestination
@@ -60,15 +54,15 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
-import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.items
 import com.huanchengfly.tieba.post.ui.widgets.compose.itemsIndexed
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.ramcosta.composedestinations.annotation.Destination
 
-@OptIn(ExperimentalMaterialApi::class)
 @Destination
 @Composable
 fun HotPage(
@@ -92,10 +86,10 @@ fun HotPage(
     val tabList by viewModel.uiState.collectPartialAsState(HotUiState::tabList)
     val currentTabCode by viewModel.uiState.collectPartialAsState(HotUiState::currentTabCode)
     val isLoadingThreadList by viewModel.uiState.collectPartialAsState(HotUiState::isLoadingThreadList)
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading,
-        onRefresh = { viewModel.send(HotUiIntent.Load) })
-    Box(modifier = Modifier.pullRefresh(pullRefreshState)) {
+    PullToRefreshBox(
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.send(HotUiIntent.Load) },
+    ) {
         MyLazyColumn(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -132,9 +126,7 @@ fun HotPage(
                                             0 -> RedA700
                                             1 -> OrangeA700
                                             2 -> Yellow
-                                            else -> MaterialTheme.colors.onBackground.copy(
-                                                ContentAlpha.medium
-                                            )
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                                         },
                                         fontFamily = FontFamily(
                                             Typeface.createFromAsset(
@@ -174,7 +166,7 @@ fun HotPage(
                                 }
                             }
                             item {
-                                ProvideContentColor(color = ExtendedTheme.colors.primary) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -202,7 +194,7 @@ fun HotPage(
                 }
                 item(key = "TopicDivider") {
                     Container {
-                        VerticalDivider(
+                        HorizontalDivider(
                             modifier = Modifier
                                 .padding(top = 16.dp, bottom = 8.dp)
                                 .padding(horizontal = 16.dp),
@@ -219,7 +211,7 @@ fun HotPage(
                                 column = 5,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(ExtendedTheme.colors.background)
+                                    .background(MaterialTheme.colorScheme.surface)
                                     .padding(vertical = 8.dp)
                                     .padding(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -261,7 +253,7 @@ fun HotPage(
                     ) {
                         Text(
                             text = stringResource(id = R.string.hot_thread_rank_rule),
-                            color = ExtendedTheme.colors.textSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                         )
@@ -313,9 +305,7 @@ fun HotPage(
                                         0 -> RedA700
                                         1 -> OrangeA700
                                         2 -> Yellow
-                                        else -> MaterialTheme.colors.onBackground.copy(
-                                            ContentAlpha.medium
-                                        )
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                     Text(
                                         text = "${index + 1}",
@@ -328,7 +318,7 @@ fun HotPage(
                                             id = R.string.hot_num,
                                             item.get { hotNum }.getShortNumString()
                                         ),
-                                        style = MaterialTheme.typography.caption,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = color
                                     )
                                 }
@@ -350,14 +340,6 @@ fun HotPage(
                 }
             }
         }
-
-        PullRefreshIndicator(
-            refreshing = isLoading,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-            contentColor = ExtendedTheme.colors.primary,
-        )
     }
 }
 
@@ -373,12 +355,12 @@ private fun ThreadListItemPlaceholder() {
                 text = "1",
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
-                color = ExtendedTheme.colors.background,
+                color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .padding(top = 3.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .wrapContentSize()
-                    .placeholder(visible = true)
+                    .loadingPlaceholder(visible = true)
                     .padding(vertical = 1.dp, horizontal = 4.dp)
             )
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -386,13 +368,13 @@ private fun ThreadListItemPlaceholder() {
                     text = "",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .placeholder(visible = true)
+                        .loadingPlaceholder(visible = true)
                 )
                 Text(
                     text = stringResource(id = R.string.hot_num, "666"),
-                    style = MaterialTheme.typography.caption,
-                    color = ExtendedTheme.colors.textSecondary,
-                    modifier = Modifier.placeholder(visible = true)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.loadingPlaceholder(visible = true)
                 )
             }
         }
@@ -405,8 +387,8 @@ private fun ThreadListTab(
     selected: Boolean,
     onSelected: () -> Unit
 ) {
-    val textColor by animateColorAsState(targetValue = if (selected) ExtendedTheme.colors.onAccent else ExtendedTheme.colors.onChip)
-    val backgroundColor by animateColorAsState(targetValue = if (selected) ExtendedTheme.colors.primary else ExtendedTheme.colors.chip)
+    val textColor by animateColorAsState(targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+    val backgroundColor by animateColorAsState(targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
     Text(
         text = text,
         textAlign = TextAlign.Center,
@@ -431,14 +413,14 @@ private fun ChipHeader(
     modifier: Modifier = Modifier
 ) {
     Text(
-        color = if (invert) MaterialTheme.colors.onSecondary else ExtendedTheme.colors.onChip,
+        color = if (invert) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         text = text,
         modifier = Modifier
             .clip(RoundedCornerShape(100))
             .then(modifier)
-            .background(color = if (invert) MaterialTheme.colors.secondary else ExtendedTheme.colors.chip)
+            .background(color = if (invert) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceContainerHighest)
             .padding(horizontal = 16.dp, vertical = 4.dp)
     )
 }

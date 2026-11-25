@@ -3,7 +3,6 @@ package com.huanchengfly.tieba.post.ui.page.search
 import android.app.Application
 import android.view.View
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.toMutableStateList
@@ -19,10 +18,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
+import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.AppContextRule
+import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.captureReviewImage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -35,7 +36,8 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = Application::class, qualifiers = "w320dp-h568dp")
 class SearchHistorySectionTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val app = AppContextRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
     private val entries = listOf(
         "深色模式", "Compose", "字号设置", "平板布局", "收藏", "阅读历史", "动态配色", "导航",
     ).toMutableStateList()
@@ -45,10 +47,11 @@ class SearchHistorySectionTest {
     private val resources get() = RuntimeEnvironment.getApplication().resources
 
     private fun show() {
+        ThemeUtils.init(App.ThemeDelegate)
         compose.setContent {
             val view = LocalView.current
             SideEffect { renderingView = view }
-            MaterialTheme(typography = ExpressiveTypography, shapes = ExpressiveShapes) {
+            TiebaLiteTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SearchHistorySection(
                         entries = entries,

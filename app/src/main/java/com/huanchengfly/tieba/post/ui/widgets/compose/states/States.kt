@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.requiredWidthIn
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -19,8 +20,6 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 
 val DefaultLoadingScreen: @Composable StateScreenScope.() -> Unit = {
@@ -39,7 +38,7 @@ val DefaultLoadingScreen: @Composable StateScreenScope.() -> Unit = {
             )
         }
     }
-//    CircularProgressIndicator(modifier = Modifier.size(48.dp), color = MaterialTheme.colors.primary)
+//    CircularProgressIndicator(modifier = Modifier.size(48.dp), color = MaterialTheme.colorScheme.primary)
 }
 
 val DefaultEmptyScreen: @Composable StateScreenScope.() -> Unit = {
@@ -69,8 +68,8 @@ val DefaultEmptyScreen: @Composable StateScreenScope.() -> Unit = {
 val DefaultErrorScreen: @Composable StateScreenScope.() -> Unit = {
     Text(
         text = stringResource(id = R.string.error_tip),
-        style = MaterialTheme.typography.body1,
-        color = ExtendedTheme.colors.textSecondary
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 

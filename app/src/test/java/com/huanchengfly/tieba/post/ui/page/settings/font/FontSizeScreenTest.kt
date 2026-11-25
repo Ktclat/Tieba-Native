@@ -2,9 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.settings.font
 
 import android.app.Application
 import android.view.View
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -31,10 +28,14 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.AppContextRule
+import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.captureReviewImage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveShapes
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExpressiveTypography
+import com.huanchengfly.tieba.post.utils.ThemeUtil
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -49,20 +50,26 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [28], application = Application::class, qualifiers = "w412dp-h915dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FontSizeScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val app = AppContextRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
     private var saves = 0
     private var savedDraft = -1
     private var backs = 0
     private var saveError by mutableStateOf<String?>(null)
     private lateinit var renderingView: View
 
+    private var originalTheme: String? = null
+
+    @After fun restoreTheme() {
+        originalTheme?.let { ThemeUtil.themeState.value = it }
+    }
+
     private fun show(initial: Int = 4, dark: Boolean = false, largeControls: Boolean = false) {
+        ThemeUtils.init(App.ThemeDelegate)
+        originalTheme = ThemeUtil.themeState.value
+        ThemeUtil.themeState.value = if (dark) ThemeUtil.THEME_GREY_DARK else ThemeUtil.THEME_DEFAULT
         compose.setContent {
-            MaterialTheme(
-                colorScheme = if (dark) darkColorScheme() else lightColorScheme(),
-                typography = ExpressiveTypography,
-                shapes = ExpressiveShapes,
-            ) {
+            TiebaLiteTheme {
                 val density = LocalDensity.current
                 val view = LocalView.current
                 SideEffect { renderingView = view }

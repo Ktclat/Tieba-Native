@@ -7,9 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentAlpha
-import androidx.compose.material.LocalContentColor
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,9 +24,6 @@ import com.github.panpf.sketch.compose.AsyncImage
 import com.github.panpf.sketch.fetch.newResourceUri
 import com.github.panpf.sketch.request.DisplayRequest
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.google.accompanist.placeholder.PlaceholderHighlight
-import com.google.accompanist.placeholder.material.fade
-import com.google.accompanist.placeholder.material.placeholder
 import com.huanchengfly.tieba.post.utils.ImageUtil
 
 object Sizes {
@@ -44,7 +40,7 @@ fun AvatarIcon(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     iconSize: Dp = 24.dp,
-    color: Color = LocalContentColor.current.copy(alpha = LocalContentAlpha.current),
+    color: Color = LocalContentColor.current,
     backgroundColor: Color = Color.Transparent,
     shape: Shape = CircleShape,
 ) {
@@ -68,7 +64,7 @@ fun AvatarIcon(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     iconSize: Dp = 24.dp,
-    color: Color = LocalContentColor.current.copy(alpha = LocalContentAlpha.current),
+    color: Color = LocalContentColor.current,
     backgroundColor: Color = Color.Transparent,
     shape: Shape = CircleShape,
 ) {
@@ -93,9 +89,9 @@ fun AvatarPlaceholder(
         data = ImageUtil.getPlaceHolder(LocalContext.current, 0),
         size = size,
         contentDescription = null,
-        modifier = modifier.placeholder(
+        modifier = modifier.loadingPlaceholder(
             visible = true,
-            highlight = PlaceholderHighlight.fade(),
+
             shape = CircleShape
         )
     )

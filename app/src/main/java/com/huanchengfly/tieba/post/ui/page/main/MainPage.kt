@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -52,7 +51,6 @@ import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.collectPreferenceAsState
 import com.huanchengfly.tieba.post.dataStore
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowHeightSizeClass
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
@@ -72,7 +70,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
 @Composable
-private fun NavigationWrapper(
+internal fun NavigationWrapper(
     currentPosition: Int,
     onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
@@ -80,28 +78,18 @@ private fun NavigationWrapper(
     navigationContentPosition: MainNavigationContentPosition,
     content: @Composable () -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = navigationType == MainNavigationType.PERMANENT_NAVIGATION_DRAWER) {
-            NavigationDrawerContent(
-                currentPosition = currentPosition,
-                onSelect = onSelect,
-                navigationItems = navigationItems,
-                navigationContentPosition = navigationContentPosition
-            )
+    val latestContent by rememberUpdatedState(content)
+    val page = remember { androidx.compose.runtime.movableContentOf { latestContent() } }
+    when (navigationType) {
+        MainNavigationType.PERMANENT_NAVIGATION_DRAWER -> androidx.compose.material3.PermanentNavigationDrawer(
+            drawerContent = { NavigationDrawerContent(currentPosition, onSelect, navigationItems, navigationContentPosition) },
+            content = page,
+        )
+        MainNavigationType.NAVIGATION_RAIL -> Row(Modifier.fillMaxSize()) {
+            NavigationRail(currentPosition, onSelect, navigationItems, navigationContentPosition)
+            Column(Modifier.weight(1f).fillMaxHeight()) { page() }
         }
-        AnimatedVisibility(visible = navigationType == MainNavigationType.NAVIGATION_RAIL) {
-            NavigationRail(
-                currentPosition = currentPosition,
-                onSelect = onSelect,
-                navigationItems = navigationItems,
-                navigationContentPosition = navigationContentPosition
-            )
-        }
-        Column(modifier = Modifier
-            .weight(1f)
-            .fillMaxHeight()) {
-            content()
-        }
+        MainNavigationType.BOTTOM_NAVIGATION -> page()
     }
 }
 
@@ -138,7 +126,6 @@ fun MainPage(
     val selection = rememberMainTabSelection("home")
 
     val coroutineScope = rememberCoroutineScope()
-    val themeColors = ExtendedTheme.colors
     val navigationItems by remember {
         derivedStateOf {
             listOfNotNull(
@@ -276,7 +263,7 @@ fun MainPage(
     )
     val onSelect: (Int) -> Unit = { index ->
         navigationItems.getOrNull(index)?.let { item ->
-            selection.select(item.id) {
+            selection.activate(item) {
                 coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(item.id))
             }
         }
@@ -294,12 +281,11 @@ fun MainPage(
                 modifier = Modifier.fillMaxSize().nestedScroll(navScrollObserver),
                 bottomBar = {
                     if (navigationType == MainNavigationType.BOTTOM_NAVIGATION) {
-                        FloatingNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
-                            FloatingBottomNavigation(
+                        MainNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
+                            MainNavigationBar(
                                 currentPosition = selectedIndex,
                                 onSelect = onSelect,
                                 navigationItems = navigationItems,
-                                themeColors = themeColors,
                             )
                         }
                     }

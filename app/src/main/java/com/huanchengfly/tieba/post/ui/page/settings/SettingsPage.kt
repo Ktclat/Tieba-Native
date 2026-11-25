@@ -4,9 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -27,7 +26,6 @@ import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.GroupHeader
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.AccountManagePageDestination
@@ -55,13 +53,12 @@ internal fun LeadingIcon(content: @Composable () -> Unit) {
         contentAlignment = Alignment.CenterStart,
     ) {
         CompositionLocalProvider(
-            LocalContentColor provides ExtendedTheme.colors.accent,
+            LocalContentColor provides MaterialTheme.colorScheme.primary,
             content = content,
         )
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun NowAccountItem(account: Account?, modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
@@ -95,8 +92,8 @@ fun NowAccountItem(account: Account?, modifier: Modifier = Modifier) {
                         icon = Icons.Rounded.AccountCircle,
                         size = Sizes.Small,
                         contentDescription = stringResource(id = R.string.title_new_account),
-                        color = ExtendedTheme.colors.onChip,
-                        backgroundColor = ExtendedTheme.colors.chip,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        backgroundColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     )
                 }
             },
@@ -105,20 +102,19 @@ fun NowAccountItem(account: Account?, modifier: Modifier = Modifier) {
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Destination
 @Composable
 fun SettingsPage(navigator: DestinationsNavigator) {
     ProvideNavigator(navigator = navigator) {
         MyScaffold(
-            backgroundColor = ExtendedTheme.colors.background,
+            backgroundColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 TitleCentredToolbar(
                     title = {
                         Text(
                             text = stringResource(id = R.string.title_settings),
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     },
                     navigationIcon = {

@@ -39,17 +39,23 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Badge
-import androidx.compose.material.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBar
+import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -83,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.addTextChangedListener
 import com.github.panpf.sketch.compose.AsyncImage
+import com.google.android.material.textfield.TextInputLayout
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -95,19 +102,16 @@ import com.huanchengfly.tieba.post.models.database.Draft
 import com.huanchengfly.tieba.post.pxToDpFloat
 import com.huanchengfly.tieba.post.toMD5
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.EMOJI
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.IMAGE
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.NONE
 import com.huanchengfly.tieba.post.ui.utils.imeNestedScroll
-import com.huanchengfly.tieba.post.ui.widgets.compose.BaseDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogPositiveButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.edittext.widget.UndoableEditText
 import com.huanchengfly.tieba.post.utils.AccountUtil
@@ -120,7 +124,6 @@ import com.huanchengfly.tieba.post.utils.hideKeyboard
 import com.huanchengfly.tieba.post.utils.showKeyboard
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.spec.DestinationStyleBottomSheet
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.FlowPreview
@@ -148,23 +151,22 @@ data class ReplyArgs(
     val tbs: String? = null,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReplyDialog(
     args: ReplyArgs,
     state: DialogState = rememberDialogState(),
 ) {
-    BaseDialog(
-        dialogState = state,
-        imePadding = false,
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-            color = ExtendedTheme.colors.windowBackground,
+    if (state.show) {
+        val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            sheetState = sheet,
+            onDismissRequest = { state.show = false },
+            contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         ) {
             ReplyPageContent(
                 viewModel = pageViewModel(),
-                onBack = { dismiss() },
+                onBack = { state.show = false },
                 forumId = args.forumId,
                 forumName = args.forumName,
                 threadId = args.threadId,
@@ -182,6 +184,7 @@ fun ReplyDialog(
 
 @OptIn(
     ExperimentalLayoutApi::class,
+    ExperimentalMaterial3Api::class,
     FlowPreview::class
 )
 @Composable
@@ -266,7 +269,6 @@ internal fun ReplyPageContent(
             .sample(500)
             .distinctUntilChanged()
             .collect {
-                Log.i("ReplyPage", "collect: $it")
                 if (!replySuccess) {
                     thread {
                         Draft(hash, it).saveOrUpdate("hash = ?", hash)
@@ -421,60 +423,55 @@ internal fun ReplyPageContent(
 
     val textFieldScrollState = rememberScrollState()
 
-    val parentModifier = if (curKeyboardType == NONE && !closingPanel) {
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-    } else {
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .consumeWindowInsets(WindowInsets.ime)
-    }
+    val contentSize = if (isDialog) Modifier.fillMaxWidth() else Modifier.fillMaxSize()
+    val parentModifier = contentSize.navigationBarsPadding().then(
+        if (curKeyboardType != NONE || closingPanel) Modifier.consumeWindowInsets(WindowInsets.ime)
+        else Modifier
+    )
 
-    Column(
-        modifier = parentModifier,
-        verticalArrangement = Arrangement.Bottom
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(id = R.string.title_reply),
-                modifier = Modifier.weight(1f),
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "$textLength",
-                style = MaterialTheme.typography.caption,
-                color = ExtendedTheme.colors.textSecondary
+    Column(modifier = parentModifier) {
+        if (isDialog) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.title_reply), style = MaterialTheme.typography.titleLarge)
+                Text("$textLength", style = MaterialTheme.typography.labelMedium)
+            }
+        } else {
+            TopAppBar(
+                title = { Text(stringResource(R.string.title_reply)) },
+                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
+                actions = {
+                    Text(
+                        "$textLength",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                },
             )
         }
-        VerticalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         Box(
             modifier = Modifier
-                .wrapContentHeight()
+                .then(if (isDialog) Modifier.wrapContentHeight() else Modifier.weight(1f))
                 .fillMaxWidth()
                 .imeNestedScroll(textFieldScrollState),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .requiredHeightIn(min = minResult, max = maxResult)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .then(if (isDialog) Modifier.requiredHeightIn(min = minResult, max = maxResult) else Modifier)
                     .verticalScroll(textFieldScrollState)
             ) {
                 AndroidView(
                     factory = { ctx ->
-                        (View.inflate(
-                            ctx,
-                            R.layout.layout_reply_edit_text,
-                            null
-                        ) as UndoableEditText).apply {
+                        val input = View.inflate(ctx, R.layout.layout_reply_edit_text, null) as TextInputLayout
+                        input.findViewById<UndoableEditText>(R.id.edit_text).apply {
                             editTextView = this
                             if (subPostId != null && subPostId != 0L && replyUserName != null) {
-                                hint = ctx.getString(R.string.hint_reply, replyUserName)
+                                input.hint = ctx.getString(R.string.hint_reply, replyUserName)
                             }
                             setOnFocusChangeListener { _, hasFocus ->
                                 if (hasFocus) {
@@ -494,37 +491,21 @@ internal fun ReplyPageContent(
                                 this.setSelection(initialText.length)
                             }
                         }
+                        input
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight(align = Alignment.Top)
                 )
             }
-//            BaseTextField(
-//                value = text,
-//                onValueChange = { text = it },
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp)
-//                    .requiredHeightIn(min = minResult, max = maxResult)
-//                    .focusRequester(focusRequester)
-//                    .verticalScroll(textFieldScrollState)
-//                    .onFocusChanged {
-//                        Log.i("ReplyPage", "onFocusChanged: $it")
-//                        if (it.hasFocus) {
-//                            switchToKeyboard(NONE)
-//                        }
-//                    },
-//                placeholder = { Text(text = stringResource(id = R.string.tip_reply)) },
-//            )
         }
         Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
                 onClick = { switchToPanel(EMOJI) },
-                modifier = Modifier.size(24.dp)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.EmojiEmotions,
@@ -535,18 +516,17 @@ internal fun ReplyPageContent(
             if (postId == null || postId == 0L) {
                 IconButton(
                     onClick = { switchToPanel(IMAGE) },
-                    modifier = Modifier.size(24.dp)
                 ) {
                     BadgedBox(
                         badge = {
                             if (selectedImageList.isNotEmpty()) {
                                 Badge(
-                                    backgroundColor = ExtendedTheme.colors.accent,
-                                    contentColor = ExtendedTheme.colors.background,
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
                                 ) {
                                     Text(
                                         text = "${selectedImageList.size}",
-                                        style = MaterialTheme.typography.caption
+                                        style = MaterialTheme.typography.bodySmall
                                     )
                                 }
                             }
@@ -575,10 +555,10 @@ internal fun ReplyPageContent(
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
-                    color = ExtendedTheme.colors.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
             } else {
-                IconButton(
+                FilledIconButton(
                     onClick = {
                         val replyContent = if (subPostId == null || subPostId == 0L) {
                             getText()
@@ -610,7 +590,6 @@ internal fun ReplyPageContent(
                         }
                     },
                     enabled = canSend,
-                    modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
@@ -738,7 +717,7 @@ internal fun ReplyPageContent(
 }
 
 // TODO: 将软键盘状态相关逻辑抽离出来
-@Destination(style = DestinationStyleBottomSheet::class)
+@Destination
 @Composable
 fun ReplyPage(
     navigator: DestinationsNavigator,
@@ -753,19 +732,21 @@ fun ReplyPage(
     tbs: String? = null,
     viewModel: ReplyViewModel = pageViewModel(),
 ) {
-    ReplyPageContent(
-        viewModel = viewModel,
-        onBack = { navigator.navigateUp() },
-        forumId = forumId,
-        forumName = forumName,
-        threadId = threadId,
-        postId = postId,
-        subPostId = subPostId,
-        replyUserId = replyUserId,
-        replyUserName = replyUserName,
-        replyUserPortrait = replyUserPortrait,
-        tbs = tbs
-    )
+    Surface(modifier = Modifier.fillMaxSize()) {
+        ReplyPageContent(
+            viewModel = viewModel,
+            onBack = { navigator.navigateUp() },
+            forumId = forumId,
+            forumName = forumName,
+            threadId = threadId,
+            postId = postId,
+            subPostId = subPostId,
+            replyUserId = replyUserId,
+            replyUserName = replyUserName,
+            replyUserPortrait = replyUserPortrait,
+            tbs = tbs
+        )
+    }
 }
 
 @Composable
@@ -868,7 +849,7 @@ private fun ImagePanel(
                         modifier = Modifier
                             .fillMaxHeight()
                             .aspectRatio(1f)
-                            .background(ExtendedTheme.colors.chip)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .clickable {
                                 coroutineScope.emitGlobalEvent(
                                     GlobalEvent.StartSelectImages(

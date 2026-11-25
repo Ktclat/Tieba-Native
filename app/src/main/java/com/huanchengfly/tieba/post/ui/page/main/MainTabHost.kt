@@ -46,6 +46,11 @@ internal class MainTabSelection(initialId: String) {
     var id by mutableStateOf(initialId)
         private set
 
+    fun activate(item: NavigationItem, onReselected: () -> Unit) {
+        select(item.id, onReselected)
+        item.onClick?.invoke()
+    }
+
     fun select(tabId: String, onReselected: () -> Unit = {}) {
         if (id == tabId) onReselected() else id = tabId
     }

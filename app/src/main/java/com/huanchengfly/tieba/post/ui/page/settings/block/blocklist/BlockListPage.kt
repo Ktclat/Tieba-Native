@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.block.blocklist
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -15,9 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -40,23 +42,20 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.placeholder.material.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.gson.reflect.TypeToken
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.models.database.Block
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.page.main.BottomNavigationDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.PagerTabIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -116,24 +115,18 @@ fun BlockListPage(
                 title = {
                     Text(
                         text = stringResource(id = R.string.title_block_list),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
                     BackNavigationIcon(onBackPressed = { navigator.navigateUp() })
                 },
                 content = {
-                    TabRow(
+                    PrimaryTabRow(
                         selectedTabIndex = pagerState.currentPage,
-                        indicator = { tabPositions ->
-                            PagerTabIndicator(
-                                pagerState = pagerState,
-                                tabPositions = tabPositions
-                            )
-                        },
                         divider = {},
-                        backgroundColor = Color.Transparent,
-                        contentColor = ExtendedTheme.colors.onTopBar,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
                             .width(84.dp * 2),
@@ -154,7 +147,6 @@ fun BlockListPage(
         },
         bottomBar = {
             Column {
-                BottomNavigationDivider()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -247,15 +239,10 @@ fun BlockListPage(
                 MyLazyColumn(Modifier.fillMaxSize()) {
                     items(items, key = { it.id }) {
                         LongClickMenu(menuContent = {
-                            DropdownMenuItem(onClick = {
-                                viewModel.send(
-                                    BlockListUiIntent.Delete(
-                                        it.id
-                                    )
-                                )
-                            }) {
-                                Text(text = stringResource(id = R.string.title_delete))
-                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.title_delete)) },
+                                onClick = { viewModel.send(BlockListUiIntent.Delete(it.id)) },
+                            )
                         }) {
                             BlockItem(item = it)
                         }
@@ -275,12 +262,12 @@ private fun BlockItemPlaceholder() {
         Icon(
             imageVector = Icons.Outlined.Block,
             contentDescription = null,
-            modifier = Modifier.placeholder(visible = true)
+            modifier = Modifier.loadingPlaceholder(visible = true)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = stringResource(id = R.string.title_block_settings),
-            modifier = Modifier.placeholder(visible = true)
+            modifier = Modifier.loadingPlaceholder(visible = true)
         )
     }
 }
@@ -311,11 +298,11 @@ private fun BlockItem(
             if (item.type == Block.TYPE_USER) {
                 Text(
                     text = "${item.username}",
-                    style = MaterialTheme.typography.subtitle1
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = "UID: ${item.uid}",
-                    style = MaterialTheme.typography.caption
+                    style = MaterialTheme.typography.bodySmall
                 )
             } else {
                 val keywordsList: List<String> = runCatching {
@@ -327,7 +314,7 @@ private fun BlockItem(
                 }.getOrDefault(emptyList())
                 Text(
                     text = keywordsList.joinToString(" "),
-                    style = MaterialTheme.typography.subtitle1
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }

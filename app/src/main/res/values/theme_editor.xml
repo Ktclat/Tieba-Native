@@ -1,0 +1,6 @@
+<resources>
+    <string name="theme_color_hex">十六进制颜色</string>
+    <string name="theme_color_hue">色相</string>
+    <string name="theme_color_saturation">饱和度</string>
+    <string name="theme_color_brightness">明度</string>
+</resources>

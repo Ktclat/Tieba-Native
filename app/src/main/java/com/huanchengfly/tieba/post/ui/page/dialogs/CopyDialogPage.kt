@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -27,8 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
+import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.ramcosta.composedestinations.annotation.Destination
@@ -57,7 +56,7 @@ fun CopyTextDialogPage(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(color = ExtendedTheme.colors.windowBackground)
+            .background(color = MaterialTheme.colorScheme.surface)
     ) {
         CopyTextPageContent(
             text = text,
@@ -80,7 +79,7 @@ private fun CopyTextPageContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(color = ExtendedTheme.colors.windowBackground)
+            .background(color = MaterialTheme.colorScheme.surface)
             .systemBarsPadding()
             .padding(bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -93,12 +92,12 @@ private fun CopyTextPageContent(
                 ) {
                     Text(
                         text = stringResource(id = R.string.title_copy),
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = stringResource(id = R.string.tip_copy_text),
-                        style = MaterialTheme.typography.caption
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             },
@@ -130,7 +129,7 @@ private fun CopyTextPageContent(
                     Text(
                         text = text,
                         modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.body1
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
             }
@@ -149,8 +148,8 @@ private fun CopyTextPageContent(
                     onCancel()
                 },
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = ExtendedTheme.colors.text.copy(alpha = 0.1f),
-                    contentColor = ExtendedTheme.colors.text
+                    containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Text(text = stringResource(id = R.string.btn_close))

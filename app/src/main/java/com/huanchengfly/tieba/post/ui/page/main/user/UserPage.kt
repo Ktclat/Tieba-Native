@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.user
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import android.graphics.Typeface
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
@@ -19,17 +20,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.Icon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,13 +42,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.placeholder.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.models.database.Account
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.AboutPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.AppThemePageDestination
@@ -62,11 +57,11 @@ import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestinati
 import com.huanchengfly.tieba.post.ui.page.destinations.WebViewPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
-import com.huanchengfly.tieba.post.ui.widgets.compose.Switch
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.CuidUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -76,19 +71,19 @@ import com.huanchengfly.tieba.post.utils.appPreferences
 @Composable
 private fun StatCardPlaceholder(modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.placeholder(visible = true, color = ExtendedTheme.colors.chip),
+        modifier = modifier.loadingPlaceholder(visible = true),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatCardItem(
             statNum = 0,
             statText = stringResource(id = R.string.text_stat_follow)
         )
-        HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
+        VerticalDivider(modifier = Modifier.height(16.dp))
         StatCardItem(
             statNum = 0,
             statText = stringResource(id = R.string.text_stat_fans)
         )
-        HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
+        VerticalDivider(modifier = Modifier.height(16.dp))
         StatCardItem(
             statNum = 0,
             statText = stringResource(id = R.string.title_stat_posts_num)
@@ -112,12 +107,12 @@ private fun StatCard(
             statNum = concernNum,
             statText = stringResource(id = R.string.text_stat_follow)
         )
-        HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
+        VerticalDivider(modifier = Modifier.height(16.dp))
         StatCardItem(
             statNum = fansNum,
             statText = stringResource(id = R.string.text_stat_fans)
         )
-        HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
+        VerticalDivider(modifier = Modifier.height(16.dp))
         StatCardItem(
             statNum = postNum,
             statText = stringResource(id = R.string.title_stat_posts_num)
@@ -136,7 +131,7 @@ private fun InfoCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(M3Theme.colorScheme.surfaceContainerLow)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(18.dp),
     ) {
         Column(
@@ -148,19 +143,19 @@ private fun InfoCard(
                 text = userName,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = ExtendedTheme.colors.text,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .placeholder(visible = isPlaceholder, color = ExtendedTheme.colors.chip),
+                    .loadingPlaceholder(visible = isPlaceholder),
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = userIntro,
                 fontSize = 12.sp,
-                color = ExtendedTheme.colors.textSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .placeholder(visible = isPlaceholder, color = ExtendedTheme.colors.chip),
+                    .loadingPlaceholder(visible = isPlaceholder),
             )
         }
         Spacer(modifier = Modifier.width(16.dp))
@@ -171,7 +166,7 @@ private fun InfoCard(
                 contentDescription = stringResource(id = R.string.desc_user_avatar),
                 modifier = Modifier
                     .align(Alignment.Bottom)
-                    .placeholder(visible = isPlaceholder, color = ExtendedTheme.colors.chip),
+                    .loadingPlaceholder(visible = isPlaceholder),
             )
         }
     }
@@ -199,7 +194,7 @@ private fun RowScope.StatCardItem(
         Text(
             text = statText,
             fontSize = 12.sp,
-            color = ExtendedTheme.colors.textSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -210,7 +205,7 @@ private fun LoginTipCard(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(M3Theme.colorScheme.surfaceContainerLow)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(18.dp),
     ) {
         Column(
@@ -222,7 +217,7 @@ private fun LoginTipCard(modifier: Modifier = Modifier) {
                 text = stringResource(id = R.string.tip_login),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = ExtendedTheme.colors.text,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .fillMaxWidth(),
             )
@@ -231,17 +226,16 @@ private fun LoginTipCard(modifier: Modifier = Modifier) {
         Icon(
             imageVector = Icons.Rounded.AccountCircle,
             contentDescription = null,
-            tint = ExtendedTheme.colors.onChip,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .clip(CircleShape)
                 .size(Sizes.Large)
-                .background(color = M3Theme.colorScheme.surfaceContainerLow)
+                .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(16.dp),
         )
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun UserPage(
     viewModel: UserViewModel = pageViewModel<UserUiIntent, UserViewModel>(
@@ -275,14 +269,12 @@ fun UserPage(
             .statusBarsPadding()
             .fillMaxSize()
     ) { contentPaddings ->
-        val pullRefreshState = rememberPullRefreshState(
-            refreshing = isLoading,
-            onRefresh = { viewModel.send(UserUiIntent.Refresh) })
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = { viewModel.send(UserUiIntent.Refresh) },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPaddings)
-                .pullRefresh(pullRefreshState),
+                .padding(contentPaddings),
         ) {
             Column(
                 modifier = Modifier
@@ -307,7 +299,7 @@ fun UserPage(
                         modifier = Modifier
                             .padding(16.dp)
                             .clip(RoundedCornerShape(22.dp))
-                            .background(color = M3Theme.colorScheme.surfaceContainerLow)
+                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
                             .padding(vertical = 18.dp)
                     )
                 } else if (isLoading) {
@@ -321,7 +313,7 @@ fun UserPage(
                         modifier = Modifier
                             .padding(16.dp)
                             .clip(RoundedCornerShape(22.dp))
-                            .background(color = M3Theme.colorScheme.surfaceContainerLow)
+                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
                             .padding(vertical = 18.dp)
                     )
                 } else {
@@ -356,7 +348,7 @@ fun UserPage(
                 ) {
                     Text(
                         text = stringResource(id = R.string.my_info_night),
-                        color = ExtendedTheme.colors.textSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
@@ -384,7 +376,7 @@ fun UserPage(
                         },
                     )
                 }
-                VerticalDivider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)
                 )
                 ListMenuItem(
@@ -398,14 +390,6 @@ fun UserPage(
                     onClick = { navigator.navigate(AboutPageDestination) },
                 )
             }
-
-            PullRefreshIndicator(
-                refreshing = isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                contentColor = ExtendedTheme.colors.primary,
-            )
         }
     }
 }

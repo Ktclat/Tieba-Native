@@ -28,14 +28,14 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -45,13 +45,14 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VerticalAlignTop
-import androidx.compose.material.rememberScaffoldState
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,9 +80,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import com.google.accompanist.placeholder.PlaceholderHighlight
-import com.google.accompanist.placeholder.material.fade
-import com.google.accompanist.placeholder.material.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.frsPage.ForumInfo
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -95,7 +94,6 @@ import com.huanchengfly.tieba.post.getInt
 import com.huanchengfly.tieba.post.models.ForumHistoryExtra
 import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumDetailPageDestination
@@ -105,16 +103,15 @@ import com.huanchengfly.tieba.post.ui.page.forum.threadlist.ForumThreadListUiEve
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
+import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCardPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MenuScope
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.PagerTabIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TabClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
@@ -132,7 +129,6 @@ import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -181,7 +177,7 @@ private fun ForumHeaderPlaceholder(
             ) {
                 Text(
                     text = stringResource(id = R.string.title_forum, forumName),
-                    style = MaterialTheme.typography.h6,
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -190,9 +186,8 @@ private fun ForumHeaderPlaceholder(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(100))
-                        .placeholder(
+                        .loadingPlaceholder(
                             visible = true,
-                            highlight = PlaceholderHighlight.fade(),
                         )
                         .padding(horizontal = 18.dp, vertical = 6.dp)
                 ) {
@@ -239,7 +234,7 @@ private fun ForumHeader(
                 ) {
                     Text(
                         text = stringResource(id = R.string.title_forum, forum.name),
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -252,18 +247,18 @@ private fun ForumHeader(
                 AnimatedVisibility(visible = forum.is_like == 1) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         LinearProgressIndicator(
-                            progress = max(
+                            progress = { max(
                                 0F,
                                 min(
                                     1F,
                                     forum.cur_score * 1.0F / (max(1.0F, forum.levelup_score * 1.0F))
                                 )
-                            ),
+                            ) },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(100))
                                 .height(8.dp),
-                            color = ExtendedTheme.colors.primary,
-                            backgroundColor = ExtendedTheme.colors.primary.copy(alpha = 0.25f)
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.secondaryContainer
                         )
                         Text(
                             text = stringResource(
@@ -271,8 +266,8 @@ private fun ForumHeader(
                                 forum.user_level.toString(),
                                 forum.level_name
                             ),
-                            style = MaterialTheme.typography.caption,
-                            color = ExtendedTheme.colors.textSecondary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 10.sp,
                         )
                     }
@@ -286,8 +281,8 @@ private fun ForumHeader(
                     elevation = null,
                     shape = RoundedCornerShape(100),
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = ExtendedTheme.colors.primary,
-                        contentColor = ExtendedTheme.colors.onAccent
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
                     enabled = btnEnabled
@@ -308,7 +303,7 @@ private fun ForumHeader(
 //        Row(
 //            modifier = Modifier
 //                .clip(RoundedCornerShape(8.dp))
-//                .background(color = ExtendedTheme.colors.chip)
+//                .background(color = MaterialTheme.colorScheme.surfaceContainer)
 //                .padding(vertical = 20.dp),
 //            verticalAlignment = Alignment.CenterVertically,
 //        ) {
@@ -316,12 +311,10 @@ private fun ForumHeader(
 //                statNum = forum.member_num,
 //                statText = stringResource(id = R.string.text_stat_follow)
 //            )
-//            HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
 //            StatCardItem(
 //                statNum = forum.thread_num,
 //                statText = stringResource(id = R.string.text_stat_threads)
 //            )
-//            HorizontalDivider(color = Color(if (ExtendedTheme.colors.isNightMode) 0xFF808080 else 0xFFDEDEDE))
 //            StatCardItem(
 //                statNum = forum.post_num,
 //                statText = stringResource(id = R.string.title_stat_posts_num)
@@ -355,7 +348,7 @@ private suspend fun sendToDesktop(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Destination(
     deepLinks = [
         DeepLink(uriPattern = "tblite://forum/{forumName}")
@@ -373,8 +366,7 @@ fun ForumPage(
         viewModel.initialized = true
     }
 
-    val scaffoldState = rememberScaffoldState()
-    val snackbarHostState = scaffoldState.snackbarHostState
+    val snackbarHostState = remember { SnackbarHostState() }
     viewModel.onEvent<ForumUiEvent.SignIn.Success> {
         snackbarHostState.showSnackbar(
             message = context.getString(
@@ -523,7 +515,7 @@ fun ForumPage(
             }
         ) {
             MyScaffold(
-                scaffoldState = scaffoldState,
+                snackbarHostState = snackbarHostState,
                 backgroundColor = Color.Transparent,
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
@@ -532,14 +524,14 @@ fun ForumPage(
                         showTitle = !isShowTopBarArea,
                         menuContent = {
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_share)) },
                                 onClick = {
                                     shareForum(context, forumName)
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_share))
-                            }
+                            )
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_send_to_desktop)) },
                                 onClick = {
                                     if (forumInfo != null) {
                                         val (forum) = forumInfo!!
@@ -571,17 +563,14 @@ fun ForumPage(
                                     }
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_send_to_desktop))
-                            }
+                            )
                             DropdownMenuItem(
+                                text = { Text(text = stringResource(id = R.string.title_unfollow)) },
                                 onClick = {
                                     unlikeDialogState.show()
                                     dismiss()
                                 }
-                            ) {
-                                Text(text = stringResource(id = R.string.title_unfollow))
-                            }
+                            )
                         },
                         forumId = forumInfo?.get { id }
                     )
@@ -641,17 +630,9 @@ fun ForumPage(
                     }
                 }
             ) { contentPadding ->
-                var isFakeLoading by remember { mutableStateOf(false) }
-
-                LaunchedEffect(isFakeLoading) {
-                    if (isFakeLoading) {
-                        delay(1000)
-                        isFakeLoading = false
-                    }
-                }
-
+                val refreshingTabs = remember(forumName) { mutableStateMapOf<Boolean, Boolean>() }
                 PullToRefreshLayout(
-                    refreshing = isFakeLoading,
+                    refreshing = refreshingTabs[currentPage == 1] == true,
                     onRefresh = {
                         coroutineScope.emitGlobalEvent(
                             ForumThreadListUiEvent.Refresh(
@@ -662,7 +643,6 @@ fun ForumPage(
                                 )
                             )
                         )
-                        isFakeLoading = true
                     }
                 ) {
                     val headerNestedScrollConnection = remember {
@@ -769,23 +749,17 @@ fun ForumPage(
                                 }
                             }
 
-                            val tabTextStyle = MaterialTheme.typography.button.copy(
+                            val tabTextStyle = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 letterSpacing = 0.sp
                             )
 
-                            ScrollableTabRow(
+                            PrimaryScrollableTabRow(
                                 selectedTabIndex = currentPage,
-                                indicator = { tabPositions ->
-                                    PagerTabIndicator(
-                                        pagerState = pagerState,
-                                        tabPositions = tabPositions
-                                    )
-                                },
                                 divider = {},
-                                backgroundColor = Color.Transparent,
-                                contentColor = ExtendedTheme.colors.primary,
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.primary,
                                 edgePadding = 0.dp,
                                 modifier = Modifier
                                     .wrapContentWidth(align = Alignment.Start)
@@ -805,7 +779,7 @@ fun ForumPage(
                                         pagerState.requestScrollToPage(0)
                                     },
                                     text = {
-                                        androidx.compose.material3.Text(
+                                        Text(
                                             text = stringResource(id = R.string.tab_forum_latest),
                                             style = tabTextStyle
                                         )
@@ -835,16 +809,16 @@ fun ForumPage(
                                             }
                                         )
                                     },
-                                    selectedContentColor = ExtendedTheme.colors.primary,
-                                    unselectedContentColor = ExtendedTheme.colors.textSecondary
+                                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Tab(
                                     selected = currentPage == 1,
                                     onClick = {
                                         pagerState.requestScrollToPage(1)
                                     },
-                                    selectedContentColor = ExtendedTheme.colors.primary,
-                                    unselectedContentColor = ExtendedTheme.colors.textSecondary
+                                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -852,7 +826,7 @@ fun ForumPage(
                                             .height(48.dp)
                                             .padding(horizontal = 16.dp)
                                     ) {
-                                        androidx.compose.material3.Text(
+                                        Text(
                                             text = stringResource(id = R.string.tab_forum_good),
                                             style = tabTextStyle
                                         )
@@ -867,11 +841,12 @@ fun ForumPage(
                                     key = { it },
                                     verticalAlignment = Alignment.Top,
                                     userScrollEnabled = true,
-                                ) {
+                                ) { tab ->
                                     ForumThreadListPage(
                                         forumId = forumInfo!!.get { id },
                                         forumName = forumInfo!!.get { name },
-                                        isGood = it == 1,
+                                        isGood = tab == 1,
+                                        onRefreshingChanged = { refreshingTabs[tab == 1] = it },
                                     )
                                 }
                             }
@@ -899,13 +874,12 @@ fun LoadingPlaceholder(
                 showTitle = false,
                 menuContent = {
                     DropdownMenuItem(
+                        text = { Text(text = stringResource(id = R.string.title_share)) },
                         onClick = {
                             shareForum(context, forumName)
                             dismiss()
                         }
-                    ) {
-                        Text(text = stringResource(id = R.string.title_share))
-                    }
+                    )
                 }
             )
         }
@@ -930,14 +904,13 @@ fun LoadingPlaceholder(
                     ) {
                         Text(
                             text = it,
-                            modifier = Modifier.placeholder(
+                            modifier = Modifier.loadingPlaceholder(
                                 visible = true,
-                                highlight = PlaceholderHighlight.fade(),
                             ),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.sp,
-                            style = MaterialTheme.typography.button,
+                            style = MaterialTheme.typography.labelLarge,
                         )
                     }
                 }
@@ -1041,7 +1014,7 @@ private fun RowScope.StatCardItem(
         Text(
             text = statText,
             fontSize = 12.sp,
-            color = ExtendedTheme.colors.textSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

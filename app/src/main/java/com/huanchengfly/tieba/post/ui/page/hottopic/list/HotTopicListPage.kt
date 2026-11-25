@@ -1,6 +1,7 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.hottopic.list
 
-import android.graphics.Typeface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,13 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ContentAlpha
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -30,23 +30,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.insets.ui.Scaffold
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Scaffold
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.topicList.NewTopicList
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.OrangeA700
-import com.huanchengfly.tieba.post.ui.common.theme.compose.RedA700
-import com.huanchengfly.tieba.post.ui.common.theme.compose.Shapes
-import com.huanchengfly.tieba.post.ui.common.theme.compose.White
-import com.huanchengfly.tieba.post.ui.common.theme.compose.Yellow
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.NetworkImage
@@ -65,12 +58,12 @@ private fun TopicImage(
         Modifier
             .fillMaxWidth()
             .aspectRatio(2.39f)
-            .clip(Shapes.medium)
+            .clip(MaterialTheme.shapes.medium)
     } else {
         Modifier
             .size(Sizes.Medium)
             .aspectRatio(1f)
-            .clip(Shapes.small)
+            .clip(MaterialTheme.shapes.small)
     }
     Box(
         modifier = boxModifier
@@ -82,28 +75,18 @@ private fun TopicImage(
                 .fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        Text(
-            text = "${index + 1}",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colors.background,
-            fontFamily = FontFamily(
-                Typeface.createFromAsset(
-                    LocalContext.current.assets,
-                    "bebas.ttf"
-                )
-            ),
-            modifier = Modifier
-                .background(
-                    when (index) {
-                        0 -> RedA700
-                        1 -> OrangeA700
-                        2 -> Yellow
-                        else -> MaterialTheme.colors.onBackground.copy(ContentAlpha.medium)
-                    }
-                )
-                .padding(4.dp)
-        )
+        val colors = MaterialTheme.colorScheme
+        val rankTone = when (index) {
+            0 -> colors.primaryContainer to colors.onPrimaryContainer
+            1 -> colors.secondaryContainer to colors.onSecondaryContainer
+            2 -> colors.tertiaryContainer to colors.onTertiaryContainer
+            else -> colors.surfaceContainerHigh to colors.onSurface
+        }
+        Badge(
+            modifier = Modifier.padding(6.dp),
+            containerColor = rankTone.first,
+            contentColor = rankTone.second,
+        ) { Text("${index + 1}") }
     }
 }
 
@@ -117,44 +100,34 @@ private fun TopicBody(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = item.topic_name, style = MaterialTheme.typography.subtitle1)
+            Text(text = item.topic_name, style = MaterialTheme.typography.titleMedium)
             when (item.topic_tag) {
-                2 -> Text(
-                    text = stringResource(id = R.string.topic_tag_hot),
-                    fontSize = 10.sp,
-                    color = White,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(RedA700)
-                        .padding(vertical = 2.dp, horizontal = 4.dp)
-                )
+                2 -> Badge(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) { Text(stringResource(R.string.topic_tag_hot)) }
 
-                1 -> Text(
-                    text = stringResource(id = R.string.topic_tag_new),
-                    fontSize = 10.sp,
-                    color = White,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(OrangeA700)
-                        .padding(vertical = 2.dp, horizontal = 4.dp)
-                )
+                1 -> Badge(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) { Text(stringResource(R.string.topic_tag_new)) }
             }
         }
         Text(
             text = item.topic_desc,
             maxLines = if (index < 3) 3 else 1,
             overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.body2
+            style = MaterialTheme.typography.bodyMedium
         )
         Text(
             text = stringResource(id = R.string.hot_num, item.discuss_num.getShortNumString()),
-            style = MaterialTheme.typography.caption,
-            color = ExtendedTheme.colors.textSecondary
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Destination
 @Composable
 fun HotTopicListPage(
@@ -172,13 +145,13 @@ fun HotTopicListPage(
         initial = emptyList()
     )
     Scaffold(
-        backgroundColor = Color.Transparent,
+        containerColor = Color.Transparent,
         topBar = {
             TitleCentredToolbar(
                 title = {
                     Text(
                         text = stringResource(id = R.string.title_hot_message_list),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -187,15 +160,12 @@ fun HotTopicListPage(
             )
         },
     ) { contentPaddings ->
-        val pullRefreshState = rememberPullRefreshState(
-            refreshing = isRefreshing,
-            onRefresh = { viewModel.send(HotTopicListUiIntent.Load) }
-        )
+        val pullRefreshState = rememberPullToRefreshState()
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPaddings)
-                .pullRefresh(pullRefreshState)
+                .pullToRefresh(isRefreshing = isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(HotTopicListUiIntent.Load) })
         ) {
             MyLazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -226,12 +196,10 @@ fun HotTopicListPage(
                 }
             }
 
-            PullRefreshIndicator(
-                refreshing = isRefreshing,
+            PullToRefreshDefaults.LoadingIndicator(
+                isRefreshing = isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                contentColor = ExtendedTheme.colors.primary,
             )
         }
     }

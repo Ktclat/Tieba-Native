@@ -1,5 +1,8 @@
 package com.huanchengfly.tieba.post.ui.page.photoview
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -18,10 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Share
@@ -47,9 +50,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivityWithParcelable
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
-import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.download
 import kotlin.math.roundToInt
@@ -89,13 +90,13 @@ private fun ViewPhoto(
             ) {
                 CircularProgressIndicator(
                     progress = { progress },
-                    color = ExtendedTheme.colors.accent,
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(48.dp)
                 )
                 Text(
                     text = "${(progress * 100).roundToInt()}%",
-                    color = ExtendedTheme.colors.accent,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp
                 )
             }
@@ -176,7 +177,7 @@ class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
                     ) {
-                        ProvideContentColor(color = Color.White) {
+                        CompositionLocalProvider(LocalContentColor provides Color.White) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

@@ -1,52 +1,44 @@
 package com.huanchengfly.tieba.post.ui.page.settings.theme
 
 import android.os.Build
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BorderColor
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ColorLens
-import androidx.compose.material.icons.rounded.Colorize
-import androidx.compose.material.icons.rounded.NightsStay
-import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,532 +50,243 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.github.panpf.sketch.compose.AsyncImage
 import com.github.panpf.sketch.fetch.newFileUri
 import com.github.panpf.sketch.fetch.newResourceUri
-import com.godaddy.android.colorpicker.HsvColor
-import com.godaddy.android.colorpicker.harmony.ColorHarmonyMode
-import com.godaddy.android.colorpicker.harmony.HarmonyColorPicker
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.TranslucentThemeActivity
-import com.huanchengfly.tieba.post.components.dialogs.CustomThemeDialog
+import com.huanchengfly.tieba.post.collectPreferenceAsState
+import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.goToActivity
-import com.huanchengfly.tieba.post.rememberPreferenceAsMutableState
-import com.huanchengfly.tieba.post.rememberPreferenceAsState
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.dynamicTonalPalette
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.DialogPositiveButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
-import com.huanchengfly.tieba.post.utils.extension.toHexString
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Destination
 @Composable
-fun AppThemePage(
-    navigator: DestinationsNavigator,
-) {
+fun AppThemePage(navigator: DestinationsNavigator) {
     val context = LocalContext.current
-    val themeValues = stringArrayResource(id = R.array.theme_values)
-    val themeNames = stringArrayResource(id = R.array.themeNames)
-    val currentTheme by remember { ThemeUtil.themeState }
-    val isDynamicTheme by rememberPreferenceAsState(
-        key = booleanPreferencesKey("useDynamicColorTheme"),
-        defaultValue = false
-    )
-    val customPrimaryColorDialogState = rememberDialogState()
-    var customPrimaryColor by remember {
-        mutableStateOf(
-            Color(
-                App.ThemeDelegate.getColorByAttr(
-                    context,
-                    R.attr.colorPrimary,
-                    ThemeUtil.THEME_CUSTOM
-                )
-            )
+    val themeValues = stringArrayResource(R.array.theme_values)
+    val themeNames = stringArrayResource(R.array.themeNames)
+    val currentTheme by ThemeUtil.themeState
+    val dynamic by context.dataStore.collectPreferenceAsState(booleanPreferencesKey("useDynamicColorTheme"), false)
+    val backgroundPath by context.dataStore.collectPreferenceAsState(stringPreferencesKey("translucent_theme_background_path"), "")
+    var showEditor by rememberSaveable { mutableStateOf(false) }
+    var customColor by remember {
+        mutableIntStateOf(App.ThemeDelegate.getColorByAttr(context, R.attr.colorPrimary, ThemeUtil.THEME_CUSTOM))
+    }
+
+    if (showEditor) {
+        CustomColorDialog(
+            initialColor = customColor,
+            initialToolbar = context.appPreferences.toolbarPrimaryColor,
+            initialDarkIcons = context.appPreferences.customStatusBarFontDark,
+            dismiss = { showEditor = false },
+            save = { argb, toolbar, darkIcons ->
+                customColor = argb
+                context.appPreferences.customPrimaryColor = String.format(Locale.ROOT, "#%08x", argb)
+                context.appPreferences.toolbarPrimaryColor = toolbar
+                context.appPreferences.customStatusBarFontDark = darkIcons || !toolbar
+                ThemeUtil.setUseDynamicTheme(false)
+                ThemeUtil.switchTheme(ThemeUtil.THEME_CUSTOM)
+                showEditor = false
+            },
         )
     }
-    var customToolbarPrimaryColor by rememberPreferenceAsMutableState(
-        key = booleanPreferencesKey(
-            ThemeUtil.KEY_CUSTOM_TOOLBAR_PRIMARY_COLOR
-        ),
-        defaultValue = false
-    )
-    var customStatusBarFontDark by rememberPreferenceAsMutableState(
-        key = booleanPreferencesKey(
-            ThemeUtil.KEY_CUSTOM_STATUS_BAR_FONT_DARK
-        ),
-        defaultValue = false
-    )
 
-    Dialog(
-        dialogState = customPrimaryColorDialogState,
-        title = { Text(text = stringResource(id = R.string.title_custom_theme)) },
-        buttons = {
-            DialogPositiveButton(
-                text = stringResource(id = R.string.button_finish),
-                onClick = {
-                    customStatusBarFontDark = customStatusBarFontDark || !customToolbarPrimaryColor
-                    context.appPreferences.customPrimaryColor =
-                        CustomThemeDialog.toString(customPrimaryColor.toArgb())
-                    context.appPreferences.toolbarPrimaryColor = customToolbarPrimaryColor
-                    context.appPreferences.customStatusBarFontDark = customStatusBarFontDark
-                    ThemeUtil.setUseDynamicTheme(false)
-                    ThemeUtil.switchTheme(ThemeUtil.THEME_CUSTOM)
-                }
-            )
-            DialogNegativeButton(
-                text = stringResource(id = R.string.button_cancel),
-                onClick = {
-                    customPrimaryColor = Color(
-                        App.ThemeDelegate.getColorByAttr(
-                            context,
-                            R.attr.colorPrimary,
-                            ThemeUtil.THEME_CUSTOM
-                        )
-                    )
-                }
-            )
-        }
-    ) {
-        var useInput by remember { mutableStateOf(false) }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            AnimatedContent(
-                targetState = useInput,
-                label = "",
-                modifier = Modifier
-                    .wrapContentHeight()
-                    .animateContentSize()
-            ) { input ->
-                if (input) {
-                    var inputHexColor by remember { mutableStateOf(customPrimaryColor.toHexString()) }
-                    val lastValidColor by produceState(
-                        initialValue = customPrimaryColor,
-                        inputHexColor
-                    ) {
-                        if ("^#([0-9a-fA-F]{6})$".toRegex().matches(inputHexColor)) {
-                            value = Color(inputHexColor.toColorInt())
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Spacer(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(lastValidColor)
-                        )
-                        OutlinedTextField(
-                            value = inputHexColor,
-                            onValueChange = {
-                                if ("^#([0-9a-fA-F]{0,6})$".toRegex().matches(it)) {
-                                    inputHexColor = it
-                                }
-                            },
-                            maxLines = 1,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        IconButton(
-                            onClick = {
-                                customPrimaryColor = Color(inputHexColor.toColorInt())
-                                useInput = false
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = stringResource(id = R.string.button_sure_default)
-                            )
-                        }
-                    }
-                } else {
-                    Box {
-                        HarmonyColorPicker(
-                            harmonyMode = ColorHarmonyMode.ANALOGOUS,
-                            color = HsvColor.from(customPrimaryColor),
-                            onColorChanged = {
-                                customPrimaryColor = it.toColor()
-                            },
-                            modifier = Modifier.sizeIn(maxWidth = 320.dp, maxHeight = 320.dp)
-                        )
-
-                        IconButton(
-                            onClick = { useInput = true },
-                            modifier = Modifier.align(Alignment.TopEnd)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.BorderColor,
-                                contentDescription = stringResource(id = R.string.desc_input_color)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .toggleable(value = customToolbarPrimaryColor, role = Role.Checkbox) { customToolbarPrimaryColor = it }
-            ) {
-                Checkbox(
-                    checked = customToolbarPrimaryColor, onCheckedChange = null,
-                )
-                Text(text = stringResource(id = R.string.tip_toolbar_primary_color))
-            }
-
-            if (customToolbarPrimaryColor) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .toggleable(value = customStatusBarFontDark, role = Role.Checkbox) { customStatusBarFontDark = it }
-                ) {
-                    Checkbox(
-                        checked = customStatusBarFontDark, onCheckedChange = null,
-                    )
-                    Text(text = stringResource(id = R.string.tip_status_bar_font))
-                }
-            }
-        }
-    }
-
-    MyScaffold(
-        backgroundColor = Color.Transparent,
-        topBar = {
-            TitleCentredToolbar(
-                title = {
-                    Text(
-                        text = stringResource(id = R.string.title_theme),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.h6
-                    )
-                },
-                navigationIcon = {
-                    BackNavigationIcon(onBackPressed = { navigator.navigateUp() })
-                }
-            )
-        },
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    item {
-                        val tonalPalette = remember { dynamicTonalPalette(context) }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(
-                                    brush = Brush.sweepGradient(
-                                        colors = listOf(
-                                            tonalPalette.primary50,
-                                            tonalPalette.secondary50,
-                                            tonalPalette.tertiary50,
-                                            tonalPalette.primary50,
-                                        )
-                                    )
-                                )
-                                .clickable {
-                                    ThemeUtil.setUseDynamicTheme(true)
-                                }
-                                .padding(all = 16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            ) {
-                                Icon(
-                                    imageVector = if (isDynamicTheme) {
-                                        Icons.Rounded.Check
-                                    } else {
-                                        Icons.Rounded.Colorize
-                                    },
-                                    contentDescription = null,
-                                    tint = ExtendedTheme.colors.windowBackground
-                                )
-                                Text(
-                                    text = stringResource(id = R.string.title_dynamic_theme),
-                                    fontWeight = FontWeight.Bold,
-                                    color = ExtendedTheme.colors.windowBackground
-                                )
-                            }
-                        }
-                    }
-                }
+    MyScaffold(topBar = {
+        TitleCentredToolbar(
+            title = { Text(stringResource(R.string.title_theme)) },
+            navigationIcon = { BackNavigationIcon(onBackPressed = { navigator.navigateUp() }) },
+        )
+    }) { padding ->
+        LazyColumn(Modifier.padding(padding).selectableGroup()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 item {
-                    ProvideContentColor(color = ExtendedTheme.colors.windowBackground) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(IntrinsicSize.Min)
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .background(
-                                        color = customPrimaryColor,
-                                    )
-                                    .clickable {
-                                        customPrimaryColorDialogState.show()
-                                    }
-                                    .padding(all = 16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = if (!isDynamicTheme && currentTheme == ThemeUtil.THEME_CUSTOM) {
-                                            Icons.Rounded.Check
-                                        } else {
-                                            Icons.Rounded.ColorLens
-                                        },
-                                        contentDescription = null
-                                    )
-                                    Text(
-                                        text = stringResource(id = R.string.title_custom_color),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .clickable {
-                                        context.goToActivity<TranslucentThemeActivity>()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val previewImageUri =
-                                    if (context.appPreferences.translucentThemeBackgroundPath != null) {
-                                        newFileUri(context.appPreferences.translucentThemeBackgroundPath!!)
-                                    } else {
-                                        newResourceUri(R.drawable.user_header)
-                                    }
-                                AsyncImage(
-                                    imageUri = previewImageUri,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(all = 16.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = if (ThemeUtil.isTranslucentTheme(
-                                                    currentTheme
-                                                )
-                                            ) {
-                                                Icons.Rounded.Check
-                                            } else {
-                                                Icons.Rounded.PhotoSizeSelectActual
-                                            },
-                                            contentDescription = null
-                                        )
-                                        Text(
-                                            text = stringResource(id = R.string.title_theme_translucent),
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    val scheme = dynamicLightColorScheme(context)
+                    ThemeOption(
+                        name = stringResource(R.string.title_dynamic_theme),
+                        selected = dynamic,
+                        onClick = { ThemeUtil.setUseDynamicTheme(true) },
+                        swatch = { ColorSwatch(scheme.primary, scheme.tertiary) },
+                    )
                 }
-                itemsIndexed(
-                    items = themeValues.toList(),
-                    key = { _, item -> item }
-                ) { index, item ->
-                    val name = themeNames[index]
-                    val backgroundColor = remember {
-                        Color(
-                            App.ThemeDelegate.getColorByAttr(
-                                context,
-                                R.attr.colorBackground,
-                                item
-                            )
+            }
+            item {
+                ThemeOption(
+                    name = stringResource(R.string.title_custom_color),
+                    selected = !dynamic && currentTheme == ThemeUtil.THEME_CUSTOM,
+                    onClick = { showEditor = true },
+                    swatch = { ColorSwatch(Color(customColor)) },
+                    opensEditor = true,
+                )
+            }
+            item {
+                ThemeOption(
+                    name = stringResource(R.string.title_theme_translucent),
+                    selected = !dynamic && ThemeUtil.isTranslucentTheme(currentTheme),
+                    onClick = { context.goToActivity<TranslucentThemeActivity>() },
+                    swatch = {
+                        AsyncImage(
+                            imageUri = if (backgroundPath.isBlank()) newResourceUri(R.drawable.user_header) else newFileUri(backgroundPath),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(36.dp).clip(CircleShape),
                         )
-                    }
-                    val primaryColor = remember {
-                        Color(
-                            App.ThemeDelegate.getColorByAttr(
-                                context,
-                                R.attr.colorNewPrimary,
-                                item
-                            )
-                        )
-                    }
-                    val accentColor = remember {
-                        Color(
-                            App.ThemeDelegate.getColorByAttr(
-                                context,
-                                R.attr.colorAccent,
-                                item
-                            )
-                        )
-                    }
-                    val onAccentColor = remember {
-                        Color(
-                            App.ThemeDelegate.getColorByAttr(
-                                context,
-                                R.attr.colorOnAccent,
-                                item
-                            )
-                        )
-                    }
-                    val onBackgroundColor = remember {
-                        Color(
-                            App.ThemeDelegate.getColorByAttr(
-                                context,
-                                R.attr.colorText,
-                                item
-                            )
-                        )
-                    }
-                    if (index == 0) {
-                        Spacer(modifier = Modifier.size(16.dp))
-                    }
-                    if (ThemeUtil.isNightMode(item)) {
-                        ThemeItem(
-                            themeName = name,
-                            themeValue = item,
-                            primaryColor = backgroundColor,
-                            accentColor = backgroundColor,
-                            contentColor = onBackgroundColor,
-                            selected = !isDynamicTheme && currentTheme == item,
-                            onClick = {
-                                ThemeUtil.switchTheme(item)
-                                ThemeUtil.setUseDynamicTheme(false)
-                            }
-                        )
-                    } else {
-                        ThemeItem(
-                            themeName = name,
-                            themeValue = item,
-                            primaryColor = primaryColor,
-                            accentColor = accentColor,
-                            contentColor = onAccentColor,
-                            selected = !isDynamicTheme && currentTheme == item,
-                            onClick = {
-                                ThemeUtil.switchTheme(item)
-                                ThemeUtil.setUseDynamicTheme(false)
-                            }
-                        )
-                    }
+                    },
+                    opensEditor = true,
+                )
+            }
+            itemsIndexed(themeValues.toList(), key = { _, value -> value }) { index, theme ->
+                val tint = remember(theme, context) {
+                    val attr = if (ThemeUtil.isNightMode(theme)) R.attr.colorBackground else R.attr.colorNewPrimary
+                    Color(App.ThemeDelegate.getColorByAttr(context, attr, theme))
                 }
+                ThemeOption(
+                    name = themeNames[index],
+                    selected = !dynamic && currentTheme == theme,
+                    onClick = {
+                        ThemeUtil.switchTheme(theme)
+                        ThemeUtil.setUseDynamicTheme(false)
+                    },
+                    swatch = { ColorSwatch(tint) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ThemeItem(
-    themeName: String,
-    themeValue: String,
-    primaryColor: Color,
-    accentColor: Color,
-    contentColor: Color,
+private fun ColorSwatch(color: Color, endColor: Color = color) {
+    Box(Modifier.size(36.dp).clip(CircleShape).background(Brush.linearGradient(listOf(color, endColor))))
+}
+
+@Composable
+private fun ThemeOption(
+    name: String,
     selected: Boolean,
     onClick: () -> Unit,
+    swatch: @Composable () -> Unit,
+    opensEditor: Boolean = false,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clickable(
-                onClickLabel = themeName,
-                onClick = onClick
-            )
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.radialGradient(
-                        listOf(
-                            primaryColor,
-                            accentColor,
-                        )
+    ListItem(
+        modifier = if (opensEditor) Modifier.clickable(onClick = onClick)
+                   else Modifier.selectable(selected, role = Role.RadioButton, onClick = onClick),
+        headlineContent = { Text(name) },
+        leadingContent = swatch,
+        trailingContent = {
+            if (opensEditor && !selected) Icon(Icons.Rounded.Edit, contentDescription = null)
+            else RadioButton(selected = selected, onClick = null)
+        },
+    )
+}
+
+@Composable
+internal fun CustomColorDialog(
+    initialColor: Int,
+    initialToolbar: Boolean,
+    initialDarkIcons: Boolean,
+    dismiss: () -> Unit,
+    save: (Int, Boolean, Boolean) -> Unit,
+) {
+    val initial = remember(initialColor) { FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor, it) } }
+    var hue by rememberSaveable { mutableFloatStateOf(initial[0]) }
+    var saturation by rememberSaveable { mutableFloatStateOf(initial[1]) }
+    var brightness by rememberSaveable { mutableFloatStateOf(initial[2]) }
+    var hex by rememberSaveable { mutableStateOf(rgbHex(initialColor)) }
+    var toolbar by rememberSaveable { mutableStateOf(initialToolbar) }
+    var darkIcons by rememberSaveable { mutableStateOf(initialDarkIcons) }
+    val color = Color.hsv(hue, saturation, brightness)
+    val validHex = hex.matches(Regex("#[0-9a-fA-F]{6}"))
+    fun updateChannels(h: Float, s: Float, v: Float) {
+        hue = h
+        saturation = s
+        brightness = v
+        hex = rgbHex(Color.hsv(h, s, v).toArgb())
+    }
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = { Text(stringResource(R.string.title_custom_theme)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ColorSwatch(color)
+                    OutlinedTextField(
+                        value = hex,
+                        onValueChange = { input ->
+                            hex = input
+                            if (input.matches(Regex("#[0-9a-fA-F]{6}"))) {
+                                val channels = FloatArray(3)
+                                android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(input), channels)
+                                hue = channels[0]
+                                saturation = channels[1]
+                                brightness = channels[2]
+                            }
+                        },
+                        label = { Text(stringResource(R.string.theme_color_hex)) },
+                        singleLine = true,
+                        isError = !validHex,
+                        modifier = Modifier.weight(1f),
                     )
-                )
-                .padding(9.dp),
-        ) {
-            if (ThemeUtil.isNightMode(themeValue)) {
-                Icon(
-                    imageVector = Icons.Rounded.NightsStay,
-                    contentDescription = stringResource(id = R.string.desc_night_theme),
-                    tint = contentColor
-                )
+                }
+                ColorChannel(stringResource(R.string.theme_color_hue), hue, 360f, "${hue.roundToInt()}°") {
+                    updateChannels(it, saturation, brightness)
+                }
+                ColorChannel(stringResource(R.string.theme_color_saturation), saturation, 1f, "${(saturation * 100).roundToInt()}%") {
+                    updateChannels(hue, it, brightness)
+                }
+                ColorChannel(stringResource(R.string.theme_color_brightness), brightness, 1f, "${(brightness * 100).roundToInt()}%") {
+                    updateChannels(hue, saturation, it)
+                }
+                ColorOption(stringResource(R.string.tip_toolbar_primary_color), toolbar) { toolbar = it }
+                if (toolbar) ColorOption(stringResource(R.string.tip_status_bar_font), darkIcons) { darkIcons = it }
             }
-        }
-        Text(
-            text = themeName,
-            modifier = Modifier.weight(1f)
-        )
-        if (selected) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = stringResource(id = R.string.desc_checked),
-                tint = ExtendedTheme.colors.primary
-            )
-        }
+        },
+        confirmButton = {
+            TextButton(onClick = { save(color.toArgb(), toolbar, darkIcons) }, enabled = validHex) {
+                Text(stringResource(R.string.button_finish))
+            }
+        },
+        dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.button_cancel)) } },
+    )
+}
+
+private fun rgbHex(color: Int) = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
+
+@Composable
+private fun ColorChannel(label: String, value: Float, max: Float, display: String, onValueChange: (Float) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Text(display, style = MaterialTheme.typography.labelLarge)
+    }
+    Slider(
+        value = value, onValueChange = onValueChange, valueRange = 0f..max,
+        modifier = Modifier.semantics { contentDescription = label },
+    )
+}
+
+@Composable
+private fun ColorOption(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Text(label)
     }
 }

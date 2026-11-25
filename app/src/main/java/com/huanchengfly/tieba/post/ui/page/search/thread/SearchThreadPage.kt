@@ -1,12 +1,14 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.search.thread
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -14,8 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.pullRefreshIndicator
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
@@ -23,7 +23,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchThreadPage(
     keyword: String,
@@ -36,10 +36,7 @@ fun SearchThreadPage(
     val matchesQuery = state.query == query
     val refresh = { viewModel.send(SearchThreadUiIntent.Refresh(query)) }
     LazyLoad(key = query, loaded = matchesQuery, onLoad = refresh)
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = state.isRefreshing,
-        onRefresh = refresh,
-    )
+    val pullRefreshState = rememberPullToRefreshState()
     val lazyListState = key(query) { rememberLazyListState() }
     val loadNextPage = { viewModel.send(SearchThreadUiIntent.LoadMore(query, state.currentPage + 1)) }
 
@@ -59,7 +56,7 @@ fun SearchThreadPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)
+                .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = refresh)
         ) {
             LoadMoreLayout(
                 isLoading = state.isLoadingMore,
@@ -81,12 +78,10 @@ fun SearchThreadPage(
                     },
                 )
 
-                PullRefreshIndicator(
-                    refreshing = state.isRefreshing,
+                PullToRefreshDefaults.LoadingIndicator(
+                    isRefreshing = state.isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter),
-                    backgroundColor = ExtendedTheme.colors.pullRefreshIndicator,
-                    contentColor = ExtendedTheme.colors.primary,
                 )
             }
         }

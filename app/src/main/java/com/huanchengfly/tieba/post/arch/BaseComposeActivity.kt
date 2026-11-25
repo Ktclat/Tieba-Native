@@ -6,12 +6,14 @@ import android.os.Parcelable
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -19,6 +21,8 @@ import com.google.accompanist.systemuicontroller.SystemUiController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.activities.BaseActivity
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideAppFontScale
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppThemeName
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowSizeClass
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.calculateWindowSizeClass
@@ -55,12 +59,19 @@ abstract class BaseComposeActivity : BaseActivity() {
             TiebaLiteTheme {
                 ProvideAppFontScale {
                     val systemUiController = rememberSystemUiController()
+                    val preferences = LocalDisplayPreferences.current
+                    val colors = MaterialTheme.colorScheme
+                    val topBar = if (preferences.toolbarPrimaryColor) colors.primary else colors.surface
+                    val darkStatusIcons = if (preferences.toolbarPrimaryColor && LocalAppThemeName.current == ThemeUtil.THEME_CUSTOM) {
+                        preferences.customDarkStatusIcons
+                    } else topBar.luminance() > 0.179f
+                    val darkNavigationIcons = colors.surface.luminance() > 0.179f
                     SideEffect {
                         systemUiController.apply {
-                            setStatusBarColor(Color.Transparent, darkIcons = ThemeUtil.isStatusBarFontDark())
+                            setStatusBarColor(Color.Transparent, darkIcons = darkStatusIcons)
                             setNavigationBarColor(
                                 Color.Transparent,
-                                darkIcons = ThemeUtil.isNavigationBarFontDark(),
+                                darkIcons = darkNavigationIcons,
                                 navigationBarContrastEnforced = false,
                             )
                         }

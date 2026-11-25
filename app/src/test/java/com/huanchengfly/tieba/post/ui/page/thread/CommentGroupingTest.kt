@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -47,7 +48,7 @@ import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindo
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.captureReviewImage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import androidx.compose.material3.MaterialTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowSizeClass
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
@@ -78,6 +79,7 @@ import org.robolectric.annotation.GraphicsMode
 class CommentGroupingTest {
     @get:Rule(order = 0) val appContext = AppContextRule()
     @get:Rule(order = 1) val compose = createComposeRule()
+    private var appSurface = 0
     private lateinit var view: View
     private var opened by mutableStateOf<Pair<Long, Long>?>(null)
     private var replyTarget: Long? = null
@@ -127,12 +129,14 @@ class CommentGroupingTest {
             val window = WindowSizeClass.calculateFromSize(DpSize(width.dp, 800.dp))
             CompositionLocalProvider(LocalWindowSizeClass provides window) {
                 TiebaLiteTheme {
+                    val background = MaterialTheme.colorScheme.surface.toArgb()
+                    SideEffect { appSurface = background }
                     val density = LocalDensity.current.density
                     CompositionLocalProvider(LocalDensity provides Density(density, scale)) {
                         ProvideNavigator(EmptyDestinationsNavigator) {
                             val parent = floors.find { it.id == opened?.first }
                             key(parent?.id) {
-                                MyLazyColumn(Modifier.fillMaxSize().background(ExtendedTheme.colors.background)
+                                MyLazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
                                     .testTag("comment-list")) {
                                     if (parent == null) {
                                         items(floors, key = { it.id }) { post ->
@@ -323,7 +327,8 @@ class CommentGroupingTest {
         try {
             val y = previewCenterY.roundToInt()
             val surface = image.getPixel(0, y)
-            assertEquals("Expected the app's grey dark surface", App.INSTANCE.getColor(R.color.theme_color_background_grey_dark), surface)
+            assertEquals("The page draws the active Material surface", appSurface, surface)
+            assertTrue("Night mode should draw a dark surface", ColorUtils.calculateLuminance(surface) < 0.18)
             val railX = (1 until image.width / 2).first { image.getPixel(it, y) != surface }
             val panel = image.getPixel(railX + 3, y)
             assertNotEquals("Preview panel must have its own surface", surface, panel)

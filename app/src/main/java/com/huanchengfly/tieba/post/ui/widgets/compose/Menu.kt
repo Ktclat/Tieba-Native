@@ -9,10 +9,9 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -29,7 +28,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideMaterial3Content
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlin.math.roundToInt
 
@@ -58,12 +56,13 @@ private fun TonalMenu(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val popupShape = shape as? CornerBasedShape ?: RoundedCornerShape(20.dp)
-    MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = popupShape)) {
-        DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, modifier = modifier) {
-            ProvideMaterial3Content { content() }
-        }
-    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        shape = shape,
+        content = content,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -72,7 +71,7 @@ fun ClickMenu(
     menuContent: @Composable MenuScope.() -> Unit,
     modifier: Modifier = Modifier,
     menuState: MenuState = rememberMenuState(),
-    menuShape: Shape = RoundedCornerShape(20.dp),
+    menuShape: Shape = MenuDefaults.shape,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     indication: Indication? = LocalIndication.current,
     triggerShape: Shape? = null,
@@ -123,7 +122,7 @@ fun LongClickMenu(
     ) {
         content()
         Box(Modifier.offset { menuState.offset.toMenuOffset() }) {
-            TonalMenu(menuState.expanded, { menuState.dismiss() }, RoundedCornerShape(20.dp)) {
+            TonalMenu(menuState.expanded, { menuState.dismiss() }, MenuDefaults.shape) {
                 menuContent()
             }
         }

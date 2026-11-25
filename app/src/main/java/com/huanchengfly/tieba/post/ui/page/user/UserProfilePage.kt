@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.user
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,12 +26,12 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideTextStyle
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -79,7 +80,6 @@ import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.models.database.Block
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.user.edit.EditProfileActivity
@@ -87,17 +87,15 @@ import com.huanchengfly.tieba.post.ui.page.user.likeforum.UserLikeForumPage
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Button
+import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.PagerTabIndicator
-import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
@@ -261,6 +259,7 @@ private fun UserProfileToolbar(
                 ClickMenu(
                     menuContent = {
                         DropdownMenuItem(
+                            text = { Text(text = stringResource(id = R.string.menu_add_user_to_black_list)) },
                             onClick = {
                                 BlockManager.addBlockAsync(
                                     Block(
@@ -273,10 +272,9 @@ private fun UserProfileToolbar(
                                     if (it) context.toastShort(R.string.toast_add_success)
                                 }
                             }
-                        ) {
-                            Text(text = stringResource(id = R.string.menu_add_user_to_black_list))
-                        }
+                        )
                         DropdownMenuItem(
+                            text = { Text(text = stringResource(id = R.string.menu_add_user_to_white_list)) },
                             onClick = {
                                 BlockManager.addBlockAsync(
                                     Block(
@@ -289,9 +287,7 @@ private fun UserProfileToolbar(
                                     if (it) context.toastShort(R.string.toast_add_success)
                                 }
                             }
-                        ) {
-                            Text(text = stringResource(id = R.string.menu_add_user_to_white_list))
-                        }
+                        )
                     },
                     triggerShape = CircleShape
                 ) {
@@ -404,7 +400,7 @@ private fun UserProfileContentNormal(
                 }
             }
 
-            ProvideContentColor(color = ExtendedTheme.colors.text) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                 Column(
                     modifier = Modifier
                         .padding(paddingValues)
@@ -559,7 +555,7 @@ private fun UserProfileContentExpanded(
             )
         }
     ) { paddingValues ->
-        ProvideContentColor(color = ExtendedTheme.colors.text) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -692,23 +688,17 @@ private fun UserProfileTabRow(
     pagerState: PagerState,
     modifier: Modifier = Modifier,
 ) {
-    val tabTextStyle = MaterialTheme.typography.button.copy(
+    val tabTextStyle = MaterialTheme.typography.labelLarge.copy(
         fontWeight = FontWeight.Bold,
         fontSize = 13.sp,
         letterSpacing = 0.sp
     )
 
-    ScrollableTabRow(
+    PrimaryScrollableTabRow(
         selectedTabIndex = pagerState.currentPage,
-        indicator = { tabPositions ->
-            PagerTabIndicator(
-                pagerState = pagerState,
-                tabPositions = tabPositions
-            )
-        },
         divider = {},
-        backgroundColor = Color.Transparent,
-        contentColor = ExtendedTheme.colors.primary,
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.primary,
         edgePadding = 0.dp,
         modifier = modifier.wrapContentWidth(align = Alignment.Start),
     ) {
@@ -718,8 +708,8 @@ private fun UserProfileTabRow(
                 onClick = {
                     pagerState.requestScrollToPage(i)
                 },
-                selectedContentColor = ExtendedTheme.colors.primary,
-                unselectedContentColor = ExtendedTheme.colors.textSecondary,
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -727,7 +717,7 @@ private fun UserProfileTabRow(
                         .height(48.dp)
                         .padding(horizontal = 16.dp)
                 ) {
-                    androidx.compose.material3.Text(text = pageData.title(user), style = tabTextStyle)
+                    Text(text = pageData.title(user), style = tabTextStyle)
                 }
             }
         }
@@ -797,7 +787,7 @@ private fun UserProfileDetail(
                     border = if (user.get { has_concerned } == 0 || isSelf) {
                         null
                     } else {
-                        ButtonDefaults.outlinedBorder
+                        ButtonDefaults.outlinedButtonBorder(enabled = true)
                     },
                 ) {
                     Row(
@@ -824,12 +814,12 @@ private fun UserProfileDetail(
                 user.get { nameShow },
                 LocalContentColor.current
             ),
-            style = MaterialTheme.typography.h6,
+            style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Bold
         )
-        ProvideTextStyle(value = MaterialTheme.typography.body2) {
+        ProvideTextStyle(value = MaterialTheme.typography.bodyMedium) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -841,11 +831,11 @@ private fun UserProfileDetail(
                 ) {
                     Text(
                         text = stringResource(id = R.string.text_stat_follow),
-                        color = ExtendedTheme.colors.textSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = user.get { concern_num }.getShortNumString(),
-                        color = ExtendedTheme.colors.text,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -856,11 +846,11 @@ private fun UserProfileDetail(
                 ) {
                     Text(
                         text = stringResource(id = R.string.text_stat_fans),
-                        color = ExtendedTheme.colors.textSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = user.get { fans_num }.getShortNumString(),
-                        color = ExtendedTheme.colors.text,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -871,11 +861,11 @@ private fun UserProfileDetail(
                 ) {
                     Text(
                         text = stringResource(id = R.string.text_stat_agrees),
-                        color = ExtendedTheme.colors.textSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = user.get { total_agree_num }.getShortNumString(),
-                        color = ExtendedTheme.colors.text,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -884,7 +874,7 @@ private fun UserProfileDetail(
         Text(
             text = user.get { intro }.takeIf { it.isNotEmpty() }
                 ?: stringResource(id = R.string.tip_no_intro),
-            style = MaterialTheme.typography.body2,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -897,12 +887,12 @@ private fun UserProfileDetail(
                     imageVector = Icons.Rounded.Verified,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = ExtendedTheme.colors.primary,
+                    tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
                     text = it.get { desc },
-                    style = MaterialTheme.typography.body2,
-                    color = ExtendedTheme.colors.primary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         } ?: user.getNullableImmutable { new_god_data }
@@ -916,12 +906,12 @@ private fun UserProfileDetail(
                         imageVector = Icons.Rounded.Verified,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = ExtendedTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = stringResource(id = R.string.text_god_verify, it.get { field_name }),
-                        style = MaterialTheme.typography.body2,
-                        color = ExtendedTheme.colors.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -970,7 +960,7 @@ private fun UserProfileDetail(
 private fun HorizontalDivider(modifier: Modifier = Modifier) {
     Box(
         modifier = Modifier
-            .background(ExtendedTheme.colors.divider)
+            .background(MaterialTheme.colorScheme.outlineVariant)
             .width(1.dp)
             .then(modifier)
     )

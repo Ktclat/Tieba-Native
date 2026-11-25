@@ -50,7 +50,7 @@ import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.PicContentRender
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import androidx.compose.material3.MaterialTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowSizeClass
@@ -173,7 +173,7 @@ class ThreadDiscussionLayoutTest {
                                     val state = rememberLazyListState()
                                     val scope = rememberCoroutineScope()
                                     SideEffect { scroll = { i, offset -> scope.launch { state.scrollToItem(i, offset) } } }
-                                    MyLazyColumn(Modifier.fillMaxSize().background(ExtendedTheme.colors.background)
+                                    MyLazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
                                         .padding(padding).testTag("discussion"), state = state) {
                                         if (opened == null) {
                                             item {

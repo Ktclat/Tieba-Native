@@ -1,29 +1,20 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
-import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme as Material3Theme
+import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.invertChipBackground
-import com.huanchengfly.tieba.post.ui.common.theme.compose.invertChipContent
 
 @Composable
 fun Chip(
@@ -33,47 +24,36 @@ fun Chip(
     appendIcon: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     invertColor: Boolean = false,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = Material3Theme.shapes.small,
 ) {
-    val color =
-        if (invertColor) ExtendedTheme.colors.invertChipContent else ExtendedTheme.colors.onChip
-    val backgroundColor =
-        if (invertColor) ExtendedTheme.colors.invertChipBackground else ExtendedTheme.colors.chip
-
-    val animatedColor by animateColorAsState(targetValue = color, label = "ChipColor")
-    val animatedBackgroundColor by animateColorAsState(
-        targetValue = backgroundColor,
-        label = "ChipBackgroundColor"
-    )
+    val scheme = Material3Theme.colorScheme
+    if (onClick != null) {
+        FilterChip(
+            selected = invertColor,
+            onClick = onClick,
+            modifier = modifier,
+            label = { Text(text) },
+            leadingIcon = prefixIcon,
+            trailingIcon = appendIcon,
+            shape = shape,
+        )
+        return
+    }
 
     Material3Surface(
-        modifier = modifier
-            .clip(shape)
-            .then(
-                if (onClick != null) Modifier.clickable(onClick = onClick)
-                else Modifier
-            ),
+        modifier = modifier,
         shape = shape,
-        color = animatedBackgroundColor,
-        contentColor = animatedColor,
-        tonalElevation = 0.dp,
+        color = if (invertColor) scheme.secondaryContainer else scheme.surfaceContainerHigh,
+        contentColor = if (invertColor) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            prefixIcon?.let {
-                Box(Modifier.size(17.dp)) { it() }
-            }
-            Text(
-                text = text,
-                style = Material3Theme.typography.labelMedium,
-                color = animatedColor,
-            )
-            appendIcon?.let {
-                Box(Modifier.size(17.dp)) { it() }
-            }
+            prefixIcon?.let { Box(Modifier.size(16.dp)) { it() } }
+            Text(text, style = Material3Theme.typography.labelMedium)
+            appendIcon?.let { Box(Modifier.size(16.dp)) { it() } }
         }
     }
 }

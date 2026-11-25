@@ -1,9 +1,9 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.main
 
 import android.app.Application
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.view.View
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.BackHandler
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,6 +33,10 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.huanchengfly.tieba.post.ui.page.LocalNavigator
+import com.huanchengfly.tieba.post.ui.utils.MainNavigationType
+import com.huanchengfly.tieba.post.ui.utils.MainNavigationContentPosition
+import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.FocusRequester
@@ -55,12 +60,10 @@ import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.captureReviewImage
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedColors
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import kotlinx.collections.immutable.toImmutableList
 import java.io.File
-import kotlin.math.roundToInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.SavedStateHandle
@@ -68,7 +71,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -80,7 +82,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = Application::class, qualifiers = "zh-rCN-w360dp-h720dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class FloatingNavigationBarTest {
+class MainNavigationBarTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var view: View
     private val pageAtActivation = mutableListOf<Int>()
@@ -138,28 +140,21 @@ class FloatingNavigationBarTest {
                 }.toImmutableList()
             }
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-                MaterialTheme {
-                    val palette = MaterialTheme.colorScheme
-                    val colors = ExtendedColors(
-                        theme = "default", isNightMode = false,
-                        accent = palette.primary, bottomBar = palette.surfaceContainer,
-                        text = palette.onSurface, textSecondary = palette.onSurfaceVariant,
-                    )
+                MaterialExpressiveTheme {
                     MyScaffold(
                         modifier = Modifier.fillMaxSize().nestedScroll(observer).testTag("window"),
-                        backgroundColor = palette.background,
+                        backgroundColor = MaterialTheme.colorScheme.surface,
                         bottomBar = {
                             val visible = 1f - hideFraction
-                            FloatingNavigationBarSlot(
+                            MainNavigationBarSlot(
                                 visibleFraction = visible,
                                 navigationInsets = WindowInsets(bottom = 24.dp),
                             ) {
-                                FloatingBottomNavigation(
+                                MainNavigationBar(
                                     currentPosition = selection.id.toInt(),
-                                    onSelect = { index -> selection.select(index.toString()) { refreshedPages += index } },
+                                    onSelect = { index -> selection.activate(items[index]) { refreshedPages += index } },
                                     navigationItems = items,
-                                    themeColors = colors,
-                                    modifier = Modifier.testTag("capsule"),
+                                    modifier = Modifier.testTag("navigation-bar"),
                                 )
                             }
                         },
@@ -221,27 +216,28 @@ class FloatingNavigationBarTest {
         compose.waitForIdle()
     }
 
-    @Test fun scrollHidesAndRevealsTheFloatingBar() {
+    @Test fun scrollTranslatesTheWholeNavigationBarAndRevealsIt() {
         show()
         val window = compose.onNodeWithTag("window").getUnclippedBoundsInRoot()
         val feed = compose.onNodeWithTag("feed")
-        val capsule = compose.onNodeWithTag("capsule")
-        val visible = capsule.getUnclippedBoundsInRoot()
-        assertEquals(64.dp, visible.height)
-        assertEquals(window.bottom - 98.dp, feed.getUnclippedBoundsInRoot().bottom)
+        val bar = compose.onNodeWithTag("navigation-bar")
+        val visible = bar.getUnclippedBoundsInRoot()
+        assertTrue(visible.height >= 48.dp)
+        assertEquals(window.width, visible.width)
+        assertEquals(window.bottom - 24.dp - visible.height, feed.getUnclippedBoundsInRoot().bottom)
         compose.captureReviewImage(view, "nav-visible.png")
 
         dragFeed(-82f)
         val partial = compose.runOnIdle { hideFraction }
         assertEquals("Expected half hide", 0.5f, partial, 0.01f)
-        val translated = capsule.getUnclippedBoundsInRoot()
+        val translated = bar.getUnclippedBoundsInRoot()
         val safeBottom = window.bottom - 24.dp
         assertEquals(visible.height, translated.height)
         assertEquals(visible.width, translated.width)
         assertEquals(visible.left, translated.left)
-        assertEquals(visible.top.value + 74f * partial, translated.top.value, 1f)
+        assertEquals(visible.top.value + visible.height.value * partial, translated.top.value, 1f)
         assertTrue(translated.bottom > safeBottom)
-        val visiblePixels = capsule.fetchSemanticsNode().boundsInRoot
+        val visiblePixels = bar.fetchSemanticsNode().boundsInRoot
         assertEquals(safeBottom.value, visiblePixels.bottom, 1f)
         compose.captureReviewImage(view, "nav-partial.png")
         // The same point in the visible surface retains its color while moving.
@@ -254,13 +250,13 @@ class FloatingNavigationBarTest {
         dragFeed(-220f)
         compose.runOnIdle { assertEquals(1f, hideFraction) }
         assertEquals(window.bottom - 24.dp, feed.getUnclippedBoundsInRoot().bottom)
-        capsule.assertDoesNotExist()
+        bar.assertDoesNotExist()
         compose.onAllNodes(hasClickAction() and hasText(titles[0])).assertCountEquals(0)
         compose.captureReviewImage(view, "nav-hidden.png")
 
         dragFeed(240f)
         compose.runOnIdle { assertEquals(0f, hideFraction) }
-        assertEquals(visible, capsule.getUnclippedBoundsInRoot())
+        assertEquals(visible, bar.getUnclippedBoundsInRoot())
         compose.captureReviewImage(view, "nav-revealed.png")
     }
 
@@ -459,53 +455,62 @@ class FloatingNavigationBarTest {
         compose.onNode(hasText(titles[0]) and hasClickAction()).assertIsSelected()
     }
 
-    @Test fun indicatorReachesTheNewTabAndSettlesAfterAQuickReversal() {
-        show()
-        // Sample the pill fill below its top stroke and above the tab icons and labels.
-        val from = compose.onNode(hasText(titles[0]) and hasClickAction())
-        val to = compose.onNode(hasText(titles[2]) and hasClickAction())
-        val bar = compose.onNodeWithTag("capsule").fetchSemanticsNode().boundsInRoot
-        val startX = from.fetchSemanticsNode().boundsInRoot.center.x
-        val targetX = to.fetchSemanticsNode().boundsInRoot.center.x
-        val y = (bar.top + bar.height * 0.14f).roundToInt()
-        fun readRow(): IntArray = compose.runOnIdle {
-            val image = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-            try {
-                view.draw(Canvas(image))
-                IntArray(view.width).also { image.getPixels(it, 0, it.size, 0, y, it.size, 1) }
-            } finally {
-                image.recycle()
+    @OptIn(ExperimentalAnimationGraphicsApi::class)
+    @Config(qualifiers = "zh-rCN-w960dp-h720dp-mdpi")
+    @Test fun adaptiveNavigationPreservesSelectedPageWhenTheScreenWidens() {
+        var layout by mutableStateOf(MainNavigationType.NAVIGATION_RAIL)
+        var selected by mutableStateOf(0)
+        val pageSessions = mutableListOf<Unit>()
+        compose.setContent {
+            val hostView = LocalView.current
+            SideEffect { view = hostView }
+            MaterialExpressiveTheme {
+                CompositionLocalProvider(LocalNavigator provides EmptyDestinationsNavigator) {
+                    val icons = listOf(
+                        R.drawable.ic_animated_rounded_inventory_2, R.drawable.ic_animated_toy_fans,
+                        R.drawable.ic_animated_rounded_notifications, R.drawable.ic_animated_rounded_person,
+                    )
+                    val items = titles.mapIndexed { index, title ->
+                        NavigationItem(
+                            id = index.toString(),
+                            title = { title },
+                            icon = { AnimatedImageVector.animatedVectorResource(icons[index]) },
+                            badge = index == 2,
+                            badgeText = "7",
+                        )
+                    }.toImmutableList()
+                    NavigationWrapper(selected, { selected = it }, items, layout, MainNavigationContentPosition.CENTER) {
+                        DisposableEffect(Unit) {
+                            pageSessions.add(Unit)
+                            onDispose { }
+                        }
+                        Text(titles[selected], modifier = Modifier.padding(24.dp).testTag("active-page"))
+                    }
+                }
             }
         }
+        compose.onNode(hasText("动态") and hasClickAction()).performClick().assertIsSelected()
+        compose.captureReviewImage(view, "nav-rail.png")
+        compose.runOnIdle { layout = MainNavigationType.PERMANENT_NAVIGATION_DRAWER }
+        compose.onNode(hasText("动态") and hasClickAction()).assertIsSelected()
+        compose.onNodeWithTag("active-page").assertTextEquals("动态")
+        compose.captureReviewImage(view, "nav-drawer.png")
+        compose.runOnIdle { assertEquals(1, pageSessions.size) }
+    }
 
-        val initial = readRow()
-        val fill = initial[startX.roundToInt()]
-        assertNotEquals("Pill fill must be distinguishable from its track", fill, initial[targetX.roundToInt()])
-        fun span(row: IntArray): IntRange {
-            val left = row.indexOf(fill)
-            val right = row.lastIndexOf(fill)
-            assertTrue("Selection fill must remain visible", left >= 0 && right > left)
-            return left..right
+    @Test fun officialBarProvidesOneSelectedAccessibleDestinationAfterReversal() {
+        show()
+        val from = compose.onNode(hasText(titles[0]) and hasClickAction())
+        val to = compose.onNode(hasText(titles[2]) and hasClickAction())
+        compose.onAllNodes(isSelectable()).assertCountEquals(titles.size)
+        titles.forEach { title ->
+            val bounds = compose.onNode(hasText(title) and hasClickAction()).getUnclippedBoundsInRoot()
+            assertTrue("Navigation targets must be at least 48 dp", bounds.width >= 48.dp && bounds.height >= 48.dp)
         }
-        fun IntRange.center() = (first + last) / 2f
-        fun IntRange.width() = last - first + 1
-        val initialSpan = span(initial)
-        val distance = targetX - startX
-
-        compose.mainClock.autoAdvance = false
         to.performClick()
-        compose.mainClock.advanceTimeByFrame()
-        compose.mainClock.advanceTimeBy(128)
-        val moving = span(readRow())
-        val progress = (moving.center() - initialSpan.center()) / distance
-        assertTrue("Indicator reached only ${progress * 100}% of the two-tab jump", progress >= 0.84f)
-        assertTrue("Pill trails across neighboring tabs", moving.width() <= initialSpan.width() * 1.4f)
-
+        to.assertIsSelected()
         from.performClick()
-        compose.mainClock.advanceTimeByFrame()
-        compose.mainClock.advanceTimeBy(256)
-        val returned = span(readRow())
-        assertEquals(initialSpan.center(), returned.center(), from.fetchSemanticsNode().boundsInRoot.width * 0.06f)
-        assertEquals(initialSpan.width().toFloat(), returned.width().toFloat(), 4f)
+        from.assertIsSelected()
+        compose.onAllNodes(isSelected()).assertCountEquals(1)
     }
 }
