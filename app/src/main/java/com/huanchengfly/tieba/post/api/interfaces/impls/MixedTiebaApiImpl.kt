@@ -115,6 +115,7 @@ import com.huanchengfly.tieba.post.api.models.web.HotMessageListBean
 import com.huanchengfly.tieba.post.api.retrofit.ApiResult
 import com.huanchengfly.tieba.post.api.retrofit.RetrofitTiebaApi
 import com.huanchengfly.tieba.post.api.retrofit.body.MyMultipartBody
+import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInException
 import com.huanchengfly.tieba.post.api.urlEncode
 import com.huanchengfly.tieba.post.models.DislikeBean
 import com.huanchengfly.tieba.post.models.MyInfoBean
@@ -125,6 +126,7 @@ import com.huanchengfly.tieba.post.utils.CuidUtils
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Call
 import java.io.File
@@ -927,11 +929,14 @@ object MixedTiebaApiImpl : ITiebaApi {
     override fun initNickNameFlow(bduss: String, sToken: String): Flow<InitNickNameBean> =
         RetrofitTiebaApi.OFFICIAL_TIEBA_API.initNickNameFlow(bduss, sToken)
 
-    override fun loginFlow(): Flow<LoginBean> =
-        RetrofitTiebaApi.OFFICIAL_TIEBA_API.loginFlow()
+    override fun loginFlow(): Flow<LoginBean> = flow {
+        val account = AccountUtil.getLoginInfo() ?: throw TiebaNotLoggedInException()
+        emit(RetrofitTiebaApi.OFFICIAL_LOGIN_API.login("${account.bduss}|null", account.sToken, account.uid))
+    }
 
-    override fun loginFlow(bduss: String, sToken: String): Flow<LoginBean> =
-        RetrofitTiebaApi.OFFICIAL_TIEBA_API.loginFlow("$bduss|", sToken, null)
+    override fun loginFlow(bduss: String, sToken: String): Flow<LoginBean> = flow {
+        emit(RetrofitTiebaApi.OFFICIAL_LOGIN_API.login("$bduss|", sToken))
+    }
 
     override fun profileModifyFlow(
         birthdayShowStatus: Boolean,

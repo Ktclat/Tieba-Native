@@ -26,10 +26,12 @@ import com.huanchengfly.tieba.post.api.retrofit.interceptors.StParamInterceptor
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.AppHybridTiebaApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.MiniTiebaApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.NewTiebaApi
+import com.huanchengfly.tieba.post.api.retrofit.interfaces.OfficialLoginApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.OfficialProtobufTiebaApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.OfficialTiebaApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.SofireApi
 import com.huanchengfly.tieba.post.api.retrofit.interfaces.WebTiebaApi
+import com.huanchengfly.tieba.post.api.retrofit.interfaces.forOfficialLogin
 import com.huanchengfly.tieba.post.toJson
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.CacheUtil.base64Encode
@@ -174,7 +176,15 @@ object RetrofitTiebaApi {
     }
 
     val OFFICIAL_TIEBA_API: OfficialTiebaApi by lazy {
-        createJsonApi<OfficialTiebaApi>(
+        officialJsonRetrofit.create(OfficialTiebaApi::class.java)
+    }
+
+    internal val OFFICIAL_LOGIN_API: OfficialLoginApi by lazy {
+        officialJsonRetrofit.forOfficialLogin().create(OfficialLoginApi::class.java)
+    }
+
+    private val officialJsonRetrofit: Retrofit by lazy {
+        createJsonRetrofit(
             "http://c.tieba.baidu.com/",
             CommonHeaderInterceptor(
                 Header.USER_AGENT to { "bdtb for Android 12.25.1.0" },
@@ -362,8 +372,10 @@ object RetrofitTiebaApi {
 
     private inline fun <reified T : Any> createJsonApi(
         baseUrl: String,
-        vararg interceptors: Interceptor
-    ) = Retrofit.Builder()
+        vararg interceptors: Interceptor,
+    ): T = createJsonRetrofit(baseUrl, *interceptors).create(T::class.java)
+
+    private fun createJsonRetrofit(baseUrl: String, vararg interceptors: Interceptor): Retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
         .addCallAdapterFactory(DeferredCallAdapterFactory())
         .addCallAdapterFactory(FlowCallAdapterFactory.create())
@@ -385,7 +397,6 @@ object RetrofitTiebaApi {
             connectionPool(connectionPool)
         }.build())
         .build()
-        .create(T::class.java)
 
     private inline fun <reified T : Any> createProtobufApi(
         baseUrl: String,

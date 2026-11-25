@@ -24,8 +24,9 @@
 
 ## 构建
 
-Android Studio 打开根目录，配置 JDK 17 和 Android SDK 35。
-运行 ./gradlew :app:assembleDebug :app:testDebugUnitTest。
+使用完整 Git 克隆，在 Android Studio 打开根目录，配置 JDK 17 和 Android SDK 35。运行 `./gradlew :app:assembleDebug :app:testDebugUnitTest`。浅克隆可先运行 `git fetch --unshallow` 补齐历史。
+
+在「我 → 设置 → 更多 → 关于」和 APK 文件名均能查看版本，例如 `0.0.1+0123456789ab`。加号后为构建时 Git HEAD 的前 12 位，运行 `git show 0123456789ab` 可定位源代码。本地未提交的修改使用所在提交的版本号。Android `versionCode` 为 `390100 + git rev-list --count HEAD`，同一提交重复构建结果一致，后代提交的版本码更大。覆盖安装旧包还需要使用同一签名。
 
 应用使用 Android SDK 35 构建。测试报告与安装后模拟器截图见对应提交的 Android CI 产物。
 
@@ -40,7 +41,7 @@ Android Studio 打开根目录，配置 JDK 17 和 Android SDK 35。
 ## 下载调试 APK
 
 在 [Actions](https://github.com/Ktclat/Tieba-Native/actions/workflows/android-ci.yml)
-中打开成功的 Android CI 运行，下载 Tieba-Native-Debug 构建产物。
+中打开成功的 Android CI 运行，下载 `Tieba-Native-Debug`，解压后得到 `Tieba-Native-0.0.1+<提交短哈希>-debug.apk`。推送到 `main` 时构建该次推送的提交，PR 构建其来源分支的最新推送提交。手动运行时，选择要构建的分支或标签，工作流固定使用触发时的提交。Release 继续按需手动发布。
 此产物使用调试签名，不代表可上架的正式版本。
 
 当前 applicationId 仍沿用原项目，安装时可能与原版发生包名/签名冲突。

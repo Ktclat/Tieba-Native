@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +56,7 @@ import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.components.dialogs.PermissionDialog
 import com.huanchengfly.tieba.post.models.PermissionBean
+import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
@@ -84,13 +86,24 @@ import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.lang.ref.WeakReference
 import java.util.UUID
 
-@SuppressLint("SetJavaScriptEnabled")
 @Destination
 @Composable
 fun WebViewPage(
+    initialUrl: String,
+    navigator: DestinationsNavigator,
+) {
+    key(AccountUtil.LocalAccount.current?.uid) {
+        AccountWebView(initialUrl, navigator)
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun AccountWebView(
     initialUrl: String,
     navigator: DestinationsNavigator,
 ) {
@@ -98,6 +111,7 @@ fun WebViewPage(
     val coroutineScope = rememberCoroutineScope()
     val webViewState = rememberSaveableWebViewState()
     val webViewNavigator = rememberWebViewNavigator()
+    val webViewClient = remember(navigator) { MyWebViewClient(navigator) }
     var loaded by rememberSaveable {
         mutableStateOf(false)
     }
@@ -242,6 +256,7 @@ fun WebViewPage(
                     .padding(paddingValues),
                 navigator = webViewNavigator,
                 onCreated = {
+                    webViewClient.injectCookies(webViewState.lastLoadedUrl ?: initialUrl)
                     it.settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
@@ -250,7 +265,7 @@ fun WebViewPage(
                         displayZoomControls = false
                     }
                 },
-                client = remember(navigator) { MyWebViewClient(navigator) },
+                client = webViewClient,
                 chromeClient = remember { MyWebChromeClient(context, coroutineScope) }
             )
 
@@ -266,15 +281,56 @@ fun WebViewPage(
 
 fun isTiebaHost(host: String): Boolean {
     return host == "wapp.baidu.com" ||
-            host.contains("tieba.baidu.com") ||
+            host == "tieba.baidu.com" ||
             host == "tiebac.baidu.com"
 }
 
 fun isInternalHost(host: String): Boolean {
     return isTiebaHost(host) ||
-            host.contains("wappass.baidu.com") ||
-            host.contains("ufosdk.baidu.com") ||
-            host.contains("m.help.baidu.com")
+            host == "wappass.baidu.com" ||
+            host == "passport.baidu.com" ||
+            host == "pass.baidu.com" ||
+            host == "ufosdk.baidu.com" ||
+            host == "m.help.baidu.com"
+}
+
+internal fun tiebaWebCookieOrigin(url: String): String? {
+    val parsed = url.toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps || parsed.port != 443 || !isTiebaHost(parsed.host) ||
+        parsed.username.isNotEmpty() || parsed.password.isNotEmpty()
+    ) return null
+    return "https://${parsed.host}/"
+}
+
+internal fun syncTiebaWebCookies(
+    origin: String,
+    current: Account?,
+    cookieHeader: String?,
+    setCookie: (String, String) -> Unit,
+) {
+    val existing = cookieHeader.orEmpty().split(';').map { it.trim() }
+        .filter { '=' in it }.groupBy({ it.substringBefore('=') }, { it.substringAfter('=') })
+    val stored = current?.let { selected ->
+        AccountUtil.parseCookie(selected.cookie).takeIf { it["BDUSS"] == selected.bduss }
+    }.orEmpty()
+    val host = origin.removePrefix("https://").removeSuffix("/")
+    val attributes = "Path=/; Secure; HttpOnly"
+    val session = mapOf(
+        "BDUSS" to current?.bduss, "STOKEN" to current?.sToken,
+        "BDUSS_BFESS" to stored["BDUSS_BFESS"], "STOKEN_BFESS" to stored["STOKEN_BFESS"],
+    )
+    for ((name, value) in session) {
+        val expected = value?.takeIf { it.isNotEmpty() && it.all { ch -> ch in '!'..'~' && ch !in "\";,\\" } }
+        val present = existing[name].orEmpty()
+        if (present.isEmpty() && expected == null || present.size == 1 && present.single() == expected) continue
+        if (present.isNotEmpty()) {
+            // Older versions and Passport can leave domain cookies alongside the host-only one.
+            setCookie(origin, "$name=; Max-Age=0; Domain=baidu.com; $attributes")
+            setCookie(origin, "$name=; Max-Age=0; Domain=$host; $attributes")
+        }
+        val cookie = if (expected == null) "$name=; Max-Age=0" else "$name=$expected"
+        setCookie(origin, "$cookie; $attributes")
+    }
 }
 
 open class MyWebViewClient(
@@ -291,14 +347,9 @@ open class MyWebViewClient(
         val scheme = newUri.scheme?.lowercase() ?: return false
         val host = newUri.host?.lowercase() ?: return false
         val path = newUri.path?.lowercase() ?: return false
-        val isHttp = scheme.startsWith("http")
-        val isTieba = host == "wapp.baidu.com" ||
-                host.contains("tieba.baidu.com") ||
-                host == "tiebac.baidu.com"
-        val isInternal = isTieba ||
-                host.contains("wappass.baidu.com") ||
-                host.contains("ufosdk.baidu.com") ||
-                host.contains("m.help.baidu.com")
+        val isHttp = scheme == "http" || scheme == "https"
+        val isTieba = isTiebaHost(host)
+        val isInternal = isInternalHost(host)
         return when {
             isHttp && isTieba -> {
                 if (path == "/f" || path == "/mo/q/m") {
@@ -437,14 +488,9 @@ open class MyWebViewClient(
     }
 
     open fun injectCookies(url: String) {
-        val cookieStr = CookieManager.getInstance().getCookie(url) ?: ""
-        val cookies = AccountUtil.parseCookie(cookieStr)
-        val BDUSS = cookies["BDUSS"]
-        val currentAccountBDUSS = AccountUtil.getBduss()
-        if (currentAccountBDUSS != null && BDUSS != currentAccountBDUSS) {
-            CookieManager.getInstance()
-                .setCookie(url, AccountUtil.getBdussCookie(currentAccountBDUSS))
-        }
+        val origin = tiebaWebCookieOrigin(url) ?: return
+        val manager = CookieManager.getInstance()
+        syncTiebaWebCookies(origin, AccountUtil.currentAccount, manager.getCookie(origin), manager::setCookie)
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
@@ -454,7 +500,9 @@ open class MyWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest?): Boolean {
         if (request == null) return false
-        return interceptWebViewRequest(view, request)
+        val intercepted = interceptWebViewRequest(view, request)
+        if (!intercepted && request.isForMainFrame) injectCookies(request.url.toString())
+        return intercepted
     }
 }
 

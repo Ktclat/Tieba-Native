@@ -1,319 +1,414 @@
 package com.huanchengfly.tieba.post.ui.page.login
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Bundle
+import android.view.View
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
-import androidx.compose.animation.core.animateFloatAsState
+import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.withResumed
+import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
-import com.huanchengfly.tieba.post.ui.page.webview.MyWebChromeClient
-import com.huanchengfly.tieba.post.ui.page.webview.MyWebViewClient
-import com.huanchengfly.tieba.post.ui.page.webview.isInternalHost
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
-import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
-import com.huanchengfly.tieba.post.ui.widgets.compose.LoadingState
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.WebView
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSaveableWebViewState
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberWebViewNavigator
 import com.huanchengfly.tieba.post.utils.AccountUtil
-import com.huanchengfly.tieba.post.utils.AccountUtil.parseCookie
 import com.huanchengfly.tieba.post.utils.ClientUtils
+import com.huanchengfly.tieba.post.toastShort
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.cancellable
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
-const val LOGIN_URL =
-    "https://wappass.baidu.com/passport?login&u=https%3A%2F%2Ftieba.baidu.com%2Findex%2Ftbwise%2Fmine"
+private fun currentLoginCookies() = existingLoginCookies(CookieManager.getInstance()::getCookie)
 
-@SuppressLint("SetJavaScriptEnabled")
+internal class LoginPageViewModel : ViewModel() {
+    val flow = LoginFlowController(viewModelScope, null) { session ->
+        AccountUtil.completeLogin(App.INSTANCE, session.bduss, session.sToken, session.cookie)
+        val baiduId = AccountUtil.parseCookie(session.cookie).entries.firstOrNull { it.key.equals("BAIDUID", true) }?.value
+        if (!baiduId.isNullOrBlank() && ClientUtils.baiduId.isNullOrBlank()) {
+            // Device metadata is optional after the account has been verified and selected.
+            runCatching { ClientUtils.saveBaiduId(App.INSTANCE, baiduId) }
+        }
+    }
+    val network = LoginNetwork { isLoginDefinitelyOffline(App.INSTANCE) }
+    private var initialized = false
+
+    fun prepareBrowser() {
+        if (!initialized) restartBrowser(currentLoginCookies())
+    }
+
+    fun restartBrowser(previous: List<String>) {
+        flow.restartWith(previous)
+        initialized = true
+    }
+}
+
+private class LoginBrowser(var restored: Bundle? = null) {
+    var view: WebView? = null
+    var host by mutableStateOf("")
+    var progress by mutableIntStateOf(0)
+    var canGoBack by mutableStateOf(false)
+    var attempt by mutableIntStateOf(0)
+        private set
+
+    fun startNewPage() {
+        restored = null
+        view = null
+        host = ""
+        progress = 0
+        canGoBack = false
+        attempt++
+    }
+
+    companion object {
+        val saver = Saver<LoginBrowser, Bundle>(
+            save = { browser -> browser.view?.let { web -> Bundle().also { web.saveState(it) } } ?: browser.restored ?: Bundle() },
+            restore = { LoginBrowser(it) },
+        )
+    }
+}
+
 @Destination
 @Composable
-fun LoginPage(
-    navigator: DestinationsNavigator,
-) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val webViewState = rememberSaveableWebViewState()
-    val webViewNavigator = rememberWebViewNavigator()
-    var loaded by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var pageTitle by rememberSaveable {
-        mutableStateOf("")
-    }
-    val displayPageTitle by remember {
-        derivedStateOf {
-            pageTitle.ifEmpty {
-                context.getString(R.string.title_default)
-            }
-        }
-    }
-    val currentHost by remember {
-        derivedStateOf {
-            webViewState.lastLoadedUrl?.toUri()?.host.orEmpty().lowercase()
-        }
-    }
-    val isExternalHost by remember {
-        derivedStateOf {
-            currentHost.isNotEmpty() && !isInternalHost(currentHost)
-        }
+fun LoginPage(navigator: DestinationsNavigator) {
+    val model = viewModel<LoginPageViewModel>()
+    val flow = model.flow
+    val browser = rememberSaveable(saver = LoginBrowser.saver) { LoginBrowser() }
+    val network = remember(model) { model.network.apply { enter() } }
+    var alternate by rememberSaveable { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val owner = LocalLifecycleOwner.current
+    val entry = if (alternate) ALTERNATIVE_LOGIN_URL else LOGIN_URL
+    val stage = if (network.pending != null && flow.stage != LoginStage.Complete) LoginStage.PageFailed else flow.stage
+
+    fun returnIfReady(url: String?, finished: Boolean): Boolean {
+        if (!isLoginReturnUrl(url)) return false
+        if (network.pending != null) return true
+        if (flow.stage !in setOf(LoginStage.Verifying, LoginStage.Complete, LoginStage.VerificationFailed) &&
+            !network.allow(LoginAttempt.CheckSession)) return true
+        val cookie = cookieForLoginReturn(url, CookieManager.getInstance()::getCookie)
+        if (cookie != null || finished) flow.onReturn(url, cookie)
+        return cookie != null
     }
 
-    DisposableEffect(Unit) {
-        val job = coroutineScope.launch {
-            snapshotFlow { webViewState.pageTitle }
-                .filterNotNull()
-                .filter { it.isNotEmpty() }
-                .cancellable()
-                .collect {
-                    pageTitle = it
-                }
-        }
-        onDispose {
-            job.cancel()
-        }
-    }
-
-    LazyLoad(loaded = loaded) {
-        webViewNavigator.loadUrl(LOGIN_URL)
-        loaded = true
-    }
-
-    val isLoading by remember {
-        derivedStateOf {
-            webViewState.loadingState is LoadingState.Loading
-        }
-    }
-
-    val progress by remember {
-        derivedStateOf {
-            webViewState.loadingState.let {
-                if (it is LoadingState.Loading) {
-                    it.progress
+    fun request(attempt: LoginAttempt) {
+        if (!network.allow(attempt)) return
+        when (attempt) {
+            LoginAttempt.Resume -> {
+                if (flow.stage == LoginStage.PageFailed) {
+                    model.restartBrowser(currentLoginCookies())
+                    browser.startNewPage()
                 } else {
-                    0f
+                    // A restored view may already be on the official callback. A fresh view checks on navigation.
+                    browser.view?.let { returnIfReady(it.url, false) }
+                }
+            }
+            LoginAttempt.OpenPage -> {
+                model.restartBrowser(currentLoginCookies())
+                browser.startNewPage()
+            }
+            LoginAttempt.CheckSession -> {
+                // After rotation the factory restores the browser first and its normal callbacks check this URL.
+                browser.view?.let { returnIfReady(it.url, true) }
+            }
+            LoginAttempt.Verify -> {
+                returnIfReady(browser.view?.url, false)
+                flow.retryVerification()
+            }
+            LoginAttempt.Confirm -> flow.confirmExisting()
+            LoginAttempt.ChangeAccount -> {
+                if (!switching) {
+                    switching = true
+                    val previous = currentLoginCookies()
+                    scope.launch {
+                        try {
+                            clearWebSignInSession()
+                            model.restartBrowser(previous)
+                            network.allow(LoginAttempt.Resume)
+                            browser.startNewPage()
+                        } finally { switching = false }
+                    }
                 }
             }
         }
     }
 
-    val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
+    fun close() {
+        flow.cancel()
+        navigator.navigateUp()
+    }
 
-    MyScaffold(
-        topBar = {
-            Toolbar(
-                title = {
-                    Column {
-                        Text(
-                            text = displayPageTitle,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (isExternalHost) {
-                            Text(
-                                text = currentHost,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                },
-                navigationIcon = { BackNavigationIcon(onBackPressed = { navigator.navigateUp() }) },
-                actions = {
-                    val menuState = rememberMenuState()
-                    ClickMenu(
-                        menuContent = {
-                            DropdownMenuItem(
-                                text = { Text(text = stringResource(id = R.string.title_refresh)) },
-                                onClick = {
-                                    webViewNavigator.reload()
-                                    dismiss()
-                                }
-                            )
-                        },
-                        menuState = menuState,
-                        triggerShape = CircleShape
-                    ) {
-                        Box(
-                            modifier = Modifier.size(48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = stringResource(id = R.string.btn_more)
-                            )
-                        }
-                    }
-                },
-            )
+    DisposableEffect(owner, browser, flow) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> browser.view?.onPause()
+                Lifecycle.Event.ON_RESUME -> browser.view?.let { web ->
+                    web.onResume()
+                    if (isLoginReturnUrl(web.url)) returnIfReady(web.url, false)
+                    else if (flow.stage == LoginStage.Browsing) network.enter()
+                }
+                else -> Unit
+            }
         }
-    ) { paddingValues ->
-        Box {
-            val snackbarHostState = LocalSnackbarHostState.current
-            WebView(
-                state = webViewState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                navigator = webViewNavigator,
-                onCreated = {
-                    it.settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        setSupportZoom(true)
-                        builtInZoomControls = true
-                        displayZoomControls = false
-                    }
-                },
-                client = remember(navigator) {
-                    LoginWebViewClient(
-                        navigator,
-                        coroutineScope,
-                        snackbarHostState
-                    )
-                },
-                chromeClient = remember { MyWebChromeClient(context, coroutineScope) }
-            )
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
 
-            if (isLoading) {
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxWidth()
-                )
+    LaunchedEffect(stage, owner) {
+        if (stage == LoginStage.Complete) owner.lifecycle.withResumed { navigator.navigateUp() }
+    }
+    BackHandler {
+        if (stage == LoginStage.Browsing && browser.canGoBack) browser.view?.goBack() else close()
+    }
+    MyScaffold(topBar = {
+        Toolbar(
+            title = {
+                Column {
+                    Text(stringResource(R.string.baidu_sign_in), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (browser.host.isNotBlank()) Text(
+                        browser.host, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            },
+            navigationIcon = { BackNavigationIcon(onBackPressed = ::close) },
+            actions = {
+                if (stage !in setOf(LoginStage.Verifying, LoginStage.Complete)) Box {
+                    IconButton(onClick = { menuOpen = true }, enabled = !switching) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(if (alternate) R.string.login_mobile_page else R.string.login_alternative_page)) },
+                            onClick = { menuOpen = false; alternate = !alternate; request(LoginAttempt.OpenPage) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.title_refresh)) },
+                            onClick = { menuOpen = false; request(LoginAttempt.OpenPage) })
+                    }
+                }
+            },
+        )
+    }) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            // An already mounted login page may receive the real redirect after a temporary network loss.
+            if (network.pending == null || browser.view != null) {
+                key(browser.attempt) {
+                    OfficialLoginBrowser(browser, entry, stage == LoginStage.Browsing, model::prepareBrowser, flow, ::returnIfReady)
+                }
+            }
+            if (stage == LoginStage.Browsing && browser.progress in 1..99) {
+                LinearProgressIndicator(progress = { browser.progress / 100f }, modifier = Modifier.fillMaxWidth())
+            }
+            if (stage != LoginStage.Browsing) {
+                Surface(Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                    ) {
+                        val title = when (stage) {
+                            LoginStage.PageFailed -> R.string.login_page_unavailable
+                            LoginStage.MissingSession -> R.string.login_session_pending
+                            LoginStage.ExistingSession -> R.string.login_existing_session
+                            LoginStage.VerificationFailed -> R.string.login_sync_failed
+                            else -> R.string.login_verifying
+                        }
+                        Text(stringResource(title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                        if (stage == LoginStage.PageFailed && network.pending != null) {
+                            Text(
+                                stringResource(R.string.login_network_offline_hint),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        when (stage) {
+                            LoginStage.Verifying, LoginStage.Complete -> CircularProgressIndicator()
+                            LoginStage.PageFailed -> Button(onClick = {
+                                request(network.pending ?: LoginAttempt.OpenPage)
+                            }) { Text(stringResource(R.string.button_retry)) }
+                            LoginStage.VerificationFailed -> {
+                                Button(onClick = { request(LoginAttempt.Verify) }) { Text(stringResource(R.string.button_retry)) }
+                                TextButton(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
+                            }
+                            LoginStage.MissingSession -> {
+                                Button(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
+                                TextButton(onClick = { request(LoginAttempt.CheckSession) }) { Text(stringResource(R.string.login_check_again)) }
+                            }
+                            LoginStage.ExistingSession -> {
+                                Button(onClick = { request(LoginAttempt.Confirm) }, enabled = !switching) { Text(stringResource(R.string.login_use_current)) }
+                                TextButton(enabled = !switching, onClick = { request(LoginAttempt.ChangeAccount) }) { Text(stringResource(R.string.login_other_account)) }
+                            }
+                            else -> Unit
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-class LoginWebViewClient(
-    nativeNavigator: DestinationsNavigator? = null,
-    val coroutineScope: CoroutineScope,
-    val snackbarHostState: SnackbarHostState,
-) : MyWebViewClient(nativeNavigator) {
-    private var isLoadingAccount = false
-
-    override fun injectCookies(url: String) {}
-
-    override fun onPageFinished(view: WebView, url: String?) {
-        super.onPageFinished(view, url)
-        if (url == null) {
-            return
-        }
-        if (isLoadingAccount) {
-            return
-        }
-        val cookieStr = CookieManager.getInstance().getCookie(url) ?: return
-        val cookies = parseCookie(cookieStr).mapKeys { it.key.uppercase() }
-        val bduss = cookies["BDUSS"]
-        val sToken = cookies["STOKEN"]
-        val baiduId = cookies["BAIDUID"]
-        if (url.startsWith("https://tieba.baidu.com/index/tbwise/") || url.startsWith("https://tiebac.baidu.com/index/tbwise/")) {
-            if (bduss == null || sToken == null) {
-                return
-            }
-            if (!baiduId.isNullOrEmpty() && ClientUtils.baiduId.isNullOrEmpty()) {
-                coroutineScope.launch {
-                    ClientUtils.saveBaiduId(context, baiduId)
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun OfficialLoginBrowser(
+    browser: LoginBrowser,
+    entry: String,
+    visible: Boolean,
+    beforeCreate: () -> Unit,
+    flow: LoginFlowController,
+    onReturn: (String?, Boolean) -> Boolean,
+) {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        update = { view ->
+            view.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+            view.importantForAccessibility = if (visible) View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        },
+        factory = { context ->
+            beforeCreate()
+            WebView(context).apply {
+                browser.view = this
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    allowFileAccess = false
+                    allowContentAccess = false
+                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    builtInZoomControls = true
+                    displayZoomControls = false
+                    useWideViewPort = true
+                    loadWithOverviewMode = true
                 }
-            }
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(
-                    context.getString(R.string.text_please_wait),
-                    duration = SnackbarDuration.Indefinite
-                )
-            }
-            coroutineScope.launch {
-                AccountUtil.fetchAccountFlow(bduss, sToken, cookieStr)
-                    .catch {
-                        coroutineScope.launch {
-                            snackbarHostState.currentSnackbarData?.dismiss()
-                            snackbarHostState.showSnackbar(
-                                context.getString(
-                                    R.string.text_login_failed,
-                                    it.getErrorMessage()
-                                ), duration = SnackbarDuration.Short
-                            )
-                        }
-                        navigator.loadUrl(LOGIN_URL)
-                        isLoadingAccount = false
+                webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView, newProgress: Int) {
+                        if (browser.view === view) browser.progress = newProgress
                     }
-                    .flowOn(Dispatchers.Main)
-                    .collect { account ->
-                        isLoadingAccount = false
-                        AccountUtil.newAccount(account.uid, account) {
-                            if (it) {
-                                AccountUtil.switchAccount(context, account.id)
-                                coroutineScope.launch {
-                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                    snackbarHostState.showSnackbar(
-                                        context.getString(R.string.text_login_success),
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                                coroutineScope.launch {
-                                    delay(1500L)
-                                    nativeNavigator?.navigateUp()
-                                }
-                            } else {
-                                coroutineScope.launch {
-                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                    snackbarHostState.showSnackbar(
-                                        context.getString(R.string.text_login_failed_default),
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                                view.loadUrl(LOGIN_URL)
-                            }
-                        }
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                        if (browser.view !== view) return
+                        browser.host = url?.let { Uri.parse(it).host }.orEmpty()
+                        browser.progress = 0
+                        onReturn(url, false)
                     }
+
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        if (browser.view !== view) return
+                        browser.canGoBack = view.canGoBack()
+                        if (view.url == url) onReturn(url, true)
+                    }
+
+                    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                        if (browser.view !== view) return
+                        browser.canGoBack = view.canGoBack()
+                        onReturn(url, false)
+                    }
+
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                        if (request.url.scheme.equals("https", true)) return false
+                        if (request.isForMainFrame && request.hasGesture()) openLoginApp(context, request.url)
+                        return true
+                    }
+
+                    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                        if (browser.view === view && request.isForMainFrame && !onReturn(request.url.toString(), false)) flow.pageFailed()
+                    }
+
+                    override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                        if (browser.view === view && request.isForMainFrame && response.statusCode >= 400 &&
+                            !onReturn(request.url.toString(), false)) flow.pageFailed()
+                    }
+                }
+                val restored = browser.restored
+                browser.restored = null
+                if (restored == null || restoreState(restored) == null) loadUrl(entry)
+            }
+        },
+        onRelease = { view ->
+            if (browser.view === view) browser.view = null
+            view.stopLoading()
+            view.webViewClient = WebViewClient()
+            view.webChromeClient = null
+            view.destroy()
+        },
+    )
+}
+
+private fun openLoginApp(context: Context, url: Uri) {
+    val intent = when (url.scheme?.lowercase()) {
+        "sms", "smsto" -> Intent(Intent.ACTION_SENDTO, url)
+        "baiduboxapp" -> Intent(Intent.ACTION_VIEW, url).setPackage("com.baidu.searchbox")
+        "weixin" -> Intent(Intent.ACTION_VIEW, url).setPackage("com.tencent.mm")
+        "mqqapi", "mqq" -> Intent(Intent.ACTION_VIEW, url).setPackage("com.tencent.mobileqq")
+        else -> null
+    }
+    if (intent == null || runCatching { context.startActivity(intent.addCategory(Intent.CATEGORY_BROWSABLE)) }.isFailure) {
+        context.toastShort(R.string.login_method_unavailable)
+    }
+}
+
+// Run only when the user selects “切换百度账号”. Keep other websites and saved native accounts intact.
+private suspend fun clearWebSignInSession() {
+    val jar = CookieManager.getInstance()
+    clearLoginCookies(jar::getCookie) { url, cookie ->
+        suspendCancellableCoroutine { continuation ->
+            jar.setCookie(url, cookie) {
+                if (continuation.isActive) continuation.resume(Unit)
             }
         }
     }
