@@ -6,11 +6,13 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import com.huanchengfly.tieba.post.ui.page.main.MainUiState
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -20,8 +22,10 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = Application::class)
+@OptIn(ExperimentalTestApi::class)
 class StateFlowPartialStateTest {
-    @get:Rule val compose = createComposeRule()
+    // Queue frames on the test scheduler when the upstream IO collector emits.
+    @get:Rule val compose = createComposeRule(StandardTestDispatcher())
 
     @Test fun cachedCountIsRenderedFromTheFirstCompositionOnEachEntry() {
         val uiState = MutableStateFlow(MainUiState(messageCount = 7))

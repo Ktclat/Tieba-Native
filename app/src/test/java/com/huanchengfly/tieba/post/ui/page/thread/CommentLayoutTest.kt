@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -25,6 +24,8 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
@@ -102,11 +103,10 @@ class CommentLayoutTest {
                             .verticalScroll(rememberScrollState())) {
                             Box(Modifier.testTag("floor")) {
                                 PostCard(post.wrapImmutable(), post.contentRenders, post.subPosts,
-                                    threadAuthorId = 11, showSubPosts = !details)
+                                    threadAuthorId = 11, showSubPosts = !details, onSubPostAgree = {})
                             }
                             if (details) {
                                 for (reply in listOf(first, second)) {
-                                    HorizontalDivider()
                                     Box(Modifier.testTag("reply-${reply.id}")) {
                                         DetailReplyItem(DetailReply(reply), threadAuthorId = 11)
                                     }
@@ -133,6 +133,12 @@ class CommentLayoutTest {
         compose.captureReviewImage(view, "comment-thread-$size.png")
         val previewNameBounds = assertFullyVisible(previewName)
         val previewBodyBounds = assertFullyVisible(previewBody)
+        assertTopAction("floor", "26", textIn("floor", post.author!!.name), textIn("floor", post.content.single().text))
+        assertTopAction("floor", "12", previewName, previewBody)
+        compose.onAllNodes(
+            hasAnyAncestor(hasTestTag("floor")) and hasClickAction() and
+                hasContentDescription(context.getString(R.string.title_agree)),
+        ).assertCountEquals(2) // The second preview has no vote state.
         for (metadata in listOf(
             DateTimeUtils.getRelativeTimeString(context, first.time.toLong()),
             context.getString(R.string.text_profile_ip_location, first.author!!.ip_address),
@@ -162,11 +168,32 @@ class CommentLayoutTest {
                 context.getString(R.string.text_profile_ip_location, first.author!!.ip_address),
             ),
         )
+        assertTopAction("reply-${first.id}", "12", textIn("reply-${first.id}", first.author!!.name),
+            textIn("reply-${first.id}", first.content.single().text))
         compose.onAllNodes(
             hasAnyAncestor(hasTestTag("reply-${second.id}")) and
                 hasText(context.getString(R.string.text_profile_ip_location, ""), substring = true),
             useUnmergedTree = true,
         ).assertCountEquals(0)
+    }
+
+    private fun assertTopAction(
+        section: String, count: String, author: SemanticsNodeInteraction, body: SemanticsNodeInteraction,
+    ) {
+        val action = compose.onNode(
+            hasAnyAncestor(hasTestTag(section)) and hasClickAction() and
+                hasContentDescription(App.INSTANCE.getString(R.string.title_agree)) and hasText(count),
+        ).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val name = assertFullyVisible(author)
+        val bodyBounds = assertFullyVisible(body)
+        assertTrue("Like must be alongside its own author", action.left >= name.right &&
+            action.top < name.bottom && action.bottom > name.top)
+        assertTrue("Like must stay above the body", action.bottom <= bodyBounds.top)
+        assertTrue("Like needs a 48dp touch target at mdpi", action.width >= 48f && action.height >= 48f)
+        val layouts = mutableListOf<TextLayoutResult>()
+        body.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { read -> check(read(layouts)) }
+        val bodyRight = bodyBounds.left + layouts.single().layoutInput.constraints.maxWidth
+        assertEquals("The body must extend to the header action’s trailing edge", bodyRight, action.right, 2f)
     }
 
     private fun textIn(section: String, value: String) = compose.onNode(

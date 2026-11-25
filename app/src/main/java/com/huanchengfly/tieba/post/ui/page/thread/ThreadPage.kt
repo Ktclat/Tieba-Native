@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListScope
@@ -92,7 +93,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.util.fastForEachIndexed
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -193,7 +193,8 @@ fun PostAgreeBtn(
     TextButton(
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-        modifier = modifier.semantics { selected = hasAgreed },
+        modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = 112.dp)
+            .semantics { selected = hasAgreed },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -210,7 +211,9 @@ fun PostAgreeBtn(
                     text = agreeNum.getShortNumString(),
                     color = animatedColor,
                     style = M3Theme.typography.labelMedium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -911,6 +914,16 @@ fun ThreadPage(
                     )
                 )
             },
+            onSubPostAgree = { reply ->
+                viewModel.send(
+                    ThreadUiIntent.AgreePost(
+                        threadId = threadId,
+                        postId = item.get { id },
+                        agree = reply.agree?.hasAgree != 1,
+                        subPostId = reply.id,
+                    )
+                )
+            },
             onReplyClick = {
                 navigator.navigate(
                     ReplyPageDestination(
@@ -1309,7 +1322,6 @@ fun ThreadPage(
                                                 PostCard(
                                                     postHolder = firstPost!!,
                                                     contentRenders = firstPostContentRenders,
-                                                    showFloorDivider = false,
                                                     threadAuthorId = author?.get { id } ?: 0L,
                                                     canDelete = { it.author_id == user.get { id } },
                                                     immersiveMode = isImmersiveMode,
@@ -1713,11 +1725,11 @@ fun PostCard(
     immersiveMode: Boolean = false,
     isCollected: (Post) -> Boolean = { false },
     showSubPosts: Boolean = true,
-    showFloorDivider: Boolean = true,
     onUserClick: (User) -> Unit = {},
     onAgree: () -> Unit = {},
     onReplyClick: (Post) -> Unit = {},
     onSubPostReplyClick: ((Post, SubPostList) -> Unit)? = null,
+    onSubPostAgree: ((SubPostList) -> Unit)? = null,
     onOpenSubPosts: (subPostId: Long) -> Unit = {},
     onMenuCopyClick: ((String) -> Unit)? = null,
     onMenuFavoriteClick: ((Post) -> Unit)? = null,
@@ -1742,187 +1754,169 @@ fun PostCard(
         if (hideBlockedContent) subPosts.filterNot { it.blocked } else subPosts
     }
     val moreReplies = post.sub_post_number > subPosts.size
-    Column {
-        BlockableContent(
-            blocked = blocked,
-            blockedTip = {
-                BlockTip {
-                    Text(
-                        text = stringResource(id = R.string.tip_blocked_post, postHolder.get { floor }),
-                    )
-                }
-            },
-            hideBlockedContent = hideBlockedContent,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 16.dp)
-        ) {
-            LongClickMenu(
-                menuState = menuState,
-                indication = null,
-                onClick = {
-                    onReplyClick(post)
-                }.takeIf { !context.appPreferences.hideReply },
-                menuContent = {
-                    if (!context.appPreferences.hideReply) {
-                        DropdownMenuItem(
-                            onClick = {
-                                onReplyClick(post)
-                                menuState.expanded = false
-                            }
-                        ) {
-                            Text(text = stringResource(id = R.string.btn_reply))
-                        }
-                    }
-                    if (onMenuCopyClick != null) {
-                        DropdownMenuItem(
-                            onClick = {
-                                onMenuCopyClick(post.content.plainText)
-                                menuState.expanded = false
-                            }
-                        ) {
-                            Text(text = stringResource(id = R.string.menu_copy))
-                        }
-                    }
+    BlockableContent(
+        blocked = blocked,
+        blockedTip = {
+            BlockTip {
+                Text(
+                    text = stringResource(id = R.string.tip_blocked_post, postHolder.get { floor }),
+                )
+            }
+        },
+        hideBlockedContent = hideBlockedContent,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp)
+    ) {
+        LongClickMenu(
+            menuState = menuState,
+            indication = null,
+            onClick = {
+                onReplyClick(post)
+            }.takeIf { !context.appPreferences.hideReply },
+            menuContent = {
+                if (!context.appPreferences.hideReply) {
                     DropdownMenuItem(
                         onClick = {
-                            coroutineScope.launch {
-                                TiebaUtil.reportPost(context, navigator, post.id.toString())
-                            }
+                            onReplyClick(post)
                             menuState.expanded = false
                         }
                     ) {
-                        Text(text = stringResource(id = R.string.title_report))
+                        Text(text = stringResource(id = R.string.btn_reply))
                     }
-                    if (onMenuFavoriteClick != null) {
-                        DropdownMenuItem(
-                            onClick = {
-                                onMenuFavoriteClick(post)
-                                menuState.expanded = false
-                            }
-                        ) {
-                            if (isCollected(post)) {
-                                Text(text = stringResource(id = R.string.title_collect_on))
-                            } else {
-                                Text(text = stringResource(id = R.string.title_collect_floor))
-                            }
+                }
+                if (onMenuCopyClick != null) {
+                    DropdownMenuItem(
+                        onClick = {
+                            onMenuCopyClick(post.content.plainText)
+                            menuState.expanded = false
                         }
+                    ) {
+                        Text(text = stringResource(id = R.string.menu_copy))
                     }
-                    if (canDelete(post) && onMenuDeleteClick != null) {
-                        DropdownMenuItem(
-                            onClick = {
-                                onMenuDeleteClick(post)
-                                menuState.expanded = false
-                            }
-                        ) {
-                            Text(text = stringResource(id = R.string.title_delete))
+                }
+                DropdownMenuItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            TiebaUtil.reportPost(context, navigator, post.id.toString())
+                        }
+                        menuState.expanded = false
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.title_report))
+                }
+                if (onMenuFavoriteClick != null) {
+                    DropdownMenuItem(
+                        onClick = {
+                            onMenuFavoriteClick(post)
+                            menuState.expanded = false
+                        }
+                    ) {
+                        if (isCollected(post)) {
+                            Text(text = stringResource(id = R.string.title_collect_on))
+                        } else {
+                            Text(text = stringResource(id = R.string.title_collect_floor))
                         }
                     }
                 }
-            ) {
-                CommentLayout(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    header = {
-                        if (!immersiveMode) {
-                            CommentHeader(
-                                author = post.author,
-                                threadAuthorId = threadAuthorId,
-                                time = post.time.toLong(),
-                                floor = post.floor,
-                                onUserClick = onUserClick,
-                            )
+                if (canDelete(post) && onMenuDeleteClick != null) {
+                    DropdownMenuItem(
+                        onClick = {
+                            onMenuDeleteClick(post)
+                            menuState.expanded = false
                         }
-                    },
-                    content = {
-                        if (showTitle) {
-                            Text(
-                                text = post.title,
-                                style = M3Theme.typography.titleLarge,
-                                color = ExtendedTheme.colors.text,
-                            )
-                        }
+                    ) {
+                        Text(text = stringResource(id = R.string.title_delete))
+                    }
+                }
+            }
+        ) {
+            CommentLayout(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                header = {
+                    if (!immersiveMode) {
+                        CommentHeader(
+                            author = post.author,
+                            threadAuthorId = threadAuthorId,
+                            time = post.time.toLong(),
+                            floor = post.floor,
+                            onUserClick = onUserClick,
+                            action = if (post.floor > 1 && post.id > 0) {
+                                { PostAgreeBtn(hasAgreed = hasAgreed, agreeNum = agreeNum, onClick = onAgree) }
+                            } else null,
+                        )
+                    }
+                },
+                content = {
+                    if (showTitle) {
+                        Text(
+                            text = post.title,
+                            style = M3Theme.typography.titleLarge,
+                            color = ExtendedTheme.colors.text,
+                        )
+                    }
 
-                        if (isCollected(post)) {
-                            Chip(
-                                text = stringResource(id = R.string.title_collected_floor),
-                                invertColor = true,
-                                prefixIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                        }
+                    if (isCollected(post)) {
+                        Chip(
+                            text = stringResource(id = R.string.title_collected_floor),
+                            invertColor = true,
+                            prefixIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
 
-                        contentRenders.fastForEach { it.Render() }
-                        if (post.floor > 1 && !immersiveMode) {
-                            PostAgreeBtn(
-                                hasAgreed = hasAgreed,
-                                agreeNum = agreeNum,
-                                onClick = onAgree,
-                                modifier = Modifier.align(Alignment.End),
-                            )
-                        }
+                    contentRenders.fastForEach { it.Render() }
 
-                        if (showSubPosts && !immersiveMode && (visibleSubPosts.isNotEmpty() || moreReplies)) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(start = 8.dp)
-                                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
-                                    .background(M3Theme.colorScheme.surfaceContainerLow)
-                                    .replyRail(M3Theme.colorScheme.outlineVariant),
-                            ) {
-                                visibleSubPosts.fastForEachIndexed { index, item ->
-                                    BlockableContent(
-                                        blocked = item.blocked,
-                                        blockedTip = {
-                                            Text(
-                                                text = stringResource(R.string.tip_blocked_sub_post),
-                                                style = M3Theme.typography.bodySmall,
-                                                color = M3Theme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                            )
-                                        },
-                                    ) {
-                                        SubPostItem(
-                                            subPostList = item.subPost,
-                                            subPostContent = item.subPostContent,
-                                            threadAuthorId = threadAuthorId,
-                                            onUserClick = onUserClick,
-                                            onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
-                                            onOpenSubPosts = onOpenSubPosts,
-                                            onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
+                    if (showSubPosts && !immersiveMode && (visibleSubPosts.isNotEmpty() || moreReplies)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(start = 8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(M3Theme.colorScheme.surfaceContainerLow)
+                                .replyRail(M3Theme.colorScheme.outlineVariant),
+                        ) {
+                            visibleSubPosts.fastForEach { item ->
+                                BlockableContent(
+                                    blocked = item.blocked,
+                                    blockedTip = {
+                                        Text(
+                                            text = stringResource(R.string.tip_blocked_sub_post),
+                                            style = M3Theme.typography.bodySmall,
+                                            color = M3Theme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                         )
-                                    }
-                                    if (index < visibleSubPosts.lastIndex || moreReplies) {
-                                        androidx.compose.material3.HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 12.dp),
-                                            color = M3Theme.colorScheme.outlineVariant,
-                                        )
-                                    }
-                                }
-                                if (moreReplies) {
-                                    Text(
-                                        text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                        style = M3Theme.typography.labelLarge,
-                                        color = M3Theme.colorScheme.secondary,
-                                        modifier = Modifier.fillMaxWidth()
-                                            .clickable { onOpenSubPosts(0) }
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    },
+                                ) {
+                                    SubPostItem(
+                                        subPostList = item.subPost,
+                                        subPostContent = item.subPostContent,
+                                        threadAuthorId = threadAuthorId,
+                                        onUserClick = onUserClick,
+                                        onAgree = onSubPostAgree,
+                                        onReplyClick = onSubPostReplyClick?.let { reply -> { reply(post, it) } },
+                                        onOpenSubPosts = onOpenSubPosts,
+                                        onMenuCopyClick = onMenuCopyClick?.let { copy -> { copy(it.content.plainText) } },
                                     )
                                 }
                             }
+                            if (moreReplies) {
+                                Text(
+                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
+                                    style = M3Theme.typography.labelLarge,
+                                    color = M3Theme.colorScheme.secondary,
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable { onOpenSubPosts(0) }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                )
+                            }
                         }
                     }
-                )
-            }
-        }
-        if (showFloorDivider && !immersiveMode && (!blocked || !hideBlockedContent)) {
-            androidx.compose.material3.HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = M3Theme.colorScheme.outlineVariant,
+                }
             )
         }
     }
@@ -1937,6 +1931,7 @@ internal fun SubPostItem(
     onReplyClick: ((SubPostList) -> Unit)?,
     onOpenSubPosts: (Long) -> Unit,
     onMenuCopyClick: ((SubPostList) -> Unit)?,
+    onAgree: ((SubPostList) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val navigator = LocalNavigator.current
@@ -1992,21 +1987,35 @@ internal fun SubPostItem(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (hasAuthor && author != null) {
-                val profile = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
-                Row(
-                    modifier = profile,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CommentAvatar(
-                        name = displayName.text, portrait = author.portrait,
-                        authorId = author.id.takeIf { it > 0 }, size = 26.dp,
-                    )
-                    CommentAuthorName(
-                        userName = displayName,
-                        isLz = threadAuthorId > 0 && author.id == threadAuthorId,
-                    )
+            val reply = subPostList.get()
+            val agree = reply.agree
+            CommentAuthorRow(
+                action = if (reply.id > 0 && agree != null && onAgree != null) {
+                    {
+                        PostAgreeBtn(
+                            hasAgreed = agree.hasAgree == 1,
+                            agreeNum = agree.diffAgreeNum,
+                            onClick = { onAgree(reply) },
+                        )
+                    }
+                } else null,
+            ) {
+                if (hasAuthor && author != null) {
+                    val profile = if (author.id > 0) Modifier.clickable { onUserClick(author) } else Modifier
+                    Row(
+                        modifier = profile,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CommentAvatar(
+                            name = displayName.text, portrait = author.portrait,
+                            authorId = author.id.takeIf { it > 0 }, size = 26.dp,
+                        )
+                        CommentAuthorName(
+                            userName = displayName,
+                            isLz = threadAuthorId > 0 && author.id == threadAuthorId,
+                        )
+                    }
                 }
             }
             Column(

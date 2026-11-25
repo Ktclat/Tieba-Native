@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -174,10 +174,7 @@ fun SearchThreadList(
         modifier = modifier
     ) {
         header()
-        itemsIndexed(data) { index, item ->
-            if (index > 0) {
-                VerticalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
+        items(data) { item ->
             SearchThreadItem(
                 item = item,
                 onClick = onItemClick,

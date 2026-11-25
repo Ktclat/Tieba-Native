@@ -20,11 +20,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollToIndex
@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.api.models.protos.Agree
 import com.huanchengfly.tieba.post.api.models.protos.PbContent
 import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.SubPost
@@ -62,6 +63,7 @@ import java.io.File
 import kotlin.math.roundToInt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +81,8 @@ class CommentGroupingTest {
     private lateinit var view: View
     private var opened by mutableStateOf<Pair<Long, Long>?>(null)
     private var replyTarget: Long? = null
+    private val liked = mutableListOf<Long>()
+    private val profiles = mutableListOf<Long>()
 
     private val floors = listOf(
         floor(12, "沿溪寻找野花的人", "这一段山路适合清晨出发。", listOf(
@@ -95,7 +99,7 @@ class CommentGroupingTest {
     )
 
     private fun reply(id: Long, name: String, text: String, recipient: Pair<Int, String>? = null) = SubPostList(
-        id = id, author = User(id = id + 10, name = name, nameShow = name),
+        id = id, author = User(id = id + 10, name = name, nameShow = name), agree = Agree(),
         time = 1695372600 + id.toInt(),
         content = buildList {
             if (recipient != null) {
@@ -137,6 +141,9 @@ class CommentGroupingTest {
                                                     postHolder = post.wrapImmutable(),
                                                     contentRenders = post.contentRenders,
                                                     subPosts = post.subPosts,
+                                                    onAgree = { liked += post.id },
+                                                    onSubPostAgree = { liked += it.id },
+                                                    onUserClick = { profiles += it.id },
                                                     onOpenSubPosts = { child -> opened = post.id to child },
                                                 )
                                             }
@@ -146,13 +153,19 @@ class CommentGroupingTest {
                                         item {
                                             PostCard(
                                                 parent.wrapImmutable(), parent.contentRenders,
-                                                showSubPosts = false, showFloorDivider = false,
+                                                showSubPosts = false,
                                             )
                                         }
-                                        stickyHeader(key = "SubPostsHeader") { SubPostsHeading(children.size) }
+                                        stickyHeader(key = "SubPostsHeader") {
+                                            Box(Modifier.testTag("reply-heading")) { SubPostsHeading(children.size) }
+                                        }
                                         items(children, key = { it.id }) { child ->
                                             Box(Modifier.testTag("detail-${child.id}")) {
-                                                ReplyItem(ReplyData(child), onReplyClick = { replyTarget = it.id })
+                                                ReplyItem(
+                                                    ReplyData(child), onAgree = { liked += it.id },
+                                                    onUserClick = { profiles += it.id },
+                                                    onReplyClick = { replyTarget = it.id },
+                                                )
                                             }
                                         }
                                     }
@@ -192,22 +205,33 @@ class CommentGroupingTest {
         compose.captureReviewImage(view, "adjacent-floors-$suffix.png")
 
         val firstGroup = compose.onNodeWithTag("floor-${first.id}").fetchSemanticsNode().boundsInRoot
-        val likes = compose.onNode(
-            hasAnyAncestor(hasTestTag("floor-${first.id}")) and hasContentDescription(App.INSTANCE.getString(R.string.title_agree)),
-            useUnmergedTree = true,
-        ).fetchSemanticsNode().boundsInRoot
         val firstPreview = compose.onNodeWithText("春山", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        assertTrue("Parent action must precede the first reply", likes.bottom <= firstPreview.top)
-        assertVisibleSeparator("adjacent-floors-$suffix.png", firstGroup.bottom)
+        val previewChildren = first.sub_post_list!!.sub_post_list
+        val floorLike = tapHeaderLike(first.author!!, first.content.single().text)
+        val previewLikes = previewChildren.map { child ->
+            tapHeaderLike(child.author!!, child.content.last().text)
+        }
+        compose.runOnIdle {
+            assertEquals(listOf(first.id) + previewChildren.map { it.id }, liked)
+            assertEquals(listOf(first.author!!.id) + previewChildren.map { it.author!!.id }, profiles)
+            assertNull(opened)
+        }
+        val threadImage = "adjacent-floors-$suffix.png"
+        assertGlyphContrast(threadImage, "floor like" to floorLike, "preview like" to previewLikes.first(), minimum = 3.0)
+        assertWhitespace(threadImage, firstGroup.bottom, clearance = 8)
+        val lastPreviewName = compose.onNodeWithText("听风", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val firstPreviewBody = text(previewChildren.first().content.last().text).fetchSemanticsNode().boundsInRoot
+        assertTrue("Preview replies must have breathing room", lastPreviewName.top - firstPreviewBody.bottom >= 12f)
+        assertNoRule(threadImage, firstPreviewBody.bottom, lastPreviewName.top)
         val previewRecipient = App.INSTANCE.getString(R.string.hint_reply, "@春山")
-        assertTextContrast(
+        assertGlyphContrast(
             "adjacent-floors-$suffix.png",
             "floor body" to text(first.content.single().text).fetchSemanticsNode().boundsInRoot,
             "preview body" to text("六点的雾还没散。").fetchSemanticsNode().boundsInRoot,
             "preview recipient" to text(previewRecipient).fetchSemanticsNode().boundsInRoot,
         )
         if (checkDarkPanel) {
-            assertDarkPanel("adjacent-floors-$suffix.png", firstGroup.bottom, firstPreview.center.y)
+            assertDarkPanel("adjacent-floors-$suffix.png", firstPreview.center.y)
         }
 
         compose.onNodeWithTag("comment-list").performScrollToIndex(1)
@@ -226,7 +250,7 @@ class CommentGroupingTest {
         val directedBody = text(children.first().content.last().text).fetchSemanticsNode().boundsInRoot
         val parentBody = text(second.content.single().text).fetchSemanticsNode().boundsInRoot
         val plainBody = text(targetBody).fetchSemanticsNode().boundsInRoot
-        assertTextContrast(
+        assertGlyphContrast(
             "adjacent-subreplies-$suffix.png",
             "detail parent" to parentBody,
             "detail reply" to directedBody,
@@ -237,12 +261,40 @@ class CommentGroupingTest {
         assertEquals("Sibling body alignment", directedBody.left, plainBody.left, 1f)
         compose.onNodeWithText(App.INSTANCE.getString(R.string.hint_reply, "@小岚")).assertDoesNotExist()
         val firstReply = compose.onNodeWithTag("detail-${children.first().id}").fetchSemanticsNode().boundsInRoot
-        assertVisibleSeparator("adjacent-subreplies-$suffix.png", firstReply.bottom)
+        val detailImage = "adjacent-subreplies-$suffix.png"
+        val heading = compose.onNodeWithTag("reply-heading").fetchSemanticsNode().boundsInRoot
+        assertNoRule(detailImage, heading.top - 2f, heading.top + 2f)
+        assertWhitespace(detailImage, firstReply.bottom, clearance = 2)
+        assertReplyRails(detailImage, directedBody, plainBody)
+        val replyLikes = children.map { child -> tapHeaderLike(child.author!!, child.content.last().text) }
+        assertGlyphContrast(detailImage, "detail like" to replyLikes.first(), minimum = 3.0)
+        compose.runOnIdle {
+            assertEquals(children.map { it.id }, liked.takeLast(children.size))
+            assertEquals(children.map { it.author!!.id }, profiles.takeLast(children.size))
+            assertNull(replyTarget)
+        }
         text(targetBody).performTouchInput { click(percentOffset(0.85f, 0.5f)) }
         compose.runOnIdle { assertEquals(target.id, replyTarget) }
     }
 
-    private fun assertTextContrast(fileName: String, vararg labels: Pair<String, Rect>) {
+    private fun tapHeaderLike(author: User, body: String): Rect {
+        val name = compose.onNodeWithText(author.nameShow, useUnmergedTree = true)
+        val nameBounds = name.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val bodyTop = text(body).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        val buttons = compose.onAllNodes(hasClickAction() and hasContentDescription(App.INSTANCE.getString(R.string.title_agree)))
+        val matches = buttons.fetchSemanticsNodes().map { it.boundsInRoot }.filter { rect ->
+            rect.left >= nameBounds.right && rect.top < nameBounds.bottom && rect.bottom > nameBounds.top
+        }
+        assertEquals("Expected one like action beside ${author.nameShow}", 1, matches.size)
+        val target = matches.single()
+        assertTrue("Action must precede its body", target.bottom <= bodyTop)
+        assertTrue("Touch target must be at least 48dp at mdpi", target.width >= 48f && target.height >= 48f)
+        name.performTouchInput { click() }
+        compose.onRoot().performTouchInput { click(target.center) }
+        return target
+    }
+
+    private fun assertGlyphContrast(fileName: String, vararg labels: Pair<String, Rect>, minimum: Double = 4.5) {
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
         try {
             for ((name, bounds) in labels) {
@@ -251,19 +303,19 @@ class CommentGroupingTest {
                 var legiblePixels = 0
                 for (y in bounds.top.roundToInt() until bounds.bottom.roundToInt()) {
                     for (x in left until bounds.right.roundToInt()) {
-                        if (ColorUtils.calculateContrast(image.getPixel(x, y), background) >= 4.5) {
+                        if (ColorUtils.calculateContrast(image.getPixel(x, y), background) >= minimum) {
                             legiblePixels++
                         }
                     }
                 }
-                assertTrue("$name needs visible glyph strokes at 4.5:1 in $fileName", legiblePixels >= 8)
+                assertTrue("$name needs visible glyph strokes at $minimum:1 in $fileName", legiblePixels >= 8)
             }
         } finally {
             image.recycle()
         }
     }
 
-    private fun assertDarkPanel(fileName: String, floorBottom: Float, previewCenterY: Float) {
+    private fun assertDarkPanel(fileName: String, previewCenterY: Float) {
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
         try {
             val y = previewCenterY.roundToInt()
@@ -272,23 +324,53 @@ class CommentGroupingTest {
             val railX = (1 until image.width / 2).first { image.getPixel(it, y) != surface }
             val rail = image.getPixel(railX, y)
             val panel = image.getPixel(railX + 3, y)
-            val divider = image.getPixel(image.width / 2, floorBottom.roundToInt() - 1)
             assertNotEquals("Preview panel must have its own surface", surface, panel)
-            assertTrue("Floor divider must stand out from the dark surface", ColorUtils.calculateContrast(divider, surface) >= 1.25)
             assertTrue("Inset rail must stand out from the dark panel", ColorUtils.calculateContrast(rail, panel) >= 1.25)
         } finally {
             image.recycle()
         }
     }
 
-    // At mdpi, the final pixel row crosses the inset divider and the outer gutter.
-    private fun assertVisibleSeparator(fileName: String, bottom: Float) {
+    private fun assertWhitespace(fileName: String, junction: Float, clearance: Int) {
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
         try {
-            val y = bottom.roundToInt() - 1
-            val line = image.getPixel(image.width / 2, y)
-            assertNotEquals("No separator across the adjacent items", image.getPixel(0, y), line)
-            assertNotEquals("Boundary color should differ from the surface above it", image.getPixel(image.width / 2, y - 1), line)
+            val boundary = junction.roundToInt()
+            for (y in boundary - clearance until boundary + clearance) {
+                val surface = image.getPixel(0, y)
+                assertTrue("Expected a clear row at y=$y in $fileName",
+                    (0 until image.width).all { x -> image.getPixel(x, y) == surface })
+            }
+        } finally {
+            image.recycle()
+        }
+    }
+
+    private fun assertReplyRails(fileName: String, firstBody: Rect, secondBody: Rect) {
+        val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
+        try {
+            fun railAt(body: Rect): List<Int> {
+                val y = body.center.y.roundToInt()
+                val surface = image.getPixel(0, y)
+                return (1 until body.left.roundToInt()).filter { x -> image.getPixel(x, y) != surface }
+            }
+            val firstRail = railAt(firstBody)
+            assertTrue("Each reply should have a narrow indentation rail", firstRail.size in 1..3)
+            assertEquals("Sibling reply rails must align", firstRail, railAt(secondBody))
+        } finally {
+            image.recycle()
+        }
+    }
+
+    private fun assertNoRule(fileName: String, top: Float, bottom: Float) {
+        val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
+        try {
+            for (y in top.roundToInt()..bottom.roundToInt()) {
+                val line = image.getPixel(image.width / 2, y)
+                val crossesRow = (image.width / 4 until image.width * 3 / 4 step 4).all { x ->
+                    image.getPixel(x, y) == line && image.getPixel(x, y - 1) != line && image.getPixel(x, y + 1) != line
+                }
+                assertTrue("Unexpected horizontal divider at y=$y in $fileName", !crossesRow)
+            }
         } finally {
             image.recycle()
         }
