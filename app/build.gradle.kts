@@ -14,12 +14,17 @@ plugins {
 
 // Tieba Native is an independent fork: CI debug builds are not upstream releases.
 val isSelfBuild = true
-val applicationVersionCode = property.versionCode
-var applicationVersionName = property.versionName
-val isPerVersion = property.isPreRelease
-if (isPerVersion) {
-    applicationVersionName += "-${property.preReleaseName}.${property.preReleaseVer}"
-}
+// Resolve HEAD once so a concurrent checkout cannot mix one commit's name with another's code.
+fun git(vararg args: String): String = providers.exec {
+    workingDir(rootDir)
+    commandLine("git", *args)
+}.standardOutput.asText.get().trim()
+
+val (shallow, sourceCommit) = git("rev-parse", "--is-shallow-repository", "HEAD").lines()
+check(shallow == "false") { "Computing Android versionCode requires the full history. Run git fetch --unshallow." }
+val applicationVersionName = "${property.versionName}+${sourceCommit.take(12)}"
+val applicationVersionCode = Math.addExact(property.versionCodeBase, git("rev-list", "--count", sourceCommit).toInt())
+
 wire {
     sourcePath { srcDir("src/main/protos") }
     kotlin { android = true }
@@ -87,7 +92,7 @@ android {
     applicationVariants.configureEach {
         val variant = this
         outputs.configureEach {
-            (this as BaseVariantOutputImpl).outputFileName = "${variant.buildType.name}-${applicationVersionName}(${applicationVersionCode}).apk"
+            (this as BaseVariantOutputImpl).outputFileName = "Tieba-Native-${applicationVersionName}-${variant.buildType.name}.apk"
         }
         kotlin.sourceSets {
             getByName(variant.name) { kotlin.srcDir("build/generated/ksp/${variant.name}/kotlin") }
