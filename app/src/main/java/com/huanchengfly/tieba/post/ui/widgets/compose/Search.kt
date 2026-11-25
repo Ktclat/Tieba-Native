@@ -156,6 +156,7 @@ fun SearchThreadList(
     onMainPostClick: (SearchThreadBean.MainPost) -> Unit = {},
     hideForum: Boolean = false,
     searchKeyword: String? = null,
+    onReplyClick: (SearchThreadBean.ThreadInfoBean) -> Unit = onItemClick,
     footer: LazyListScope.() -> Unit = {},
     header: LazyListScope.() -> Unit = {},
 ) {
@@ -168,6 +169,7 @@ fun SearchThreadList(
             SearchThreadItem(
                 item = item,
                 onClick = onItemClick,
+                onReplyClick = onReplyClick,
                 onUserClick = onItemUserClick,
                 onForumClick = onItemForumClick,
                 onQuotePostClick = onQuotePostClick,
@@ -226,6 +228,7 @@ fun SearchThreadItem(
     onMainPostClick: (SearchThreadBean.MainPost) -> Unit = {},
     hideForum: Boolean = false,
     searchKeyword: String? = null,
+    onReplyClick: (SearchThreadBean.ThreadInfoBean) -> Unit = onClick,
 ) {
     Card(
         modifier = modifier,
@@ -290,20 +293,20 @@ fun SearchThreadItem(
         action = {
             Row(modifier = Modifier.fillMaxWidth()) {
                 ThreadReplyBtn(
-                    replyNum = item.postNum.toInt(),
-                    onClick = {},
+                    replyNum = item.postNum.toIntOrNull() ?: 0,
+                    onClick = { onReplyClick(item) },
                     modifier = Modifier.weight(1f)
                 )
 
                 ThreadAgreeBtn(
                     hasAgree = false,
-                    agreeNum = item.likeNum.toInt(),
+                    agreeNum = item.likeNum.toIntOrNull() ?: 0,
                     onClick = {},
                     modifier = Modifier.weight(1f)
                 )
 
                 ThreadShareBtn(
-                    shareNum = item.shareNum.toLong(),
+                    shareNum = item.shareNum.toLongOrNull() ?: 0L,
                     onClick = {},
                     modifier = Modifier.weight(1f)
                 )

@@ -1137,7 +1137,6 @@ object MixedTiebaApiImpl : ITiebaApi {
                     AddPostRequest(
                         AddPostRequestData(
                             anonymous = "1",
-                            barrage_time = "0".takeIf { postId.isNullOrEmpty() },
                             can_no_forum = "0",
                             common = buildCommonRequest(
                                 clientVersion = ClientVersion.TIEBA_V12_POST,
@@ -1159,20 +1158,14 @@ object MixedTiebaApiImpl : ITiebaApi {
                             name_show = nameShow ?: AccountUtil.getAccountInfo { this.nameShow }
                                 .orEmpty(),
                             new_vcode = "1",
-                            post_from = if (postId.isNullOrEmpty() && subPostId.isNullOrEmpty()) "13" else if (subPostId.isNullOrEmpty()) "0" else null,
-                            quote_id = postId,
-                            reply_uid = replyUserId.takeIf { !postId.isNullOrEmpty() },
-                            repostid = postId,
-                            sub_post_id = subPostId,
                             show_custom_figure = 0,
                             takephoto_num = "0",
                             tid = threadId,
-                            v_fid = "".takeIf { postId.isNullOrEmpty() },
-                            v_fname = "".takeIf { postId.isNullOrEmpty() },
                             vcode_tag = "12",
-                        )
+                        ).withReplyTarget(postId, subPostId, replyUserId)
                     ),
-                    clientVersion = ClientVersion.TIEBA_V12_POST
+                    clientVersion = ClientVersion.TIEBA_V12_POST,
+                    oneShot = true,
                 )
             )
     }
@@ -1473,4 +1466,28 @@ object MixedTiebaApiImpl : ITiebaApi {
             )
         )
     }
+}
+
+internal fun AddPostRequestData.withReplyTarget(
+    postId: String?,
+    subPostId: String?,
+    replyUserId: String?,
+): AddPostRequestData {
+    val floor = postId?.takeUnless { it.isBlank() || it == "0" }
+    val nested = subPostId?.takeUnless { it.isBlank() || it == "0" }
+    require(nested == null || floor != null)
+    return copy(
+        post_from = when {
+            floor == null -> "13"
+            nested == null -> "0"
+            else -> null
+        },
+        barrage_time = "0".takeIf { floor == null },
+        quote_id = floor,
+        repostid = floor,
+        reply_uid = replyUserId?.takeIf { floor != null && (it.toLongOrNull() ?: 0L) > 0L },
+        sub_post_id = nested,
+        v_fid = "".takeIf { floor == null },
+        v_fname = "".takeIf { floor == null },
+    )
 }

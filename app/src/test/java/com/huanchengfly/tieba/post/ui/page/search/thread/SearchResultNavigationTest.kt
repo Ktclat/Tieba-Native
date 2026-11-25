@@ -26,6 +26,13 @@ class SearchResultNavigationTest {
     private val subreply = reply.copy(cid = "30", postInfo = parent)
 
     @Test
+    fun tappingCommentCountOpensRepliesAndKeepsTheMatchedFloorOrSubreply() {
+        assertEquals(ThreadPageDestination(threadId = 10, scrollToReply = true).route, thread.searchDestination(true)?.route)
+        assertEquals(reply.searchDestination()?.route, reply.searchDestination(true)?.route)
+        assertEquals(subreply.searchDestination()?.route, subreply.searchDestination(true)?.route)
+    }
+
+    @Test
     fun resultClickOpensTheMatchingThreadReplyOrSubreply() {
         assertEquals(ThreadPageDestination(threadId = 10).route, thread.searchDestination()?.route)
         assertEquals(

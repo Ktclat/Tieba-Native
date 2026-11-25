@@ -12,11 +12,16 @@ import android.webkit.WebView
 import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.github.panpf.sketch.fetch.newFileUri
 import com.github.panpf.sketch.request.DisplayRequest
@@ -24,20 +29,22 @@ import com.github.panpf.sketch.request.DisplayResult
 import com.github.panpf.sketch.request.execute
 import com.github.panpf.sketch.resize.Scale
 import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.DynamicColorsOptions
+import com.huanchengfly.tieba.post.ui.common.theme.compose.paletteSeed
+import com.huanchengfly.tieba.post.ui.common.theme.compose.toThemeColor
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.App.Companion.INSTANCE
 import com.huanchengfly.tieba.post.App.Companion.translucentBackground
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.BaseActivity
 import com.huanchengfly.tieba.post.dataStore
-import com.huanchengfly.tieba.post.getBoolean
 import com.huanchengfly.tieba.post.getInt
 import com.huanchengfly.tieba.post.getString
 import com.huanchengfly.tieba.post.interfaces.BackgroundTintable
-import com.huanchengfly.tieba.post.putBoolean
-import com.huanchengfly.tieba.post.putString
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.widgets.theme.TintSwipeRefreshLayout
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -60,7 +67,7 @@ object ThemeUtil {
     const val KEY_CUSTOM_STATUS_BAR_FONT_DARK = "custom_status_bar_font_dark"
     const val KEY_CUSTOM_TOOLBAR_PRIMARY_COLOR = "custom_toolbar_primary_color"
     const val KEY_TRANSLUCENT_THEME_BACKGROUND_PATH = "translucent_theme_background_path"
-    const val KEY_USE_DYNAMIC_COLOR_THEME = "useDynamicColorTheme"
+    const val KEY_ACCENT_PALETTE = "accent_palette"
 
     const val THEME_TRANSLUCENT = "translucent"
     const val THEME_TRANSLUCENT_LIGHT = "translucent_light"
@@ -72,6 +79,8 @@ object ThemeUtil {
     const val THEME_PURPLE = "purple"
     const val THEME_PINK = "pink"
     const val THEME_RED = "red"
+    const val THEME_GREEN = "forest"
+    const val THEME_AMBER = "amber"
     const val THEME_BLUE_DARK = "blue_dark"
     const val THEME_GREY_DARK = "grey_dark"
     const val THEME_AMOLED_DARK = "amoled_dark"
@@ -114,23 +123,47 @@ object ThemeUtil {
     }
 
     fun switchTheme(newTheme: String, recordOldTheme: Boolean = true) {
-        if (recordOldTheme) {
-            val oldTheme = getRawTheme()
-            if (!isNightMode(oldTheme)) {
-                dataStore.putString(KEY_OLD_THEME, oldTheme)
+        val previous = getRawTheme()
+        runBlocking {
+            dataStore.edit {
+                if (recordOldTheme && !isNightMode(previous)) it[stringPreferencesKey(KEY_OLD_THEME)] = previous
+                it[stringPreferencesKey(KEY_THEME)] = newTheme
+                if (isTranslucentTheme(newTheme)) it[booleanPreferencesKey(KEY_USE_DYNAMIC_THEME)] = false
             }
         }
-        dataStore.putString(KEY_THEME, newTheme)
         themeState.value = newTheme
     }
 
-    fun switchDynamicTheme() {
-        val currentUseDynamicTheme = dataStore.getBoolean(KEY_USE_DYNAMIC_THEME, false)
-        dataStore.putBoolean(KEY_USE_DYNAMIC_THEME, !currentUseDynamicTheme)
+    suspend fun setWallpaperColors(enabled: Boolean) {
+        dataStore.edit { it[booleanPreferencesKey(KEY_USE_DYNAMIC_THEME)] = enabled }
     }
 
-    fun setUseDynamicTheme(useDynamicTheme: Boolean) {
-        dataStore.putBoolean(KEY_USE_DYNAMIC_THEME, useDynamicTheme)
+    suspend fun selectPalette(palette: String, customColor: Int? = null, toolbar: Boolean = false, darkIcons: Boolean = false) {
+        val current = getRawTheme()
+        val values = dataStore.edit {
+            it[booleanPreferencesKey(KEY_USE_DYNAMIC_THEME)] = false
+            it[stringPreferencesKey(KEY_ACCENT_PALETTE)] = palette
+            if (customColor != null) {
+                it[stringPreferencesKey("custom_primary_color")] = String.format(Locale.ROOT, "#%08X", customColor)
+                it[booleanPreferencesKey(KEY_CUSTOM_TOOLBAR_PRIMARY_COLOR)] = toolbar
+                it[booleanPreferencesKey(KEY_CUSTOM_STATUS_BAR_FONT_DARK)] = darkIcons
+            }
+            val night = isNightMode(current) || (isTranslucentTheme(current) &&
+                it[intPreferencesKey("translucent_background_theme")] == TRANSLUCENT_THEME_DARK)
+            it[stringPreferencesKey(KEY_OLD_THEME)] = palette
+            it[stringPreferencesKey(KEY_THEME)] = if (night) {
+                if (isNightMode(current)) current else it[stringPreferencesKey(KEY_DARK_THEME)] ?: THEME_GREY_DARK
+            } else palette
+        }
+        themeState.value = values[stringPreferencesKey(KEY_THEME)] ?: palette
+    }
+
+    fun paletteForTheme(theme: String, selected: String?, previousDay: String?): String {
+        if (isTranslucentTheme(theme)) return theme
+        if (selected != null) return selected
+        if (isNightMode(theme) && previousDay != null && !isNightMode(previousDay) &&
+            !isTranslucentTheme(previousDay) && previousDay != THEME_DEFAULT) return previousDay
+        return theme
     }
 
     fun isUsingDynamicTheme(): Boolean {
@@ -205,7 +238,7 @@ object ThemeUtil {
     }
 
     fun isTranslucentTheme(): Boolean {
-        return isTranslucentTheme(getRawTheme())
+        return isTranslucentTheme(getCurrentTheme())
     }
 
     @JvmStatic
@@ -224,26 +257,38 @@ object ThemeUtil {
     }
 
     fun isStatusBarFontDark(): Boolean {
-        val theme = getRawTheme()
-        val isToolbarPrimaryColor: Boolean = INSTANCE.appPreferences.toolbarPrimaryColor
-        return if (theme == THEME_CUSTOM) {
-            INSTANCE.appPreferences.customStatusBarFontDark
-        } else if (isTranslucentTheme(theme)) {
-            theme.contains("dark", ignoreCase = true)
-        } else if (!isToolbarPrimaryColor) {
-            !isNightMode(theme)
-        } else {
-            false
+        val theme = getCurrentTheme(checkDynamic = true)
+        val prefs = context.appPreferences
+        val palette = paletteForTheme(theme, dataStore.getString(KEY_ACCENT_PALETTE), prefs.oldTheme)
+        if (!isDynamicTheme(theme) && palette == THEME_CUSTOM && prefs.toolbarPrimaryColor) {
+            return prefs.customStatusBarFontDark
         }
+        val toolbar = App.ThemeDelegate.getColorByAttr(context, R.attr.colorToolbar)
+        return androidx.core.graphics.ColorUtils.calculateLuminance(toolbar) > 0.5
     }
 
     fun isNavigationBarFontDark(): Boolean {
-        return !isNightMode()
+        val bar = App.ThemeDelegate.getColorByAttr(context, R.attr.colorNavBar)
+        return androidx.core.graphics.ColorUtils.calculateLuminance(bar) > 0.5
     }
 
     fun setTheme(context: Activity) {
         val nowTheme = getCurrentTheme()
         context.setTheme(getThemeByName(nowTheme))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isUsingDynamicTheme()) {
+            context.theme.applyStyle(if (isNightMode(nowTheme))
+                com.google.android.material.R.style.ThemeOverlay_Material3Expressive_DynamicColors_Dark
+            else com.google.android.material.R.style.ThemeOverlay_Material3Expressive_DynamicColors_Light, true)
+        } else if (!isTranslucentTheme(nowTheme) && DynamicColors.isDynamicColorAvailable()) {
+            val prefs = context.appPreferences
+            val palette = paletteForTheme(nowTheme, dataStore.getString(KEY_ACCENT_PALETTE), prefs.oldTheme)
+            val seed = paletteSeed(context, palette, prefs.customPrimaryColor.toThemeColor())
+            if (seed != null) {
+                DynamicColors.applyToActivityIfAvailable(
+                    context, DynamicColorsOptions.Builder().setContentBasedSource(seed.toArgb()).build(),
+                )
+            }
+        }
     }
 
     @JvmOverloads
@@ -255,12 +300,12 @@ object ThemeUtil {
         if (isTranslucentTheme(nowTheme)) {
             val colorTheme =
                 dataStore.getInt("translucent_background_theme", TRANSLUCENT_THEME_LIGHT)
-            nowTheme = if (colorTheme == TRANSLUCENT_THEME_DARK) {
-                THEME_TRANSLUCENT_DARK
-            } else {
-                THEME_TRANSLUCENT_LIGHT
-            }
-        } else if (checkDynamic && isUsingDynamicTheme() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val dark = colorTheme == TRANSLUCENT_THEME_DARK
+            nowTheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isUsingDynamicTheme()) {
+                if (dark) THEME_GREY_DARK else THEME_DEFAULT
+            } else if (dark) THEME_TRANSLUCENT_DARK else THEME_TRANSLUCENT_LIGHT
+        }
+        if (checkDynamic && isUsingDynamicTheme() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             nowTheme = "${nowTheme}_dynamic"
         }
         return nowTheme
@@ -405,6 +450,9 @@ object ThemeUtil {
             THEME_CUSTOM,
             THEME_DEFAULT,
             THEME_BLACK,
+            THEME_BLUE,
+            THEME_GREEN,
+            THEME_AMBER,
             THEME_PURPLE,
             THEME_PINK,
             THEME_RED,

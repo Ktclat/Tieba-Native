@@ -25,7 +25,8 @@ fun buildMultipartBody(
 class MyMultipartBody internal constructor(
     private val boundaryByteString: ByteString,
     @get:JvmName("type") val type: MediaType,
-    @get:JvmName("parts") val parts: List<Part>
+    @get:JvmName("parts") val parts: List<Part>,
+    private val oneShot: Boolean,
 ) : RequestBody() {
     private val contentType: MediaType = "$type; boundary=$boundary".toMediaType()
     private var contentLength = -1L
@@ -43,6 +44,8 @@ class MyMultipartBody internal constructor(
 
     /** A combination of [type] and [boundaryByteString]. */
     override fun contentType(): MediaType = contentType
+
+    override fun isOneShot() = oneShot
 
     @Throws(IOException::class)
     override fun contentLength(): Long {
@@ -176,6 +179,7 @@ class MyMultipartBody internal constructor(
 
     class Builder @JvmOverloads constructor(boundary: String = UUID.randomUUID().toString()) {
         private val boundary: ByteString = boundary.encodeUtf8()
+        var oneShot: Boolean = false
         private var type = MIXED
         private val parts = mutableListOf<Part>()
 
@@ -216,7 +220,7 @@ class MyMultipartBody internal constructor(
         /** Assemble the specified parts into a request body. */
         fun build(): MyMultipartBody {
             check(parts.isNotEmpty()) { "Multipart body must have at least one part." }
-            return MyMultipartBody(boundary, type, parts.toImmutableList())
+            return MyMultipartBody(boundary, type, parts.toImmutableList(), oneShot)
         }
     }
 

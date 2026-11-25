@@ -349,6 +349,9 @@ val Post.contentRenders: ImmutableList<PbContentRender>
         }.toImmutableList()
     }
 
+val User.displayPortrait: String
+    get() = portrait.ifBlank { portraith }
+
 val User.bawuType: String?
     get() = if (is_bawu == 1) {
         if (bawu_type == "manager") "吧主" else "小吧主"

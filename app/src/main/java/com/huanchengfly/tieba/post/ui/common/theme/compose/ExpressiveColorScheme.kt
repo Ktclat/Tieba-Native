@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.common.theme.compose
 
+import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
@@ -15,17 +16,30 @@ import androidx.compose.ui.graphics.toArgb
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.google.android.material.color.utilities.Hct
-import com.google.android.material.color.utilities.SchemeFidelity
+import com.google.android.material.color.utilities.SchemeContent
 
 private data class PaletteKey(
     val seed: Color?,
     val dark: Boolean,
+    val contrast: Double,
     val amoled: Boolean,
     val wallpaperConfiguration: Configuration?,
     val wallpaperAccent: Int?,
 )
 
 private val palettes = LruCache<PaletteKey, ColorScheme>(16)
+
+internal fun paletteSeed(context: Context, palette: String, customSeed: Color?): Color? = when (palette) {
+    ThemeUtil.THEME_GREEN -> Color(0xFF117757)
+    ThemeUtil.THEME_AMBER -> Color(0xFFC67417)
+    ThemeUtil.THEME_PINK -> Color(context.getColor(R.color.theme_color_primary_pink))
+    ThemeUtil.THEME_PURPLE -> Color(context.getColor(R.color.theme_color_primary_purple))
+    ThemeUtil.THEME_RED -> Color(context.getColor(R.color.theme_color_primary_red))
+    ThemeUtil.THEME_BLACK -> Color.Black
+    ThemeUtil.THEME_BLUE, ThemeUtil.THEME_BLUE_DARK -> Color(context.getColor(R.color.tieba))
+    ThemeUtil.THEME_CUSTOM -> customSeed
+    else -> if (ThemeUtil.isTranslucentTheme(palette)) customSeed else null
+}
 
 /** Native View attributes and Compose controls resolve their roles from the same palette. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -35,20 +49,17 @@ internal fun appColorScheme(
     dark: Boolean,
     dynamic: Boolean,
     customSeed: Color?,
+    palette: String = name,
 ): ColorScheme {
-    val seed = when (name) {
-        ThemeUtil.THEME_PINK -> Color(context.getColor(R.color.theme_color_primary_pink))
-        ThemeUtil.THEME_PURPLE -> Color(context.getColor(R.color.theme_color_primary_purple))
-        ThemeUtil.THEME_RED -> Color(context.getColor(R.color.theme_color_primary_red))
-        ThemeUtil.THEME_BLACK -> Color.Black
-        ThemeUtil.THEME_BLUE, ThemeUtil.THEME_BLUE_DARK -> Color(context.getColor(R.color.tieba))
-        ThemeUtil.THEME_CUSTOM -> customSeed
-        else -> if (ThemeUtil.isTranslucentTheme(name)) customSeed else null
-    }
+    val seed = paletteSeed(context, palette, customSeed)
+    val contrast = if (seed != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        context.getSystemService(UiModeManager::class.java)?.contrast?.toDouble() ?: 0.0
+    } else 0.0
     val useWallpaper = dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val key = PaletteKey(
         seed = seed,
         dark = dark,
+        contrast = contrast,
         amoled = name == ThemeUtil.THEME_AMOLED_DARK,
         wallpaperConfiguration = if (useWallpaper) Configuration(context.resources.configuration) else null,
         wallpaperAccent = if (useWallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -59,7 +70,7 @@ internal fun appColorScheme(
     val base = when {
         useWallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        seed != null -> schemeFromUserColor(seed, dark)
+        seed != null -> schemeFromUserColor(seed, dark, contrast)
         dark -> darkColorScheme()
         else -> expressiveLightColorScheme()
     }
@@ -71,8 +82,8 @@ internal fun appColorScheme(
 }
 
 /** A user-picked color keeps its hue. Material Color Utilities supplies the paired contrast roles. */
-private fun schemeFromUserColor(seed: Color, dark: Boolean): ColorScheme {
-    val scheme = SchemeFidelity(Hct.fromInt(seed.toArgb()), dark, 0.0)
+private fun schemeFromUserColor(seed: Color, dark: Boolean, contrast: Double): ColorScheme {
+    val scheme = SchemeContent(Hct.fromInt(seed.toArgb()), dark, contrast)
     return ColorScheme(
         primary = Color(scheme.primary),
         onPrimary = Color(scheme.onPrimary),

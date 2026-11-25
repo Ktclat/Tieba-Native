@@ -393,6 +393,8 @@
     <string name="delete_history_success">删除历史记录成功</string>
     <string name="error_tip">出错了</string>
     <string name="insert_emotions">插入表情</string>
+    <string name="login_to_reply">登录后回复</string>
+    <string name="reply_retry">重试发送</string>
     <string name="send_reply">发送回复</string>
     <string name="insert_photo">插入图片</string>
     <string name="emoticon">表情 %s</string>

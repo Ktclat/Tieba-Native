@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,7 +61,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestin
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
-import com.huanchengfly.tieba.post.ui.page.reply.ReplyDialog
+import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
 import com.huanchengfly.tieba.post.ui.page.thread.PostCard
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
@@ -187,7 +188,8 @@ internal fun SubPostsContent(
 
     val lazyListState = rememberLazyListState()
 
-    PositionSubPostOnOpen(lazyListState, subPostId, subPosts)
+    val postedReplyId by viewModel.uiState.collectPartialAsState(SubPostsUiState::postedReplyId, initial = null)
+    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, subPosts)
 
     val confirmDeleteDialogState = rememberDialogState()
     var deleteSubPost by remember { mutableStateOf<ImmutableHolder<SubPostList>?>(null) }
@@ -234,33 +236,16 @@ internal fun SubPostsContent(
         )
     }
 
-    val replyDialogState = rememberDialogState()
-    var currentReplyArgs by remember { mutableStateOf<ReplyArgs?>(null) }
-    if (currentReplyArgs != null) {
-        ReplyDialog(args = currentReplyArgs!!, state = replyDialogState)
-    }
-
-//    onGlobalEvent<GlobalEvent.ReplySuccess>(
-//        filter = { it.threadId == threadId && it.postId == postId }
-//    ) { event ->
-//        viewModel.send(
-//            SubPostsUiIntent.Load(
-//                forumId,
-//                threadId,
-//                postId,
-//                subPostId.takeIf { loadFromSubPost } ?: 0L
-//            )
-//        )
-//    }
-
-    fun showReplyDialog(args: ReplyArgs) {
-        currentReplyArgs = args
-        replyDialogState.show()
-    }
+    val parentId = post?.get { id }?.takeIf { it > 0L } ?: postId
+    val replyForumId = forum?.get { id }?.takeIf { it > 0L } ?: forumId
+    fun openReply(args: ReplyArgs) = navigator.openReply(
+        args.copy(tbs = anti?.get { tbs }?.takeIf { viewModel.uiState.value.loadedAccountId == account?.uid }),
+        account?.uid,
+    )
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = subPosts.isEmpty(),
+        isEmpty = post == null && !isRefreshing,
         isError = false,
         isLoading = isRefreshing
     ) {
@@ -303,7 +288,7 @@ internal fun SubPostsContent(
                 )
             },
             bottomBar = {
-                if (account != null && !LocalContext.current.appPreferences.hideReply) {
+                if (!LocalContext.current.appPreferences.hideReply) {
                     Column(
                         modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
                     ) {
@@ -314,11 +299,13 @@ internal fun SubPostsContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Avatar(
-                                data = StringUtil.getAvatarUrl(account.portrait),
-                                size = Sizes.Tiny,
-                                contentDescription = account.name,
-                            )
+                            if (account != null) {
+                                Avatar(
+                                    data = StringUtil.getAvatarUrl(account.portrait),
+                                    size = Sizes.Tiny,
+                                    contentDescription = account.name,
+                                )
+                            }
                             Row(
                                 modifier = Modifier
                                     .padding(vertical = 8.dp)
@@ -326,23 +313,26 @@ internal fun SubPostsContent(
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(MaterialTheme.colorScheme.secondaryContainer)
                                     .clickable {
-                                        val fid = forum?.get { id } ?: forumId
                                         val forumName = forum?.get { name }
                                         if (!forumName.isNullOrEmpty()) {
-                                            showReplyDialog(
+                                            openReply(
                                                 ReplyArgs(
-                                                    forumId = fid,
+                                                    forumId = replyForumId,
                                                     forumName = forumName,
                                                     threadId = threadId,
-                                                    postId = postId,
+                                                    postId = parentId,
+                                                    replyUserId = post?.get { author?.id?.takeIf { it > 0L } ?: author_id },
+                                                    replyUserName = post?.get { author?.nameShow?.ifBlank { null } ?: author?.name },
+                                                    replyUserPortrait = post?.get { author?.portrait },
                                                 )
                                             )
                                         }
                                     }
-                                    .padding(8.dp),
+                                    .heightIn(min = 48.dp).padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    text = stringResource(id = R.string.tip_reply_thread),
+                                    text = stringResource(if (account != null) R.string.tip_reply_thread else R.string.login_to_reply),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
@@ -405,13 +395,13 @@ internal fun SubPostsContent(
                                         )
                                     },
                                     onReplyClick = {
-                                        showReplyDialog(
+                                        openReply(
                                             ReplyArgs(
-                                                forumId = forumId,
+                                                forumId = replyForumId,
                                                 forumName = forum?.get { name } ?: "",
                                                 threadId = threadId,
-                                                postId = postId,
-                                                replyUserId = it.author?.id ?: it.author_id,
+                                                postId = parentId,
+                                                replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
                                                 replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                                                     ?: it.author?.name,
                                                 replyUserPortrait = it.author?.portrait,
@@ -454,14 +444,14 @@ internal fun SubPostsContent(
                                 }
                             },
                             onReplyClick = {
-                                showReplyDialog(
+                                openReply(
                                     ReplyArgs(
-                                        forumId = forumId,
+                                        forumId = replyForumId,
                                         forumName = forum?.get { name } ?: "",
                                         threadId = threadId,
-                                        postId = postId,
+                                        postId = parentId,
                                         subPostId = it.id,
-                                        replyUserId = it.author?.id ?: it.author_id,
+                                        replyUserId = it.author?.id?.takeIf { id -> id > 0L } ?: it.author_id.takeIf { id -> id > 0L },
                                         replyUserName = it.author?.nameShow.takeIf { name -> !name.isNullOrEmpty() }
                                             ?: it.author?.name,
                                         replyUserPortrait = it.author?.portrait,

@@ -41,7 +41,7 @@ object FrsPageRepository {
                 val userById = response.data_.user_list.associateBy { it.id }
                 val threadList = response.data_.thread_list
                     .map { threadInfo ->
-                        threadInfo.copy(author = userById[threadInfo.authorId])
+                        threadInfo.copy(author = userById.resolveAuthor(threadInfo.author, threadInfo.authorId))
                     }
                     .filter { !App.INSTANCE.appPreferences.blockVideo || it.videoInfo == null }
                     .filter { it.ala_info == null } // 去他妈的直播
@@ -66,7 +66,7 @@ object FrsPageRepository {
                 val userById = response.data_.user_list.associateBy { it.id }
                 val threadList = response.data_.thread_list
                     .map { threadInfo ->
-                        threadInfo.copy(author = userById[threadInfo.authorId])
+                        threadInfo.copy(author = userById.resolveAuthor(threadInfo.author, threadInfo.authorId))
                     }
                     .filter { !App.INSTANCE.appPreferences.blockVideo || it.videoInfo == null }
                     .filter { it.ala_info == null } // 去他妈的直播

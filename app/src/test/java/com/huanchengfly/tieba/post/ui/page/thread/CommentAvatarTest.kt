@@ -21,6 +21,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import com.github.panpf.sketch.Sketch
+import com.huanchengfly.tieba.post.utils.StringUtil
 import com.github.panpf.sketch.SketchFactory
 import com.github.panpf.sketch.SketchSingleton
 import com.github.panpf.sketch.http.OkHttpStack
@@ -62,7 +63,13 @@ class CommentAvatarTest {
 
     @Test fun portraitPreservesSuppliedUrlsAndResolvesTokensOverHttps() {
         assertNull(commentPortraitUrl(" "))
-        assertEquals("https://tb.himg.baidu.com/sys/portrait/item/token", commentPortraitUrl(" token "))
+        val canonical = "https://himg.bdimg.com/sys/portrait/item/tb.token?t=1729"
+        assertEquals(canonical, commentPortraitUrl(" tb.token?t=1729 "))
+        assertEquals(canonical, commentPortraitUrl("//tb.himg.baidu.com/sys/portrait/item/tb.token?t=1729"))
+        assertEquals(canonical, StringUtil.getAvatarUrl("http://tb.himg.baidu.com/sys/portrait/item/tb.token?t=1729"))
+        assertEquals(canonical, StringUtil.getAvatarUrl("/sys/portrait/item/tb.token?t=1729"))
+        assertEquals("https://himg.bdimg.com/sys/portraith/item/tb.token?t=1729",
+            StringUtil.getBigAvatarUrl("tb.token?t=1729"))
         assertEquals("http://example.org/p?a=1", commentPortraitUrl("http://example.org/p?a=1"))
         assertEquals("https://example.org/p", commentPortraitUrl("HTTPS://example.org/p"))
         assertEquals("https://example.org/p", commentPortraitUrl("//example.org/p"))
@@ -131,7 +138,7 @@ class CommentAvatarRenderingTest {
                 condition()
             }
         }
-        compose.runOnIdle { portrait = "https://fixture.invalid/portrait.png" }
+        compose.runOnIdle { portrait = "tb.fixture?t=2" }
         try {
             awaitSketch {
                 check(fixture.error == null) { "Unexpected Sketch error: ${fixture.error}" }
@@ -161,7 +168,7 @@ class AvatarFixtureApplication : Application(), SketchFactory {
 
     override fun createSketch(): Sketch {
         val client = OkHttpClient.Builder().addInterceptor { chain ->
-            val ok = chain.request().url.encodedPath == "/portrait.png"
+            val ok = chain.request().url.toString() == "https://himg.bdimg.com/sys/portrait/item/tb.fixture?t=2"
             val bytes = if (ok) {
                 started.countDown()
                 check(release.await(30, TimeUnit.SECONDS)) { "PNG fixture was never released" }

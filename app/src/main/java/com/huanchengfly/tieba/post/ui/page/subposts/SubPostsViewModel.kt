@@ -2,6 +2,9 @@ package com.huanchengfly.tieba.post.ui.page.subposts
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.lifecycle.viewModelScope
+import com.huanchengfly.tieba.post.arch.onGlobalEvent
+import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.AgreeBean
 import com.huanchengfly.tieba.post.api.models.CommonResponse
@@ -12,6 +15,7 @@ import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.contentRenders
+import com.huanchengfly.tieba.post.repository.withFloorAuthors
 import com.huanchengfly.tieba.post.api.models.protos.pbFloor.PbFloorResponse
 import com.huanchengfly.tieba.post.api.models.protos.renders
 import com.huanchengfly.tieba.post.api.models.protos.updateAgreeStatus
@@ -47,6 +51,19 @@ import javax.inject.Inject
 @HiltViewModel
 class SubPostsViewModel @Inject constructor() :
     BaseViewModel<SubPostsUiIntent, SubPostsPartialChange, SubPostsUiState, SubPostsUiEvent>() {
+    init {
+        viewModelScope.onGlobalEvent<GlobalEvent.ReplySuccess> { reply ->
+            val state = uiState.value
+            val parent = state.post?.get { id }
+            val fid = state.forum?.get { id }
+            val newId = reply.newSubPostId
+            if (state.thread?.get { id } == reply.threadId && parent != null && parent == reply.postId &&
+                fid != null && newId != null) {
+                send(SubPostsUiIntent.Load(fid, reply.threadId, parent, newId, focusReply = true))
+            }
+        }
+    }
+
     override fun createInitialState() = SubPostsUiState()
 
     override fun createPartialChangeProducer() = SubPostsPartialChangeProducer
@@ -66,16 +83,18 @@ class SubPostsViewModel @Inject constructor() :
                     .flatMapConcat { it.producePartialChange() },
             )
 
-        private fun SubPostsUiIntent.Load.producePartialChange(): Flow<SubPostsPartialChange.Load> =
-            TiebaApi.getInstance()
+        private fun SubPostsUiIntent.Load.producePartialChange(): Flow<SubPostsPartialChange.Load> {
+            val accountId = AccountUtil.currentAccount?.uid
+            return TiebaApi.getInstance()
                 .pbFloorFlow(threadId, postId, forumId, page, subPostId)
                 .map<PbFloorResponse, SubPostsPartialChange.Load> { response ->
-                    val post = checkNotNull(response.data_?.post)
-                    val page = checkNotNull(response.data_?.page)
-                    val forum = checkNotNull(response.data_?.forum)
-                    val thread = checkNotNull(response.data_?.thread)
-                    val anti = checkNotNull(response.data_?.anti)
-                    val subPosts = response.data_?.subpost_list.orEmpty().map {
+                    val data = checkNotNull(response.data_).withFloorAuthors()
+                    val post = checkNotNull(data.post)
+                    val page = checkNotNull(data.page)
+                    val forum = checkNotNull(data.forum)
+                    val thread = checkNotNull(data.thread)
+                    val anti = checkNotNull(data.anti)
+                    val subPosts = data.subpost_list.map {
                         SubPostItemData(
                             it.wrapImmutable(),
                             it.content.renders.toImmutableList(),
@@ -91,18 +110,22 @@ class SubPostsViewModel @Inject constructor() :
                         page.current_page < page.total_page,
                         page.current_page,
                         page.total_page,
-                        page.total_count
+                        page.total_count,
+                        loadedAccountId = accountId,
+                        postedReplyId = subPostId.takeIf { focusReply },
                     )
                 }
                 .onStart { emit(SubPostsPartialChange.Load.Start) }
                 .catch { emit(SubPostsPartialChange.Load.Failure(it)) }
+        }
 
         private fun SubPostsUiIntent.LoadMore.producePartialChange(): Flow<SubPostsPartialChange.LoadMore> =
             TiebaApi.getInstance()
                 .pbFloorFlow(threadId, postId, forumId, page, subPostId)
                 .map<PbFloorResponse, SubPostsPartialChange.LoadMore> { response ->
-                    val page = checkNotNull(response.data_?.page)
-                    val subPosts = response.data_?.subpost_list.orEmpty().map {
+                    val data = checkNotNull(response.data_).withFloorAuthors()
+                    val page = checkNotNull(data.page)
+                    val subPosts = data.subpost_list.map {
                         SubPostItemData(
                             it.wrapImmutable(),
                             it.content.renders.toImmutableList(),
@@ -167,6 +190,7 @@ sealed interface SubPostsUiIntent : UiIntent {
         val postId: Long,
         val subPostId: Long = 0L,
         val page: Int = 1,
+        val focusReply: Boolean = false,
     ) : SubPostsUiIntent
 
     data class LoadMore(
@@ -210,6 +234,9 @@ sealed interface SubPostsPartialChange : PartialChange<SubPostsUiState> {
                     currentPage = currentPage,
                     totalPage = totalPage,
                     totalCount = totalCount,
+                    anti = anti,
+                    loadedAccountId = loadedAccountId,
+                    postedReplyId = postedReplyId ?: oldState.postedReplyId,
                     forum = forum,
                     thread = thread,
                     post = post,
@@ -235,6 +262,8 @@ sealed interface SubPostsPartialChange : PartialChange<SubPostsUiState> {
             val currentPage: Int,
             val totalPage: Int,
             val totalCount: Int,
+            val postedReplyId: Long? = null,
+            val loadedAccountId: String? = null,
         ) : Load()
 
         data class Failure(val throwable: Throwable) : Load()
@@ -393,6 +422,8 @@ private fun SubPostItemData.updateAgreeStatus(hasAgreed: Int): SubPostItemData =
     copy(subPost = subPost.getImmutable { updateAgreeStatus(hasAgreed) })
 
 data class SubPostsUiState(
+    val postedReplyId: Long? = null,
+    val loadedAccountId: String? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
 

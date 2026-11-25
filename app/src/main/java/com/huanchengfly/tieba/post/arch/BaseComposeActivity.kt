@@ -62,7 +62,11 @@ abstract class BaseComposeActivity : BaseActivity() {
                     val preferences = LocalDisplayPreferences.current
                     val colors = MaterialTheme.colorScheme
                     val topBar = if (preferences.toolbarPrimaryColor) colors.primary else colors.surface
-                    val darkStatusIcons = if (preferences.toolbarPrimaryColor && LocalAppThemeName.current == ThemeUtil.THEME_CUSTOM) {
+                    val palette = ThemeUtil.paletteForTheme(
+                        LocalAppThemeName.current, preferences.accentPalette, preferences.previousDayPalette,
+                    )
+                    val darkStatusIcons = if (preferences.toolbarPrimaryColor && !preferences.dynamicColor &&
+                        palette == ThemeUtil.THEME_CUSTOM) {
                         preferences.customDarkStatusIcons
                     } else topBar.luminance() > 0.179f
                     val darkNavigationIcons = colors.surface.luminance() > 0.179f

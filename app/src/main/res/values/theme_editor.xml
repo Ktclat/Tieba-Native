@@ -3,4 +3,16 @@
     <string name="theme_color_hue">色相</string>
     <string name="theme_color_saturation">饱和度</string>
     <string name="theme_color_brightness">明度</string>
+    <string name="theme_follow_wallpaper">跟随系统壁纸</string>
+    <string name="theme_wallpaper_summary">使用 Android 从系统壁纸生成的配色</string>
+    <string name="theme_app_palette">应用配色</string>
+    <string name="theme_custom_color">自定义颜色</string>
+    <string name="theme_expressive">经典薰衣草</string>
+    <string name="theme_tieba_blue">贴吧蓝</string>
+    <string name="theme_forest">森林绿</string>
+    <string name="theme_amber">琥珀橙</string>
+    <string name="theme_pink">樱花粉</string>
+    <string name="theme_red">朱砂红</string>
+    <string name="theme_purple">星空紫</string>
+    <string name="theme_graphite">石墨灰</string>
 </resources>

@@ -11,6 +11,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.performClick
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean
 import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.captureReviewImage
@@ -34,7 +36,7 @@ class SearchThreadListLayoutTest {
     @get:Rule(order = 0) val appContext = AppContextRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun consecutiveCardsUseOnlyTheirOwnSpacing() {
+    @Test fun consecutiveCardsKeepTheirSpacingAndOpenTheirOwnComments() {
         val first = SearchThreadBean.ThreadInfoBean(
             tid = "101", pid = "1", title = "老街夜景", content = "刚刚整理了周末拍的照片。",
             time = "1695372000", modifiedTime = 0, postNum = "6", likeNum = "12",
@@ -43,6 +45,7 @@ class SearchThreadListLayoutTest {
             type = 0, forumInfo = SearchThreadBean.ForumInfo("摄影", ""),
         )
         val second = first.copy(tid = "102", title = "河畔日落", content = "傍晚的光线让水面更柔和。")
+        val opened = mutableListOf<String>()
         lateinit var view: View
         lateinit var list: LazyListState
         compose.setContent {
@@ -58,6 +61,7 @@ class SearchThreadListLayoutTest {
                         data = persistentListOf(first, second),
                         lazyListState = state,
                         onItemClick = {}, onItemUserClick = {}, onItemForumClick = {},
+                        onReplyClick = { opened += it.tid },
                         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                     )
                 }
@@ -71,5 +75,7 @@ class SearchThreadListLayoutTest {
             assertEquals(items[0].size, items[1].size)
         }
         compose.captureReviewImage(view, "search-thread-card-spacing.png")
+        compose.onAllNodesWithContentDescription("评论")[1].performClick()
+        compose.runOnIdle { assertEquals(listOf("102"), opened) }
     }
 }

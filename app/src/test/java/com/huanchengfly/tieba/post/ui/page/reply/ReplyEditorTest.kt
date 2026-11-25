@@ -15,6 +15,19 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.navigation.NavOptionsBuilder
+import com.huanchengfly.tieba.post.arch.GlobalEvent
+import com.huanchengfly.tieba.post.models.database.Account
+import com.huanchengfly.tieba.post.repository.ReplyRequest
+import com.huanchengfly.tieba.post.repository.ReplySubmission
+import com.huanchengfly.tieba.post.repository.ReplySubmissionState
+import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
+import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.spec.Direction
 import androidx.core.view.ancestors
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -52,13 +65,54 @@ class ReplyEditorTest {
 
     @Test fun darkEditorKeepsTheRecipientAndNativeTextHistory() = checkEditor(dark = true)
 
+    @Test fun guestCanLoginAndKeepTheExactReplyDestination() {
+        ThemeUtils.init(App.ThemeDelegate)
+        val routes = mutableListOf<String>()
+        val navigator = object : DestinationsNavigator by EmptyDestinationsNavigator {
+            override fun navigate(direction: Direction, onlyIfResumed: Boolean, builder: NavOptionsBuilder.() -> Unit) {
+                routes += direction.route
+            }
+        }
+        val args = ReplyArgs(1L, "旅行", 100L, 12L, 201L, 20L, "林间月", tbs = "guest-token")
+        navigator.openReply(args, accountId = null)
+        val expected = ReplyPageDestination(1L, "旅行", 100L, 12L, 201L, 20L, "林间月")
+        assertEquals(listOf(expected.route, LoginPageDestination.route), routes)
+        lateinit var host: View
+        val model = ReplyViewModel()
+        compose.setContent {
+            val view = LocalView.current
+            SideEffect { host = view }
+            TiebaLiteTheme {
+                ReplyPage(navigator, 1L, "旅行", 100L, postId = 12L, subPostId = 201L, replyUserName = "林间月", viewModel = model)
+            }
+        }
+        val login = compose.onNodeWithText(App.INSTANCE.getString(R.string.login_to_reply))
+        compose.onNodeWithText("回复 林间月").assertExists()
+        login.assertIsEnabled()
+        compose.captureReviewImage(host, "reply-guest-login.png")
+        login.performClick()
+        assertEquals(LoginPageDestination.route, routes.last())
+    }
+
     private fun checkEditor(dark: Boolean) {
         ThemeUtils.init(App.ThemeDelegate)
         LitePal.initialize(App.INSTANCE)
         runBlocking { App.INSTANCE.dataStore.edit { it[booleanPreferencesKey("postOrReplyWarning")] = false } }
         val originalTheme = ThemeUtil.themeState.value
         ThemeUtil.themeState.value = if (dark) ThemeUtil.THEME_GREY_DARK else ThemeUtil.THEME_DEFAULT
-        val model = ReplyViewModel()
+        val account = Account(uid = "19", tbs = "account-token")
+        val requests = mutableListOf<ReplyRequest>()
+        val model = ReplyViewModel(ReplySubmission { request ->
+            requests += request
+            if (requests.size == 1) throw java.io.IOException("测试断网")
+            ReplySubmissionState.Sent(GlobalEvent.ReplySuccess(100L, 12L, 12L, 201L, 202L), "")
+        })
+        val target = ReplyDrafts.target(account.uid, 100L, 12L, 201L)
+        runBlocking { ReplyDrafts.clear(target) }
+        var closed = false
+        val navigator = object : DestinationsNavigator by EmptyDestinationsNavigator {
+            override fun navigateUp(): Boolean { closed = true; return true }
+        }
         lateinit var view: View
         var expectedText = 0
         try {
@@ -69,15 +123,15 @@ class ReplyEditorTest {
                 }
                 val currentView = LocalView.current
                 SideEffect { view = currentView }
-                CompositionLocalProvider(LocalContext provides themed) {
+                CompositionLocalProvider(LocalContext provides themed, LocalAccount provides account) {
                     TiebaLiteTheme {
                         val onSurface = MaterialTheme.colorScheme.onSurface.toArgb()
                         SideEffect { expectedText = onSurface }
-                        ProvideNavigator(EmptyDestinationsNavigator) {
+                        ProvideNavigator(navigator) {
                             ReplyPage(
-                                navigator = EmptyDestinationsNavigator, viewModel = model,
+                                navigator = navigator, viewModel = model,
                                 forumId = 1L, forumName = "旅行", threadId = 100L, postId = 12L,
-                                subPostId = 201L, replyUserId = 20L, replyUserName = "林间月", tbs = "",
+                                subPostId = 201L, replyUserId = 20L, replyUserName = "林间月", tbs = "thread-token", tbsAccountId = account.uid,
                             )
                         }
                     }
@@ -105,6 +159,22 @@ class ReplyEditorTest {
                 assertTrue("Expected a 48dp composer control at mdpi", bounds.width >= 48f && bounds.height >= 48f)
             }
             compose.captureReviewImage(view, if (dark) "reply-editor-dark.png" else "reply-editor-light.png")
+            if (!dark) {
+                send.performClick()
+                val retry = compose.onNodeWithText(App.INSTANCE.getString(R.string.reply_retry))
+                retry.assertIsEnabled()
+                val text = "我也走过北岸这段。\n雨后记得穿防滑鞋。"
+                assertEquals(text, runBlocking { ReplyDrafts.read(target) })
+                assertEquals(null, runBlocking { ReplyDrafts.read(ReplyDrafts.target("20", 100L, 12L, 201L)) })
+                assertEquals(null, runBlocking { ReplyDrafts.read(ReplyDrafts.target("19", 100L, 12L, 209L)) })
+                compose.captureReviewImage(view, "reply-editor-retry.png")
+                retry.performClick()
+                compose.waitUntil(5_000) { closed }
+                assertEquals(listOf(text, text), requests.map { it.content })
+                assertTrue(requests.all { it.postId == 12L && it.subPostId == 201L && it.replyUserId == 20L })
+                assertEquals("thread-token", requests.last().tbs)
+                assertEquals(null, runBlocking { ReplyDrafts.read(target) })
+            }
         } finally {
             ThemeUtil.themeState.value = originalTheme
         }

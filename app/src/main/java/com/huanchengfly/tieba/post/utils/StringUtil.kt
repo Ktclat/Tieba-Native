@@ -22,6 +22,7 @@ import com.huanchengfly.tieba.post.components.spans.EmoticonSpanV2
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.utils.EmoticonManager.getEmoticonDrawable
 import com.huanchengfly.tieba.post.utils.EmoticonManager.getEmoticonIdByName
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.regex.Pattern
 import kotlin.math.roundToInt
 
@@ -147,24 +148,31 @@ object StringUtil {
 
     @JvmStatic
     @Stable
-    fun getAvatarUrl(portrait: String?): String {
-        if (portrait.isNullOrEmpty()) {
-            return ""
-        }
-        return if (portrait.startsWith("http://") || portrait.startsWith("https://")) {
-            portrait
-        } else "http://tb.himg.baidu.com/sys/portrait/item/$portrait"
-    }
+    fun getAvatarUrl(portrait: String?): String = portraitUrl(portrait, "portrait")
 
     @JvmStatic
-    fun getBigAvatarUrl(portrait: String?): String {
-        if (portrait.isNullOrEmpty()) {
-            return ""
+    fun getBigAvatarUrl(portrait: String?): String = portraitUrl(portrait, "portraith")
+
+    private fun portraitUrl(portrait: String?, size: String): String {
+        val value = portrait?.trim().orEmpty()
+        if (value.isEmpty()) return ""
+        val url = when {
+            value.startsWith("//") -> "https:$value"
+            value.startsWith("/sys/") -> "https://himg.bdimg.com$value"
+            value.startsWith("sys/") -> "https://himg.bdimg.com/$value"
+            value.contains("://") -> value
+            else -> "https://himg.bdimg.com/sys/$size/item/$value"
+        }.toHttpUrlOrNull() ?: return ""
+
+        // Normalize old CDN URLs already saved in accounts, history, or returned by the API.
+        return if (url.host in portraitHosts && url.encodedPath.startsWith("/sys/portrait")) {
+            url.newBuilder().scheme("https").host("himg.bdimg.com").build().toString()
+        } else {
+            url.toString()
         }
-        return if (portrait.startsWith("http://") || portrait.startsWith("https://")) {
-            portrait
-        } else "http://tb.himg.baidu.com/sys/portraith/item/$portrait"
     }
+
+    private val portraitHosts = setOf("tb.himg.baidu.com", "himg.baidu.com", "himg.bdimg.com")
 
     fun String.getShortNumString(): String {
         val long = toLongOrNull() ?: return ""

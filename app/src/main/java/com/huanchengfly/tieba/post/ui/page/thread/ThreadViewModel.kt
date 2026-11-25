@@ -2,6 +2,7 @@ package com.huanchengfly.tieba.post.ui.page.thread
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.lifecycle.viewModelScope
 import androidx.compose.ui.text.AnnotatedString
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
@@ -23,6 +24,7 @@ import com.huanchengfly.tieba.post.api.models.protos.updateCollectStatus
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaUnknownException
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorCode
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
+import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.BaseViewModel
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -72,6 +74,22 @@ private fun ThreadInfo.getNextPagePostId(
 @HiltViewModel
 class ThreadViewModel @Inject constructor() :
     BaseViewModel<ThreadUiIntent, ThreadPartialChange, ThreadUiState, ThreadUiEvent>() {
+    init {
+        viewModelScope.onGlobalEvent<GlobalEvent.ReplySuccess> { reply ->
+            val state = uiState.value
+            if (state.threadInfo?.get { id } == reply.threadId) {
+                val desc = state.sortType == ThreadSortType.SORT_TYPE_DESC
+                val last = if (desc) state.data.firstOrNull() else state.data.lastOrNull()
+                send(ThreadUiIntent.LoadMyLatestReply(
+                    threadId = reply.threadId, postId = reply.newPostId, forumId = state.forum?.get { id },
+                    isDesc = desc, curLatestPostFloor = last?.post?.get { floor } ?: 1,
+                    curPostIds = state.data.map { it.post.get { id } },
+                    nested = reply.postId != null,
+                ))
+            }
+        }
+    }
+
     override fun createInitialState(): ThreadUiState = ThreadUiState()
 
     override fun createPartialChangeProducer(): PartialChangeProducer<ThreadUiIntent, ThreadPartialChange, ThreadUiState> =
@@ -357,7 +375,9 @@ class ThreadViewModel @Inject constructor() :
                         page = response.data_.page.current_page,
                         isContinuous = firstLatestPost.floor == curLatestPostFloor + 1,
                         isDesc = isDesc,
-                        hasNewPost = response.data_.post_list.any { !curPostIds.contains(it.id) },
+                        hasNewPost = !nested && response.data_.post_list.any { !curPostIds.contains(it.id) },
+                        serverReplyCount = response.data_.thread.replyNum,
+                        updatedParentId = postId.takeIf { nested },
                     )
                 }
                 .onStart { emit(ThreadPartialChange.LoadMyLatestReply.Start) }
@@ -558,6 +578,7 @@ sealed interface ThreadUiIntent : UiIntent {
         val isDesc: Boolean = false,
         val curLatestPostFloor: Int = 0,
         val curPostIds: List<Long> = emptyList(),
+        val nested: Boolean = false,
     ) : ThreadUiIntent
 
     data class ToggleImmersiveMode(
@@ -906,7 +927,18 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                     val addPosts = posts.filter {
                         !newPost.any { item -> item.post.get { id } == it.post.get { id } }
                     }
-                    when {
+                    val updated = when {
+                        updatedParentId != null -> {
+                            val parent = posts.firstOrNull { it.post.get { id } == updatedParentId }
+                            oldState.copy(
+                                isLoadingLatestReply = false,
+                                data = newPost.toImmutableList(),
+                                latestPosts = oldState.latestPosts.map {
+                                    if (parent != null && it.post.get { id } == updatedParentId) parent else it
+                                }.toImmutableList(),
+                                firstPost = if (oldState.firstPost?.get { id } == updatedParentId && parent != null) parent.post else oldState.firstPost,
+                            )
+                        }
                         hasNewPost && continuous && isDesc -> {
                             oldState.copy(
                                 isLoadingLatestReply = false,
@@ -959,6 +991,10 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                             )
                         }
                     }
+                    val thread = updated.threadInfo?.get()
+                    if (thread != null && serverReplyCount != null) updated.copy(
+                        threadInfo = thread.copy(replyNum = serverReplyCount).wrapImmutable()
+                    ) else updated
                 }
 
                 is Failure -> oldState.copy(
@@ -977,6 +1013,8 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
             val isContinuous: Boolean,
             val isDesc: Boolean,
             val hasNewPost: Boolean,
+            val serverReplyCount: Int? = null,
+            val updatedParentId: Long? = null,
         ) : LoadMyLatestReply()
 
         data class Failure(

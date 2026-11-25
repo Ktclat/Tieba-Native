@@ -21,14 +21,18 @@ val LocalAppDarkTheme = staticCompositionLocalOf { false }
 fun TiebaLiteTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val preferences by rememberDisplayPreferences()
-    val name by ThemeUtil.themeState
+    val rawName by ThemeUtil.themeState
+    val dynamic = preferences.dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+    val name = if (dynamic && ThemeUtil.isTranslucentTheme(rawName)) {
+        if (preferences.translucentDark) ThemeUtil.THEME_GREY_DARK else ThemeUtil.THEME_DEFAULT
+    } else rawName
     val translucent = ThemeUtil.isTranslucentTheme(name)
     val dark = ThemeUtil.isNightMode(name) ||
         (translucent && preferences.translucentDark)
     val seed = if (translucent) preferences.wallpaperSeed else preferences.customSeed
-    val dynamic = preferences.dynamicColor && !translucent
-    val colors = remember(context, LocalConfiguration.current, name, dark, dynamic, seed) {
-        appColorScheme(context, name, dark, dynamic, seed)
+    val palette = ThemeUtil.paletteForTheme(name, preferences.accentPalette, preferences.previousDayPalette)
+    val colors = remember(context, LocalConfiguration.current, name, dark, dynamic, seed, palette) {
+        appColorScheme(context, name, dark, dynamic, seed, palette)
     }
     CompositionLocalProvider(
         LocalDisplayPreferences provides preferences,

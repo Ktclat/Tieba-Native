@@ -77,12 +77,10 @@ fun MyMultipartBody.contains(name: String): Boolean {
 
 fun MyMultipartBody.Part.contentDisposition(): Map<String, String> {
     val headersMap = mutableMapOf<String, String>()
-    headers?.toString()?.split(";")?.forEach {
-        val header = it.trim().split("=").toMutableList()
-        if (header.size >= 2) {
-            val name = header.removeFirst().trim()
-            val value = header.joinToString("=").trim().trim('"')
-            headersMap[name] = value
+    headers?.get("Content-Disposition")?.split(';')?.forEach { parameter ->
+        val pair = parameter.split('=', limit = 2)
+        if (pair.size == 2) {
+            headersMap[pair[0].trim()] = pair[1].trim().trim('"')
         }
     }
     return headersMap
@@ -97,7 +95,7 @@ fun MyMultipartBody.Part.fileName(): String? {
 }
 
 fun MyMultipartBody.newBuilder(): MyMultipartBody.Builder =
-    MyMultipartBody.Builder(boundary).setType(type)
+    MyMultipartBody.Builder(boundary).setType(type).also { it.oneShot = isOneShot() }
 
 fun MyMultipartBody.sort(): MyMultipartBody {
     val builder = newBuilder()
