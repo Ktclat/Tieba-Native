@@ -7,6 +7,7 @@ import io
 import json
 import math
 from pathlib import Path
+import re
 import subprocess
 import time
 from xml.etree import ElementTree
@@ -73,15 +74,48 @@ def swipe(reverse):
     time.sleep(0.32)
 
 
-def verify_navigation(visible, output):
+PROFILE_ITEMS = ("浏览记录", "主题选择", "设置", "关于")
+TABS = ("首页", "动态", "消息", "我")
+
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+
+def nav_slot_spans(tree):
+    targets = actionable_bounds(tree)
+    spans = set()
+    for label in TABS:
+        node = next(labelled_nodes(tree, label), None)
+        if node is not None:
+            x, y = center(node)
+            covering = [rect for rect in targets if rect[0] <= x < rect[2] and rect[1] <= y < rect[3]]
+            if covering:
+                rect = min(covering, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
+                spans.add((rect[0], rect[2]))
+    if len(spans) != len(TABS):
+        raise RuntimeError("Could not identify four bottom tab touch targets")
+    return spans
+
+
+def actionable_bounds(tree):
+    # Android exposes the active tab as selected even when it omits its click action.
+    return [bounds(node) for node in tree.iter("node") if node.get("package") == PACKAGE and center(node)
+            and (node.get("clickable") == "true" or node.get("selected") == "true")]
+
+
+def verify_navigation(visible, output, slots):
     tree = hierarchy()
-    shown = next(labelled_nodes(tree, "动态"), None) is not None
+    present = {rect[::2] for rect in actionable_bounds(tree)} & slots
     output.with_suffix(".xml").write_bytes(ElementTree.tostring(tree))
     output.with_suffix(".png").write_bytes(adb("exec-out", "screencap", "-p"))
-    if shown != visible:
-        raise RuntimeError(f"Expected bottom navigation visible={visible} at {output.name}")
+    if present != (slots if visible else set()):
+        raise RuntimeError(f"Unexpected bottom tab touch targets at {output.name}: {present}")
+    if visible and any(next(labelled_nodes(tree, label), None) is None for label in TABS):
+        raise RuntimeError(f"Expected all four tab labels at {output.name}")
     positions = {}
-    for label in ("浏览记录", "主题选择", "设置", "关于"):
+    for label in PROFILE_ITEMS:
         row = next(labelled_nodes(tree, label), None)
         if row is not None:
             positions[label] = center(row)[1]
@@ -92,8 +126,14 @@ def verify_navigation(visible, output):
 
 def check_scroll(before, after, direction):
     shared = before.keys() & after.keys()
-    if not any(direction * (after[label] - before[label]) > 12 for label in shared):
-        raise RuntimeError(f"No visible menu row moved in the expected direction: {before} -> {after}")
+    if shared and any(direction * (after[label] - before[label]) > 12 for label in shared):
+        return
+    if not shared:
+        first_before = min(PROFILE_ITEMS.index(label) for label in before)
+        first_after = min(PROFILE_ITEMS.index(label) for label in after)
+        if direction * (first_before - first_after) > 0:
+            return
+    raise RuntimeError(f"Guest menu did not move in the expected direction: {before} -> {after}")
 
 
 def run_block(apk, directory):
@@ -132,23 +172,30 @@ def run_block(apk, directory):
     launch()
     press(find_label("我", recover_launcher=True))
     find_label("浏览记录")
-    start = verify_navigation(True, directory / "profile-before")
+    slots = nav_slot_spans(hierarchy())
+    start = verify_navigation(True, directory / "profile-before", slots)
     swipe(False)
-    hidden = verify_navigation(False, directory / "profile-hidden")
+    swipe(False)
+    hidden = verify_navigation(False, directory / "profile-hidden", slots)
     check_scroll(start, hidden, -1)
     swipe(True)
-    restored = verify_navigation(True, directory / "profile-restored")
+    swipe(True)
+    restored = verify_navigation(True, directory / "profile-restored", slots)
     check_scroll(hidden, restored, 1)
 
-    def scroll_profile():
-        swipe(False)
-        swipe(True)
+    def scroll_profile(reverse):
+        swipe(reverse)
+        swipe(reverse)
 
     for _ in range(2):
-        scroll_profile()
+        scroll_profile(False)
+        scroll_profile(True)
     for repetition in range(1, 4):
-        readings["profile_scroll"].append(measure(directory, "profile_scroll", repetition, scroll_profile))
-    verify_navigation(True, directory / "profile-end")
+        # Dump after each direction to keep each segment within HWUI's frame history.
+        up = measure(directory, "profile_scroll_up", repetition, lambda: scroll_profile(False))
+        down = measure(directory, "profile_scroll_down", repetition, lambda: scroll_profile(True))
+        readings["profile_scroll"].append(up + down)
+    verify_navigation(True, directory / "profile-end", slots)
     return readings
 
 
