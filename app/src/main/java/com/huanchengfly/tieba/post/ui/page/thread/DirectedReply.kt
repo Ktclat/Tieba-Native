@@ -46,6 +46,6 @@ internal fun ReplyRecipient(reply: DirectedReply) {
             }
             .padding(vertical = 2.dp),
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.secondary,
     )
 }

@@ -1907,7 +1907,7 @@ fun PostCard(
                                     Text(
                                         text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
                                         style = M3Theme.typography.labelLarge,
-                                        color = M3Theme.colorScheme.primary,
+                                        color = M3Theme.colorScheme.secondary,
                                         modifier = Modifier.fillMaxWidth()
                                             .clickable { onOpenSubPosts(0) }
                                             .padding(horizontal = 12.dp, vertical = 10.dp),

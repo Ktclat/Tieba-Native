@@ -15,6 +15,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -31,6 +32,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.ColorUtils
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.PbContent
@@ -54,6 +56,7 @@ import com.huanchengfly.tieba.post.ui.page.subposts.SubPostItemData as ReplyData
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.page.subposts.SubPostsHeading
+import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import java.io.File
 import kotlin.math.roundToInt
@@ -168,7 +171,19 @@ class CommentGroupingTest {
     @Config(qualifiers = "zh-rCN-w320dp-h800dp-mdpi")
     fun adjacentFloorsAndTheirRepliesAtLargeFont() = review(320, 1.3f, "320-large")
 
-    private fun review(width: Int, scale: Float, suffix: String) {
+    @Test
+    fun adjacentFloorsAndTheirRepliesInDarkTheme() {
+        val theme = ThemeUtil.themeState
+        val previous = theme.value
+        try {
+            theme.value = ThemeUtil.THEME_GREY_DARK
+            review(360, 1f, "360-dark", checkDarkPanel = true)
+        } finally {
+            theme.value = previous
+        }
+    }
+
+    private fun review(width: Int, scale: Float, suffix: String, checkDarkPanel: Boolean = false) {
         show(width, scale)
         val first = floors[0]
         val second = floors[1]
@@ -184,6 +199,16 @@ class CommentGroupingTest {
         val firstPreview = compose.onNodeWithText("春山", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("Parent action must precede the first reply", likes.bottom <= firstPreview.top)
         assertVisibleSeparator("adjacent-floors-$suffix.png", firstGroup.bottom)
+        val previewRecipient = App.INSTANCE.getString(R.string.hint_reply, "@春山")
+        assertTextContrast(
+            "adjacent-floors-$suffix.png",
+            "floor body" to text(first.content.single().text).fetchSemanticsNode().boundsInRoot,
+            "preview body" to text("六点的雾还没散。").fetchSemanticsNode().boundsInRoot,
+            "preview recipient" to text(previewRecipient).fetchSemanticsNode().boundsInRoot,
+        )
+        if (checkDarkPanel) {
+            assertDarkPanel("adjacent-floors-$suffix.png", firstGroup.bottom, firstPreview.center.y)
+        }
 
         compose.onNodeWithTag("comment-list").performScrollToIndex(1)
         val children = second.sub_post_list!!.sub_post_list
@@ -201,6 +226,12 @@ class CommentGroupingTest {
         val directedBody = text(children.first().content.last().text).fetchSemanticsNode().boundsInRoot
         val parentBody = text(second.content.single().text).fetchSemanticsNode().boundsInRoot
         val plainBody = text(targetBody).fetchSemanticsNode().boundsInRoot
+        assertTextContrast(
+            "adjacent-subreplies-$suffix.png",
+            "detail parent" to parentBody,
+            "detail reply" to directedBody,
+            "detail recipient" to recipientBounds,
+        )
         assertTrue("Directed reply label must precede its body", recipientBounds.bottom <= directedBody.top)
         assertTrue("Child replies need a distinct indentation from the parent", directedBody.left > parentBody.left)
         assertEquals("Sibling body alignment", directedBody.left, plainBody.left, 1f)
@@ -209,6 +240,45 @@ class CommentGroupingTest {
         assertVisibleSeparator("adjacent-subreplies-$suffix.png", firstReply.bottom)
         text(targetBody).performTouchInput { click(percentOffset(0.85f, 0.5f)) }
         compose.runOnIdle { assertEquals(target.id, replyTarget) }
+    }
+
+    private fun assertTextContrast(fileName: String, vararg labels: Pair<String, Rect>) {
+        val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
+        try {
+            for ((name, bounds) in labels) {
+                val left = bounds.left.roundToInt()
+                val background = image.getPixel(left - 1, bounds.center.y.roundToInt())
+                var legiblePixels = 0
+                for (y in bounds.top.roundToInt() until bounds.bottom.roundToInt()) {
+                    for (x in left until bounds.right.roundToInt()) {
+                        if (ColorUtils.calculateContrast(image.getPixel(x, y), background) >= 4.5) {
+                            legiblePixels++
+                        }
+                    }
+                }
+                assertTrue("$name needs visible glyph strokes at 4.5:1 in $fileName", legiblePixels >= 8)
+            }
+        } finally {
+            image.recycle()
+        }
+    }
+
+    private fun assertDarkPanel(fileName: String, floorBottom: Float, previewCenterY: Float) {
+        val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", fileName).absolutePath)
+        try {
+            val y = previewCenterY.roundToInt()
+            val surface = image.getPixel(0, y)
+            assertEquals("Expected the app's grey dark surface", App.INSTANCE.getColor(R.color.theme_color_background_grey_dark), surface)
+            val railX = (1 until image.width / 2).first { image.getPixel(it, y) != surface }
+            val rail = image.getPixel(railX, y)
+            val panel = image.getPixel(railX + 3, y)
+            val divider = image.getPixel(image.width / 2, floorBottom.roundToInt() - 1)
+            assertNotEquals("Preview panel must have its own surface", surface, panel)
+            assertTrue("Floor divider must stand out from the dark surface", ColorUtils.calculateContrast(divider, surface) >= 1.25)
+            assertTrue("Inset rail must stand out from the dark panel", ColorUtils.calculateContrast(rail, panel) >= 1.25)
+        } finally {
+            image.recycle()
+        }
     }
 
     // At mdpi, the final pixel row crosses the inset divider and the outer gutter.

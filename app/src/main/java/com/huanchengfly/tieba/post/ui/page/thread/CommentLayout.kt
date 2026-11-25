@@ -28,6 +28,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -42,7 +43,7 @@ internal fun CommentLayout(
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         header?.invoke()
-        content()
+        ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
         if (action != null) {
             Box(Modifier.align(Alignment.End)) { action() }
         }
