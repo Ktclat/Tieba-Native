@@ -8,7 +8,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -18,6 +24,7 @@ import androidx.compose.ui.unit.Density
 import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -87,12 +94,21 @@ class MaterialDialogsTest {
             }
         }
         compose.onNodeWithText("定时签到").performClick()
-        compose.onNodeWithText("12").assertIsDisplayed()
-        compose.onNodeWithText("07").assertIsDisplayed()
-        compose.onNodeWithText("取消").assertIsDisplayed()
-        compose.onNodeWithText("保存").assertIsDisplayed()
+        val hour = compose.onNode(hasText("12") and hasSetTextAction())
+        val minute = compose.onNode(hasText("07") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+        val cancel = compose.onNodeWithText("取消")
+        val save = compose.onNodeWithText("保存")
+        val dialog = compose.onNode(isDialog()).getUnclippedBoundsInRoot()
+        for (control in listOf(hour, minute, cancel, save)) {
+            val bounds = control.assertIsDisplayed().getUnclippedBoundsInRoot()
+            assertTrue(bounds.left >= dialog.left && bounds.right <= dialog.right)
+            assertTrue(bounds.top >= dialog.top && bounds.bottom <= dialog.bottom)
+        }
+        assertTrue(hour.getUnclippedBoundsInRoot().right <= minute.getUnclippedBoundsInRoot().left)
         compose.captureReviewImage(dialogView, "scheduled-time-320-large.png")
-        compose.onNodeWithText("保存").performClick()
-        compose.runOnIdle { assertEquals(listOf("12:07"), saved) }
+        minute.performClick()
+        compose.onNode(hasText("07") and hasSetTextAction()).performTextReplacement("08")
+        save.performClick()
+        compose.runOnIdle { assertEquals(listOf("12:08"), saved) }
     }
 }

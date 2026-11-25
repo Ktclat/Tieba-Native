@@ -3,6 +3,7 @@ package com.huanchengfly.tieba.post.activities
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
@@ -24,7 +25,9 @@ import com.github.panpf.sketch.request.LoadResult
 import com.github.panpf.sketch.request.execute
 import com.github.panpf.sketch.resize.Scale
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.slider.Slider
 import com.huanchengfly.tieba.post.components.dialogs.showThemeColorPicker
 import com.gyf.immersionbar.ImmersionBar
@@ -197,7 +200,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         mProgress.visibility = View.VISIBLE
         if (mUri == null) {
             findViewById<View>(R.id.background).setBackgroundColor(
-                com.google.android.material.color.MaterialColors.getColor(findViewById(R.id.background), com.google.android.material.R.attr.colorSurface)
+                MaterialColors.getColor(findViewById(R.id.background), com.google.android.material.R.attr.colorSurface)
             )
             mProgress.visibility = View.GONE
             return
@@ -255,15 +258,8 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         }
         wallpapers =
             CacheUtil.getCache(this, "recommend_wallpapers", List::class.java) as List<String>?
-        colorTheme.check(
-            if (appPreferences.translucentBackgroundTheme == TRANSLUCENT_THEME_DARK) R.id.dark_color
-            else R.id.light_color
-        )
-        colorTheme.addOnButtonCheckedListener { _, id, checked ->
-            if (checked) {
-                appPreferences.translucentBackgroundTheme =
-                    if (id == R.id.dark_color) TRANSLUCENT_THEME_DARK else TRANSLUCENT_THEME_LIGHT
-            }
+        colorTheme.bindThemeMode(appPreferences.translucentBackgroundTheme == TRANSLUCENT_THEME_DARK) { dark ->
+            appPreferences.translucentBackgroundTheme = if (dark) TRANSLUCENT_THEME_DARK else TRANSLUCENT_THEME_LIGHT
         }
         wallpaperAdapter.setOnItemClickListener { _, item, _ ->
             launchUCrop(Uri.parse(item))
@@ -280,9 +276,11 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
         recommendWallpapersRv.adapter = wallpaperAdapter
         recommendWallpapersRv.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        applyWallpaperAccent(findViewById(R.id.background), selectedColor)
         mTranslucentThemeColorAdapter.setSelectedColor(selectedColor)
         mTranslucentThemeColorAdapter.onItemClickListener =
             OnItemClickListener { _: View?, themeColor: Int, _: Int, _: Int ->
+                applyWallpaperAccent(findViewById(R.id.background), themeColor)
                 appPreferences.translucentPrimaryColor = toString(themeColor)
                 maskView.post { ThemeUtils.refreshUI(this, this) }
             }
@@ -435,6 +433,7 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
             }
             R.id.custom_color -> {
                 showThemeColorPicker(this, selectedColor) { color ->
+                    applyWallpaperAccent(findViewById(R.id.background), color)
                     appPreferences.translucentPrimaryColor = toString(color)
                     mTranslucentThemeColorAdapter.setSelectedColor(color)
                     ThemeUtils.refreshUI(this, this)
@@ -505,5 +504,43 @@ class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
                 Color.blue(color)
             )
         }
+    }
+}
+/** The wallpaper's exact sampled color is shown in its swatch. Its tonal roles color the controls. */
+internal fun applyWallpaperAccent(root: View, seed: Int) {
+    val roles = MaterialColors.getColorRoles(root.context, seed)
+    val accent = ColorStateList.valueOf(roles.accent)
+    for (id in listOf(R.id.select_pic, R.id.button_finish)) {
+        root.findViewById<MaterialButton>(id).apply {
+            backgroundTintList = accent
+            setTextColor(roles.onAccent)
+            iconTint = ColorStateList.valueOf(roles.onAccent)
+        }
+    }
+    for (id in listOf(R.id.custom_color, R.id.experimental_tip)) {
+        root.findViewById<MaterialButton>(id).apply {
+            setTextColor(roles.accent)
+            iconTint = accent
+        }
+    }
+    val inactive = ColorStateList.valueOf(
+        MaterialColors.getColor(root, com.google.android.material.R.attr.colorSurfaceContainerHighest)
+    )
+    for (id in listOf(R.id.alpha, R.id.blur)) {
+        root.findViewById<Slider>(id).apply {
+            thumbTintList = accent
+            trackActiveTintList = accent
+            trackInactiveTintList = inactive
+        }
+    }
+}
+
+internal fun MaterialButtonToggleGroup.bindThemeMode(dark: Boolean, onChange: (Boolean) -> Unit) {
+    val selected = if (dark) R.id.dark_color else R.id.light_color
+    check(selected)
+    findViewById<MaterialButton>(selected).setIconResource(R.drawable.ic_round_check)
+    addOnButtonCheckedListener { _, id, checked ->
+        findViewById<MaterialButton>(id).setIconResource(if (checked) R.drawable.ic_round_check else 0)
+        if (checked) onChange(id == R.id.dark_color)
     }
 }

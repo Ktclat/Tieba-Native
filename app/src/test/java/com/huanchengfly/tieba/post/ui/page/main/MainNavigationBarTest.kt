@@ -131,6 +131,8 @@ class MainNavigationBarTest {
                         id = index.toString(),
                         icon = { AnimatedImageVector.animatedVectorResource(icon) },
                         title = { stringResource(title) },
+                        badge = index == 2,
+                        badgeText = if (index == 2) "217" else null,
                         onClick = {
                             pageAtActivation += selection.id.toInt()
                             measuredAtActivation += index in measures
@@ -504,9 +506,23 @@ class MainNavigationBarTest {
         val to = compose.onNode(hasText(titles[2]) and hasClickAction())
         compose.onAllNodes(isSelectable()).assertCountEquals(titles.size)
         to.assert(hasStateDescription("217 条未读消息"))
-        titles.forEach { title ->
-            val bounds = compose.onNode(hasText(title) and hasClickAction()).getUnclippedBoundsInRoot()
-            assertTrue("Navigation targets must be at least 48 dp", bounds.width >= 48.dp && bounds.height >= 48.dp)
+        val bar = compose.onNodeWithTag("navigation-bar").getUnclippedBoundsInRoot()
+        var end = bar.left
+        titles.forEachIndexed { index, title ->
+            val item = compose.onNode(hasText(title) and hasClickAction()).assertIsDisplayed()
+            val bounds = item.getUnclippedBoundsInRoot()
+            assertEquals(bar.width.value / titles.size, bounds.width.value, 1f)
+            assertTrue(bounds.left >= end && bounds.right <= bar.right)
+            assertTrue(bounds.height >= 48.dp && bounds.top >= bar.top && bounds.bottom <= bar.bottom)
+            end = bounds.right
+            val icon = compose.onNodeWithTag("navigation-icon-$index", useUnmergedTree = true)
+                .assertIsDisplayed().getUnclippedBoundsInRoot()
+            assertEquals(24.dp, icon.width)
+            assertEquals(24.dp, icon.height)
+            assertTrue(icon.left >= bounds.left && icon.right <= bounds.right && icon.top >= bounds.top)
+            val label = compose.onNode(hasText(title) and hasAnyAncestor(isSelectable()), useUnmergedTree = true)
+                .assertIsDisplayed().getUnclippedBoundsInRoot()
+            assertTrue(label.top >= icon.bottom && label.bottom <= bounds.bottom)
         }
         to.performClick()
         to.assertIsSelected()

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
@@ -54,7 +55,8 @@ internal fun MainNavigationBar(
 ) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val select by rememberUpdatedState(onSelect)
-    ShortNavigationBar(modifier = modifier.fillMaxWidth(), windowInsets = WindowInsets(0, 0, 0, 0)) {
+    // The bar fills its maximum width and needs a zero minimum width to divide it between items.
+    ShortNavigationBar(modifier = modifier.wrapContentWidth(), windowInsets = WindowInsets(0, 0, 0, 0)) {
         navigationItems.forEachIndexed { index, item ->
             key(item.id) {
                 val selected = index == currentPosition

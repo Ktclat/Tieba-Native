@@ -2,6 +2,7 @@ package com.huanchengfly.tieba.post.ui.page.reply
 
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
 import androidx.compose.ui.graphics.toArgb
+import android.os.Build
 import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import android.content.res.ColorStateList
@@ -522,7 +523,9 @@ internal fun ReplyPageContent(
                         input.setBoxStrokeColorStateList(borderColors)
                         input.defaultHintTextColor = labelColor
                         input.hintTextColor = focusColor
-                        input.cursorColor = focusColor
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            input.cursorColor = focusColor
+                        }
                         input.editText?.apply {
                             setTextColor(colors.onSurface.toArgb())
                             setHintTextColor(labelColor)

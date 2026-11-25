@@ -53,6 +53,11 @@ def tap(label):
     adb("shell", "input", "tap", str(x), str(y))
 
 
+def back_to(label):
+    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+    find_label(label)
+
+
 def capture(output, name, label):
     find_label(label)
     image = adb("exec-out", "screencap", "-p")
@@ -83,6 +88,20 @@ def run(apk, output):
     capture(output, "06-font-larger", "105%")
     tap("保存字号")
     find_label("夜间模式主题")
+    back_to("个性化")
+    back_to("主题选择")
+    tap("主题选择")
+    tap("自定义")
+    capture(output, "06a-custom-theme", "设置自定义主题")
+    back_to("透明主题")
+    tap("透明主题")
+    x, y = find_label("界面设置")
+    adb("shell", "input", "swipe", str(x), str(y), str(x), str(y // 3), "500")
+    capture(output, "06b-wallpaper-controls", "模糊度")
+    back_to("透明主题")
+    back_to("设置")
+    tap("设置")
+    tap("个性化")
     tap("字体大小")
     find_label("105%")
     for _ in range(5):

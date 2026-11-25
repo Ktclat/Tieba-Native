@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -197,11 +195,6 @@ internal fun FontSizeScreen(
                             }
                         }
                     }
-                }
-                item(key = "hint") {
-                    Text(stringResource(R.string.native_font_apply_hint), color = colors.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(4.dp))
                 }
             }
         }

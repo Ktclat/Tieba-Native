@@ -83,7 +83,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/title_select_pic" />
+                android:text="@string/title_select_pic"
+                app:icon="@drawable/ic_round_image" />
 
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/color_theme"
