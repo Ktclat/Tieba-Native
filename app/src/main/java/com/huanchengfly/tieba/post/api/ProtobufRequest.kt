@@ -29,10 +29,12 @@ fun buildProtobufRequestBody(
     data: Message<*, *>,
     clientVersion: ClientVersion = ClientVersion.TIEBA_V11,
     needSToken: Boolean = true,
+    oneShot: Boolean = false,
 ): MyMultipartBody {
     return MyMultipartBody.Builder(BOUNDARY)
         .apply {
             setType(MyMultipartBody.FORM)
+            this.oneShot = oneShot
             if (clientVersion != ClientVersion.TIEBA_V12 && clientVersion != ClientVersion.TIEBA_V12_POST) {
                 addFormDataPart(Param.CLIENT_VERSION, clientVersion.version)
             }

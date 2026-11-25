@@ -376,6 +376,8 @@ class ThreadViewModel @Inject constructor() :
                         isContinuous = firstLatestPost.floor == curLatestPostFloor + 1,
                         isDesc = isDesc,
                         hasNewPost = !nested && response.data_.post_list.any { !curPostIds.contains(it.id) },
+                        serverReplyCount = response.data_.thread.replyNum,
+                        updatedParentId = postId.takeIf { nested },
                     )
                 }
                 .onStart { emit(ThreadPartialChange.LoadMyLatestReply.Start) }
@@ -925,7 +927,18 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                     val addPosts = posts.filter {
                         !newPost.any { item -> item.post.get { id } == it.post.get { id } }
                     }
-                    when {
+                    val updated = when {
+                        updatedParentId != null -> {
+                            val parent = posts.firstOrNull { it.post.get { id } == updatedParentId }
+                            oldState.copy(
+                                isLoadingLatestReply = false,
+                                data = newPost.toImmutableList(),
+                                latestPosts = oldState.latestPosts.map {
+                                    if (parent != null && it.post.get { id } == updatedParentId) parent else it
+                                }.toImmutableList(),
+                                firstPost = if (oldState.firstPost?.get { id } == updatedParentId && parent != null) parent.post else oldState.firstPost,
+                            )
+                        }
                         hasNewPost && continuous && isDesc -> {
                             oldState.copy(
                                 isLoadingLatestReply = false,
@@ -978,6 +991,10 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                             )
                         }
                     }
+                    val thread = updated.threadInfo?.get()
+                    if (thread != null && serverReplyCount != null) updated.copy(
+                        threadInfo = thread.copy(replyNum = serverReplyCount).wrapImmutable()
+                    ) else updated
                 }
 
                 is Failure -> oldState.copy(
@@ -996,6 +1013,8 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
             val isContinuous: Boolean,
             val isDesc: Boolean,
             val hasNewPost: Boolean,
+            val serverReplyCount: Int? = null,
+            val updatedParentId: Long? = null,
         ) : LoadMyLatestReply()
 
         data class Failure(

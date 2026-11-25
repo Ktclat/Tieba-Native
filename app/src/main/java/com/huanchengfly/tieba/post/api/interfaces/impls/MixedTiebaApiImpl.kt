@@ -1164,7 +1164,8 @@ object MixedTiebaApiImpl : ITiebaApi {
                             vcode_tag = "12",
                         ).withReplyTarget(postId, subPostId, replyUserId)
                     ),
-                    clientVersion = ClientVersion.TIEBA_V12_POST
+                    clientVersion = ClientVersion.TIEBA_V12_POST,
+                    oneShot = true,
                 )
             )
     }

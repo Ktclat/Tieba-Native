@@ -188,7 +188,8 @@ internal fun SubPostsContent(
 
     val lazyListState = rememberLazyListState()
 
-    PositionSubPostOnOpen(lazyListState, subPostId, subPosts)
+    val postedReplyId by viewModel.uiState.collectPartialAsState(SubPostsUiState::postedReplyId, initial = null)
+    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, subPosts)
 
     val confirmDeleteDialogState = rememberDialogState()
     var deleteSubPost by remember { mutableStateOf<ImmutableHolder<SubPostList>?>(null) }
@@ -320,6 +321,9 @@ internal fun SubPostsContent(
                                                     forumName = forumName,
                                                     threadId = threadId,
                                                     postId = parentId,
+                                                    replyUserId = post?.get { author?.id?.takeIf { it > 0L } ?: author_id },
+                                                    replyUserName = post?.get { author?.nameShow?.ifBlank { null } ?: author?.name },
+                                                    replyUserPortrait = post?.get { author?.portrait },
                                                 )
                                             )
                                         }

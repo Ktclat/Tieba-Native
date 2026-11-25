@@ -3,9 +3,9 @@ package com.huanchengfly.tieba.post.repository
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.User
-import com.huanchengfly.tieba.post.api.models.protos.pbPage.PbPageResponseData
 import com.huanchengfly.tieba.post.api.models.protos.pbFloor.PbFloorResponseData
 import com.huanchengfly.tieba.post.api.models.protos.pbPage.PbPageResponse
+import com.huanchengfly.tieba.post.api.models.protos.pbPage.PbPageResponseData
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaException
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaUnknownException
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadPageFrom
@@ -60,6 +60,7 @@ internal fun Map<Long, User>.resolveAuthor(embedded: User?, authorId: Long): Use
     if (id <= 0) return embedded
     val profile = this[id]
     if (embedded == null) return profile ?: User(id = id)
+    if (profile == null && id == embedded.id) return embedded
     return embedded.copy(
         id = id,
         name = embedded.name.ifBlank { profile?.name.orEmpty() },

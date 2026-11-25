@@ -59,7 +59,7 @@ class SubPostsViewModel @Inject constructor() :
             val newId = reply.newSubPostId
             if (state.thread?.get { id } == reply.threadId && parent != null && parent == reply.postId &&
                 fid != null && newId != null) {
-                send(SubPostsUiIntent.Load(fid, reply.threadId, parent, newId))
+                send(SubPostsUiIntent.Load(fid, reply.threadId, parent, newId, focusReply = true))
             }
         }
     }
@@ -112,6 +112,7 @@ class SubPostsViewModel @Inject constructor() :
                         page.total_page,
                         page.total_count,
                         loadedAccountId = accountId,
+                        postedReplyId = subPostId.takeIf { focusReply },
                     )
                 }
                 .onStart { emit(SubPostsPartialChange.Load.Start) }
@@ -189,6 +190,7 @@ sealed interface SubPostsUiIntent : UiIntent {
         val postId: Long,
         val subPostId: Long = 0L,
         val page: Int = 1,
+        val focusReply: Boolean = false,
     ) : SubPostsUiIntent
 
     data class LoadMore(
@@ -234,6 +236,7 @@ sealed interface SubPostsPartialChange : PartialChange<SubPostsUiState> {
                     totalCount = totalCount,
                     anti = anti,
                     loadedAccountId = loadedAccountId,
+                    postedReplyId = postedReplyId ?: oldState.postedReplyId,
                     forum = forum,
                     thread = thread,
                     post = post,
@@ -259,6 +262,7 @@ sealed interface SubPostsPartialChange : PartialChange<SubPostsUiState> {
             val currentPage: Int,
             val totalPage: Int,
             val totalCount: Int,
+            val postedReplyId: Long? = null,
             val loadedAccountId: String? = null,
         ) : Load()
 
@@ -418,6 +422,7 @@ private fun SubPostItemData.updateAgreeStatus(hasAgreed: Int): SubPostItemData =
     copy(subPost = subPost.getImmutable { updateAgreeStatus(hasAgreed) })
 
 data class SubPostsUiState(
+    val postedReplyId: Long? = null,
     val loadedAccountId: String? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,

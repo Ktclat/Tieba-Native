@@ -105,7 +105,6 @@ import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.pxToDpFloat
-import com.huanchengfly.tieba.post.toMD5
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.EMOJI
@@ -130,12 +129,9 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import org.litepal.extension.deleteAllAsync
-import org.litepal.extension.findFirstAsync
 import java.util.UUID
 import kotlin.math.max
 
@@ -164,7 +160,6 @@ internal fun DestinationsNavigator.openReply(args: ReplyArgs, accountId: String?
 @OptIn(
     ExperimentalLayoutApi::class,
     ExperimentalMaterial3Api::class,
-    FlowPreview::class
 )
 @Composable
 internal fun ReplyPageContent(
@@ -661,22 +656,24 @@ fun ReplyPage(
         ReplyLoginPrompt(onLogin = { navigator.navigate(LoginPageDestination) }, onBack = { navigator.navigateUp() })
         return
     }
-    key(account.uid) { Surface(modifier = Modifier.fillMaxSize()) {
-        ReplyPageContent(
-            viewModel = viewModel,
-            onBack = { navigator.navigateUp() },
-            forumId = forumId,
-            forumName = forumName,
-            threadId = threadId,
-            postId = postId,
-            subPostId = subPostId,
-            replyUserId = replyUserId,
-            replyUserName = replyUserName,
-            replyUserPortrait = replyUserPortrait,
-            tbs = tbs?.takeIf { it.isNotBlank() && tbsAccountId == account.uid } ?: account.tbs,
-            accountId = account.uid,
-        )
-    } }
+    key(account.uid) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            ReplyPageContent(
+                viewModel = viewModel,
+                onBack = { navigator.navigateUp() },
+                forumId = forumId,
+                forumName = forumName,
+                threadId = threadId,
+                postId = postId,
+                subPostId = subPostId,
+                replyUserId = replyUserId,
+                replyUserName = replyUserName,
+                replyUserPortrait = replyUserPortrait,
+                tbs = tbs?.takeIf { it.isNotBlank() && tbsAccountId == account.uid } ?: account.tbs,
+                accountId = account.uid,
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

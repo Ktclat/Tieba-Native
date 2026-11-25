@@ -1,5 +1,7 @@
 package com.huanchengfly.tieba.post.repository
 
+import com.huanchengfly.tieba.post.api.buildProtobufRequestBody
+import com.huanchengfly.tieba.post.api.sort
 import com.huanchengfly.tieba.post.api.interfaces.impls.withReplyTarget
 import com.huanchengfly.tieba.post.api.models.PicInfo
 import com.huanchengfly.tieba.post.api.models.PicInfoItem
@@ -57,6 +59,13 @@ class ReplySubmissionTest {
         assertEquals("21", nested.sub_post_id)
         assertEquals("31", nested.reply_uid)
         assertThrows(IllegalArgumentException::class.java) { payload(null, "21") }
+    }
+
+    @Test
+    fun signingAndSortingKeepTheReplyBodySingleUse() {
+        val body = buildProtobufRequestBody(AddPostRequestData(tid = "10"), needSToken = false, oneShot = true)
+        assertTrue(body.isOneShot())
+        assertTrue(body.sort().isOneShot())
     }
 
     @Test

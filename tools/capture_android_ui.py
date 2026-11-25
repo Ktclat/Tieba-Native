@@ -191,15 +191,16 @@ def review_colors(output):
     find_label("主题选择")
     restart_home()
     colors["custom_after_restart"] = login_button_color()
-    if len(set(colors[k] for k in ("wallpaper_after_restart", "amber_after_restart", "custom_after_restart"))) != 3:
-        raise RuntimeError(f"Changing the color source did not recolor the home screen: {colors}")
+    # SchemeFidelity's light primary for the amber seed #C67417 and user seed #087F5B.
+    if colors["amber_after_restart"] != "#8A4D00" or colors["custom_after_restart"] != "#006446":
+        raise RuntimeError(f"Saved colors did not reach the home screen: {colors}")
     capture(output, "theme-custom-home", "随便看看")
     open_themes()
     confirm_option("跟随系统壁纸", False)
     tap_option("自定义颜色")
     capture(output, "theme-custom-hex-restored", "#087F5B")
-    (output / "theme-colors.json").write_text(json.dumps(colors, indent=2) + "\n")
     back_to("主题选择")
+    return colors
 
 
 def run(apk, output):
@@ -234,7 +235,7 @@ def run(apk, output):
     adb("shell", "input", "swipe", str(x), str(y), str(x), str(y // 3), "500")
     capture(output, "06b-wallpaper-controls", "模糊度")
     back_to("主题选择")
-    review_colors(output)
+    colors = review_colors(output)
     back_to("设置")
     tap("设置")
     tap("个性化")
@@ -252,6 +253,10 @@ def run(apk, output):
     adb("shell", "wm", "size", "840x2058")
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
     capture(output, "07-home-compact-dark-130", "随便看看")
+    colors["custom_after_night_mode"] = login_button_color()
+    if colors["custom_after_night_mode"] != "#78D9AF":
+        raise RuntimeError(f"Night mode lost the saved custom color: {colors}")
+    (output / "theme-colors.json").write_text(json.dumps(colors, indent=2) + "\n")
     tap("我")
     tap("设置")
     tap("个性化")
