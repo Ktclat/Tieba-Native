@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.ui.widgets
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.ColorFilter
 import android.net.Uri
 import android.os.Build
@@ -15,12 +14,10 @@ import android.view.View
 import android.view.View.OnLongClickListener
 import android.widget.ImageView
 import android.widget.ProgressBar
-import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.annotation.IntDef
 import androidx.annotation.OptIn
 import androidx.appcompat.widget.PopupMenu
-import androidx.core.content.ContextCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -34,9 +31,9 @@ import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.SimpleColorFilter
 import com.airbnb.lottie.model.KeyPath
 import com.airbnb.lottie.value.LottieValueCallback
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.common.theme.utils.ColorStateListUtils
-import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.utils.DisplayUtil
 import com.huanchengfly.tieba.post.utils.FileUtil
 import com.huanchengfly.tieba.post.utils.PopupUtil
@@ -45,10 +42,10 @@ import java.util.Timer
 import java.util.TimerTask
 
 class VoicePlayerView @JvmOverloads constructor(
-    context: Context?,
+    context: Context,
     attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
-) : RelativeLayout(context, attrs, defStyleAttr), View.OnClickListener, Player.Listener,
+    defStyleAttr: Int = com.google.android.material.R.attr.materialCardViewFilledStyle
+) : MaterialCardView(context, attrs, defStyleAttr), View.OnClickListener, Player.Listener,
     OnLongClickListener, PopupMenu.OnMenuItemClickListener {
     private lateinit var time: TextView
     private lateinit var icon: ImageView
@@ -81,51 +78,25 @@ class VoicePlayerView @JvmOverloads constructor(
     }
 
     private fun reloadView() {
-        val layoutParams = animationView.layoutParams
-        if (isMini) {
-            layoutParams.width = DisplayUtil.dp2px(context, 64f)
-            layoutParams.height = DisplayUtil.dp2px(context, 12f)
-            setPadding(
-                DisplayUtil.dp2px(context, 4f), DisplayUtil.dp2px(
-                    context, 2f
-                ), DisplayUtil.dp2px(context, 4f), DisplayUtil.dp2px(
-                    context, 2f
-                )
-            )
-        } else {
-            layoutParams.width = DisplayUtil.dp2px(context, 96f)
-            layoutParams.height = DisplayUtil.dp2px(context, 18f)
-            setPadding(
-                DisplayUtil.dp2px(context, 8f), DisplayUtil.dp2px(
-                    context, 4f
-                ), DisplayUtil.dp2px(context, 8f), DisplayUtil.dp2px(
-                    context, 4f
-                )
-            )
+        animationView.layoutParams = animationView.layoutParams.apply {
+            width = DisplayUtil.dp2px(context, if (isMini) 64f else 96f)
+            height = DisplayUtil.dp2px(context, if (isMini) 12f else 18f)
         }
-        animationView.layoutParams = layoutParams
+        val horizontalPadding = DisplayUtil.dp2px(context, if (isMini) 8f else 12f)
+        setContentPadding(horizontalPadding, 0, horizontalPadding, 0)
     }
 
     private fun initView() {
-        backgroundTintList = ColorStateList.valueOf(
-            ThemeUtils.getColorByAttr(
-                context,
-                R.attr.colorAccent
-            )
-        )
-        setBackgroundResource(R.drawable.bg_audio)
+        setCardBackgroundColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorSecondaryContainer))
+        isFocusable = true
         setOnClickListener(this)
         setOnLongClickListener(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            foreground = ContextCompat.getDrawable(context, R.drawable.fg_ripple_radius_50dp)
-        }
+        contentDescription = context.getString(R.string.play_voice)
         inflate(context, R.layout.layout_audio, this)
         time = findViewById(R.id.audio_text)
         icon = findViewById(R.id.audio_play_icon)
         animationView = findViewById<LottieAnimationView>(R.id.audio_wave_anim).apply {
-            val colorRes: Int = R.color.default_color_primary
-            val csl = ColorStateListUtils.createColorStateList(context, colorRes)
-            val filter = SimpleColorFilter(csl.defaultColor)
+            val filter = SimpleColorFilter(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSecondaryContainer))
             val keyPath = KeyPath("**")
             val callback = LottieValueCallback<ColorFilter>(filter)
             addValueCallback(keyPath, LottieProperty.COLOR_FILTER, callback)
@@ -219,12 +190,14 @@ class VoicePlayerView @JvmOverloads constructor(
     private fun setState(@IconState state: Int) {
         when (state) {
             STATE_LOADING -> {
+                contentDescription = context.getString(R.string.text_loading)
                 icon.visibility = GONE
                 progressBar.visibility = VISIBLE
                 animationView.pauseAnimation()
             }
 
             STATE_PLAYING -> {
+                contentDescription = context.getString(R.string.pause_voice)
                 icon.visibility = VISIBLE
                 icon.setImageResource(R.drawable.ic_round_pause_circle_filled_18dp)
                 progressBar.visibility = GONE
@@ -232,6 +205,7 @@ class VoicePlayerView @JvmOverloads constructor(
             }
 
             STATE_PAUSING -> {
+                contentDescription = context.getString(R.string.play_voice)
                 icon.visibility = VISIBLE
                 icon.setImageResource(R.drawable.ic_round_play_circle_filled_18dp)
                 progressBar.visibility = GONE

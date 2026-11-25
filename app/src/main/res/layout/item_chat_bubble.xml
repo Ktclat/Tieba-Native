@@ -11,24 +11,24 @@
         android:layout_height="wrap_content"
         style="@style/Widget.Material3.CardView.Filled"
         app:contentPadding="12dp">
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/chat_bubble_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxWidth="250dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/chat_bubble_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxWidth="250dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-        <FrameLayout
-            android:id="@+id/chat_bubble_custom_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-
+            <FrameLayout
+                android:id="@+id/chat_bubble_custom_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

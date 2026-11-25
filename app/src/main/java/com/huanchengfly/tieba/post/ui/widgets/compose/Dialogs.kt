@@ -4,15 +4,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.OutlinedTextField as M3OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +65,7 @@ fun DialogScope.DialogNegativeButton(
     }) { Text(text) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
     title: @Composable (DialogScope.() -> Unit),
@@ -77,28 +80,33 @@ fun TimePickerDialog(
     cancelText: String = stringResource(id = R.string.button_cancel),
     content: @Composable (DialogScope.() -> Unit) = {},
 ) {
-    var timeVal by remember(currentTime, dialogState.show) { mutableStateOf(currentTime) }
-    Dialog(
+    if (!dialogState.show) return
+    val scope = DialogScope { dialogState.show = false }
+    var timeVal by remember(currentTime) { mutableStateOf(currentTime) }
+    androidx.compose.material3.TimePickerDialog(
         modifier = modifier,
-        dialogState = dialogState,
-        onDismiss = onCancel,
-        title = title,
-        buttons = { DialogPositiveButton(text = confirmText, onClick = { onConfirm(timeVal) }) },
-        dismissButton = { DialogNegativeButton(text = cancelText, onClick = onCancel) },
+        onDismissRequest = {
+            scope.dismiss()
+            onCancel?.invoke()
+        },
+        title = {
+            Box(Modifier.padding(bottom = 20.dp)) {
+                ProvideTextStyle(MaterialTheme.typography.labelMedium) { scope.title() }
+            }
+        },
+        confirmButton = { scope.DialogPositiveButton(confirmText) { onConfirm(timeVal) } },
+        dismissButton = { scope.DialogNegativeButton(cancelText, onCancel) },
     ) {
-        Column {
-            content()
-            TimePicker(
-                currentTime = currentTime,
-                onTimeChanged = {
-                    timeVal = it
-                    onValueChange?.invoke(it)
-                },
-                is24TimeFormat = is24TimeFormat,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        scope.content()
+        TimePicker(
+            currentTime = currentTime,
+            onTimeChanged = {
+                timeVal = it
+                onValueChange?.invoke(it)
+            },
+            is24TimeFormat = is24TimeFormat,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
     }
 }
 

@@ -175,7 +175,6 @@ dependencies {
     implementation(retrofit2.converter.wire)
     implementation(google.gson)
     implementation(org.litepal.android.kotlin)
-    implementation(com.jaredrummler.colorpicker)
     implementation(github.matisse)
     implementation(xx.permissions)
     implementation(com.gyf.immersionbar.immersionbar)

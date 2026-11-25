@@ -333,9 +333,6 @@ libraries:
   org.litepal.android:
     kotlin:
       version: 3.0.0
-  com.jaredrummler:
-    colorpicker:
-      version: 1.1.0
   com.github.lwj1994:
     Matisse:
       alias: github.matisse

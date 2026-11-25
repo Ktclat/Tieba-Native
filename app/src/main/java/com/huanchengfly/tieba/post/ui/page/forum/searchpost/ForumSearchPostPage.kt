@@ -2,6 +2,7 @@
 
 package com.huanchengfly.tieba.post.ui.page.forum.searchpost
 
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -50,7 +51,6 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ForumSearchPostPageDesti
 import com.huanchengfly.tieba.post.ui.page.search.SearchHistorySection
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
-import com.huanchengfly.tieba.post.ui.widgets.compose.HorizontalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -355,10 +355,8 @@ fun ForumSearchPostPage(
                                                 }.forEachIndexed { index, composable ->
                                                     composable()
                                                     if (index < filterTypeMapping.size - 1) {
-                                                        HorizontalDivider(
-                                                            modifier = Modifier.padding(
-                                                                horizontal = 8.dp
-                                                            )
+                                                        VerticalDivider(
+                                                            modifier = Modifier.padding(horizontal = 8.dp).height(16.dp)
                                                         )
                                                     }
                                                 }
