@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.api.models.protos.Post
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
@@ -41,6 +44,27 @@ import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.Util
 
 private val User.hidesCommentIdentity: Boolean get() = userhide != 0 || is_mask != 0
+
+private fun Post.visibleFloorAuthorId(): Long? {
+    if (author?.hidesCommentIdentity == true) return null
+    return author?.id?.takeIf { it > 0 } ?: author_id.takeIf { it > 0 }
+}
+
+internal fun shouldSeparateFloors(previous: Post, current: Post): Boolean {
+    val previousId = previous.visibleFloorAuthorId() ?: return true
+    return previousId != current.visibleFloorAuthorId()
+}
+
+@Composable
+internal fun FloorDivider(previous: Post?, current: Post) {
+    if (previous != null && shouldSeparateFloors(previous, current)) {
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = with(LocalDensity.current) { 1.toDp() },
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
 
 internal fun User.commentDisplayName(context: Context): String? =
     nameShow.trim().takeIf { it.isNotEmpty() }

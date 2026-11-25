@@ -32,7 +32,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -816,6 +816,21 @@ fun ThreadPage(
         )
     }
 
+    fun LazyListScope.replyFloors(posts: ImmutableList<PostItemData>, latest: Boolean = false) {
+        itemsIndexed(
+            items = posts,
+            key = { _, item -> item.post.get { ThreadFloorKey(id, floor, latest) } },
+            contentType = { _, _ -> "reply-floor" },
+        ) { index, (post, blocked, renders, replies) ->
+            Container {
+                Column {
+                    FloorDivider(posts.getOrNull(index - 1)?.post?.get(), post.get())
+                    PostCard(post, renders, replies, blocked)
+                }
+            }
+        }
+    }
+
     fun LazyListScope.latestPosts(desc: Boolean) {
         if (latestPosts.isNotEmpty()) {
             if (!desc) {
@@ -831,20 +846,7 @@ fun ThreadPage(
                     }
                 }
             }
-            items(
-                items = latestPosts,
-                key = { (item) -> item.get { ThreadFloorKey(id, floor, latest = true) } },
-                contentType = { "reply-floor" },
-            ) { (item, blocked, renders, subPosts) ->
-                Container {
-                    PostCard(
-                        item,
-                        renders,
-                        subPosts,
-                        blocked
-                    )
-                }
-            }
+            replyFloors(latestPosts, latest = true)
             if (desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -1285,20 +1287,7 @@ fun ThreadPage(
                                     }
                                 }
                             } else {
-                                items(
-                                    items = data,
-                                    key = { (item) -> item.get { ThreadFloorKey(id, floor) } },
-                                    contentType = { "reply-floor" },
-                                ) { (item, blocked, renders, subPosts) ->
-                                    Container {
-                                        PostCard(
-                                            item,
-                                            renders,
-                                            subPosts,
-                                            blocked
-                                        )
-                                    }
-                                }
+                                replyFloors(data)
                             }
                             if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
                                 latestPosts(false)
