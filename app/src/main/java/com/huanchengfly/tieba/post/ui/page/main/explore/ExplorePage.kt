@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.MaterialTheme
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import androidx.compose.material.Tab
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
@@ -82,12 +83,10 @@ private fun ColumnScope.ExplorePageTab(
                 text = { item.name(pagerState.currentPage == index) },
                 selected = pagerState.currentPage == index,
                 onClick = {
-                    coroutineScope.launch {
-                        if (pagerState.currentPage == index) {
-                            emitGlobalEvent(GlobalEvent.Refresh(item.id))
-                        } else {
-                            pagerState.animateScrollToPage(index)
-                        }
+                    if (pagerState.currentPage == index) {
+                        coroutineScope.launch { emitGlobalEvent(GlobalEvent.Refresh(item.id)) }
+                    } else {
+                        pagerState.requestScrollToPage(index)
                     }
                 },
             )
@@ -105,7 +104,7 @@ private fun TabText(
         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         textAlign = TextAlign.Center
     )
-    Text(text = text, style = style)
+    androidx.compose.material3.Text(text = text, style = style)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -116,7 +115,7 @@ fun ExplorePage() {
 
     val loggedIn = remember(account) { account != null }
 
-    val pages = remember {
+    val pages = remember(loggedIn) {
         listOfNotNull(
             if (loggedIn) ExplorePageItem(
                 "concern",
@@ -138,10 +137,12 @@ fun ExplorePage() {
     val pagerState = rememberPagerState(initialPage = if (account != null) 1 else 0) { pages.size }
     val coroutineScope = rememberCoroutineScope()
 
-    onGlobalEvent<GlobalEvent.Refresh>(
-        filter = { it.key == "explore" }
-    ) {
-        coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(pages[pagerState.currentPage].id))
+    if (LocalShouldLoad.current) {
+        onGlobalEvent<GlobalEvent.Refresh>(
+            filter = { it.key == "explore" }
+        ) {
+            coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(pages[pagerState.currentPage].id))
+        }
     }
 
     MyScaffold(

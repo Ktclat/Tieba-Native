@@ -9,22 +9,23 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -62,9 +63,8 @@ import com.huanchengfly.tieba.post.ui.page.main.user.UserPage
 import com.huanchengfly.tieba.post.ui.utils.DevicePosture
 import com.huanchengfly.tieba.post.ui.utils.MainNavigationContentPosition
 import com.huanchengfly.tieba.post.ui.utils.MainNavigationType
-import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.utils.appPreferences
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -105,17 +105,7 @@ private fun NavigationWrapper(
     }
 }
 
-internal fun PagerState.selectMainTab(index: Int, onReselected: (Int) -> Unit) {
-    if (index !in 0 until pageCount) return
-    if (index == currentPage && !isScrollInProgress) {
-        onReselected(index)
-    } else {
-        // Set the page during the tap and let the next layout measure its content.
-        requestScrollToPage(index)
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationGraphicsApi::class)
+@OptIn(ExperimentalAnimationGraphicsApi::class)
 @RootNavGraph(start = true)
 @Destination
 @Composable
@@ -138,23 +128,14 @@ fun MainPage(
     }
 
     val context = LocalContext.current
+    var lastHideExplore by rememberSaveable { mutableStateOf(false) }
     val hideExplore by context.dataStore.collectPreferenceAsState(
         key = booleanPreferencesKey("hideExplore"),
         defaultValue = false,
-        // Restore the correct tab indices on the first layout, including after process death.
-        initialValue = remember(context) { context.appPreferences.hideExplore },
+        initialValue = lastHideExplore,
     )
-    val pageCount by remember {
-        derivedStateOf {
-            if (hideExplore) 3 else 4
-        }
-    }
-    val pagerState = rememberPagerState { pageCount }
-    LaunchedEffect(hideExplore) {
-        if (pagerState.currentPage == 3 && hideExplore) {
-            pagerState.requestScrollToPage(2)
-        }
-    }
+    SideEffect { lastHideExplore = hideExplore }
+    val selection = rememberMainTabSelection("home")
 
     val coroutineScope = rememberCoroutineScope()
     val themeColors = ExtendedTheme.colors
@@ -169,7 +150,7 @@ fun MainPage(
                         HomePage(
                             canOpenExplore = !hideExplore
                         ) {
-                            pagerState.requestScrollToPage(1)
+                            selection.select("explore")
                         }
                     }
                 ),
@@ -212,6 +193,10 @@ fun MainPage(
             ).toImmutableList()
         }
     }
+    val selectedIndex = navigationItems.indexOfFirst { it.id == selection.id }.coerceAtLeast(0)
+    val selectedId = navigationItems[selectedIndex].id
+    if (selectedId != selection.id) SideEffect { selection.select(selectedId) }
+
     val navigationType by remember {
         derivedStateOf {
             when (windowWidthSizeClass) {
@@ -262,7 +247,7 @@ fun MainPage(
     }
     // Observes child scroll, consuming none of its distance.
     // The Scaffold bottom bar owns layout height, never overlays page content.
-    val navHideFraction = remember(pagerState.currentPage, navigationType) { mutableFloatStateOf(0f) }
+    val navHideFraction = remember(selectedId, navigationType) { mutableFloatStateOf(0f) }
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
     val navScrollObserver = remember(navigationType, navScrollRangePx, navHideFraction) {
         object : NestedScrollConnection {
@@ -290,13 +275,15 @@ fun MainPage(
         defaultValue = true,
     )
     val onSelect: (Int) -> Unit = { index ->
-        pagerState.selectMainTab(index) { current ->
-            coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(navigationItems[current].id))
+        navigationItems.getOrNull(index)?.let { item ->
+            selection.select(item.id) {
+                coroutineScope.emitGlobalEvent(GlobalEvent.Refresh(item.id))
+            }
         }
     }
     ProvideNavigator(navigator = navigator) {
         NavigationWrapper(
-            currentPosition = pagerState.currentPage,
+            currentPosition = selectedIndex,
             onSelect = onSelect,
             navigationItems = navigationItems,
             navigationType = navigationType,
@@ -309,7 +296,7 @@ fun MainPage(
                     if (navigationType == MainNavigationType.BOTTOM_NAVIGATION) {
                         FloatingNavigationBarSlot(visibleFraction = 1f - navHideFraction.floatValue) {
                             FloatingBottomNavigation(
-                                currentPosition = pagerState.currentPage,
+                                currentPosition = selectedIndex,
                                 onSelect = onSelect,
                                 navigationItems = navigationItems,
                                 themeColors = themeColors,
@@ -318,33 +305,29 @@ fun MainPage(
                     }
                 }
             ) { paddingValues ->
-                LazyLoadHorizontalPager(
-                    contentPadding = paddingValues,
-                    state = pagerState,
-                    key = { navigationItems[it].id },
-                    modifier = Modifier.fillMaxSize().graphicsLayer {
-                        // Layer-only updates avoid recomposition of the full tab content.
-                        val preview = predictiveProgress.value
-                        scaleX = 1f - preview * 0.055f
-                        scaleY = 1f - preview * 0.045f
-                        translationX = preview * 12.dp.toPx()
-                    },
-                    verticalAlignment = Alignment.Top,
-                    userScrollEnabled = false
-                ) {
-                    navigationItems[it].content()
+                MainTabAccountScope(viewModel, LocalAccount.current?.uid) {
+                    MainTabHost(
+                        selectedId = selectedId,
+                        navigationItems = navigationItems,
+                        modifier = Modifier.fillMaxSize().padding(paddingValues).graphicsLayer {
+                            val preview = predictiveProgress.value
+                            scaleX = 1f - preview * 0.055f
+                            scaleY = 1f - preview * 0.045f
+                            translationX = preview * 12.dp.toPx()
+                        },
+                    )
                 }
             }
         }
     }
     // Only tabs intercept predictive back. Root activity can still use the
     // system's native predictive back-to-home animation.
-    PredictiveBackHandler(enabled = pagerState.currentPage != 0 && predictTabBack) { progress ->
+    PredictiveBackHandler(enabled = selectedIndex != 0 && predictTabBack) { progress ->
         try {
             progress.collect { event ->
                 predictiveProgress.snapTo(event.progress.coerceIn(0f, 1f))
             }
-            pagerState.animateScrollToPage(0)
+            selection.select("home")
         } catch (cancelled: CancellationException) {
             throw cancelled
         } finally {
@@ -354,8 +337,8 @@ fun MainPage(
             }
         }
     }
-    BackHandler(enabled = pagerState.currentPage != 0 && !predictTabBack) {
-        pagerState.requestScrollToPage(0)
+    BackHandler(enabled = selectedIndex != 0 && !predictTabBack) {
+        selection.select("home")
     }
 }
 

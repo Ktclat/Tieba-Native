@@ -1,18 +1,16 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import androidx.compose.foundation.clickable
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsListItem
 import com.huanchengfly.tieba.post.ui.common.prefs.ifNotNullThen
 
@@ -34,7 +32,6 @@ import com.huanchengfly.tieba.post.ui.common.prefs.ifNotNullThen
  * @param leadingIcon Icon which is positioned at the start of the Pref
  * @param trailingContent Composable content which is positioned at the end of the Pref
  */
-@ExperimentalMaterialApi
 @Composable
 fun TextPref(
     title: String,
@@ -43,7 +40,7 @@ fun TextPref(
     darkenOnDisable: Boolean = true,
     minimalHeight: Boolean = false,
     onClick: (() -> Unit)? = null,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = onClick != null,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null
@@ -54,7 +51,7 @@ fun TextPref(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = ExtendedTheme.colors.textSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -62,7 +59,7 @@ fun TextPref(
 
     PrefsListItem(
         text = { Text(title) },
-        modifier = if (onClick != null && enabled) modifier.clickable { onClick() } else modifier,
+        modifier = if (onClick != null) modifier.clickable(enabled = enabled, onClick = onClick) else modifier,
         enabled = enabled,
         darkenOnDisable = darkenOnDisable,
         textColor = textColor,

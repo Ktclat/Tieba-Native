@@ -14,14 +14,11 @@ import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Player.STATE_READY
 import androidx.media3.common.VideoSize
-import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.RawResourceDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
-import com.huanchengfly.tieba.post.ui.widgets.compose.video.util.FlowDebouncer
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.util.set
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -42,10 +39,9 @@ internal class DefaultVideoPlayerController(
     private val context: Context,
     private val initialState: VideoPlayerState,
     private val coroutineScope: CoroutineScope,
-    private val fullScreenModeChangedListener: OnFullScreenModeChangedListener? = null
+    private val fullScreenModeChangedListener: OnFullScreenModeChangedListener? = null,
+    private val buildPlayer: () -> ExoPlayer = { ExoPlayer.Builder(context).build() },
 ) : VideoPlayerController {
-    private val released = AtomicBoolean(false)
-
     private val _state = MutableStateFlow(initialState)
     override val state: StateFlow<VideoPlayerState>
         get() = _state.asStateFlow()
@@ -84,11 +80,12 @@ internal class DefaultVideoPlayerController(
             playerView?.setBackgroundColor(value)
         }
 
-    private lateinit var source: VideoPlayerSource
+    private var source: VideoPlayerSource? = null
     private var playerView: PlayerView? = null
 
     private var updateDurationAndPositionJob: Job? = null
     private var autoHideControllerJob: Job? = null
+    private var previewSeekJob: Job? = null
 
     private val playerListener = object : Player.Listener {
         @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -141,12 +138,10 @@ internal class DefaultVideoPlayerController(
             return _exoPlayer!!
         }
 
-    private fun createExoPlayer() = ExoPlayer.Builder(context)
-        .build()
-        .apply {
-            playWhenReady = initialState.isPlaying
-            addListener(playerListener)
-        }
+    private fun createExoPlayer() = buildPlayer().apply {
+        playWhenReady = _state.value.isPlaying
+        addListener(playerListener)
+    }
 
     /**
      * Not so efficient way of showing preview in video slider.
@@ -160,36 +155,17 @@ internal class DefaultVideoPlayerController(
             return _previewExoPlayer!!
         }
 
-    private fun createPreviewExoPlayer() = ExoPlayer.Builder(context)
-        .build()
-        .apply {
-            playWhenReady = false
-        }
-
-    private val previewSeekDebouncer = FlowDebouncer<Long>(200L)
-
-    init {
-        exoPlayer.playWhenReady = initialState.isPlaying
-
-        coroutineScope.launch {
-            previewSeekDebouncer.collect { position ->
-                previewExoPlayer.seekTo(position)
-            }
-        }
+    private fun createPreviewExoPlayer() = buildPlayer().apply {
+        playWhenReady = false
+        source?.let { prepareSource(it) }
     }
 
     fun initialize() {
         Log.i("VideoPlayerController", "$this initialize")
         val currentState = _state.value
-        exoPlayer.playWhenReady = currentState.isPlaying
+        _exoPlayer?.playWhenReady = currentState.isPlaying
         initialStateRunner = {
             exoPlayer.seekTo(currentState.currentPosition)
-        }
-        if (this::source.isInitialized) {
-            setSource(source)
-        }
-        if (playerView != null) {
-            playerViewAvailable(playerView!!)
         }
     }
 
@@ -209,11 +185,11 @@ internal class DefaultVideoPlayerController(
     }
 
     override fun pause() {
-        exoPlayer.playWhenReady = false
+        _exoPlayer?.playWhenReady = false
     }
 
     override fun togglePlaying() {
-        if (exoPlayer.isPlaying) pause()
+        if (_exoPlayer?.isPlaying == true) pause()
         else play()
     }
 
@@ -249,8 +225,9 @@ internal class DefaultVideoPlayerController(
         if (playerView == null) {
             waitPlayerViewToPrepare.set(true)
         } else {
-            prepare()
+            exoPlayer.prepareSource(source)
         }
+        _previewExoPlayer?.prepareSource(source)
     }
 
     fun enableGestures(isEnabled: Boolean) {
@@ -310,34 +287,14 @@ internal class DefaultVideoPlayerController(
     }
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    private fun prepare() {
-        fun createVideoSource(): MediaSource {
-            val dataSourceFactory: DataSource.Factory = DefaultDataSource.Factory(context)
-
-            return when (val source = source) {
-                is VideoPlayerSource.Raw -> {
-                    ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(
-                            MediaItem.fromUri(
-                                RawResourceDataSource.buildRawResourceUri(
-                                    source.resId
-                                )
-                            )
-                        )
-                }
-
-                is VideoPlayerSource.Network -> {
-                    ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(MediaItem.fromUri(source.url))
-                }
-            }
+    private fun ExoPlayer.prepareSource(source: VideoPlayerSource) {
+        val item = when (source) {
+            is VideoPlayerSource.Raw -> MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(source.resId))
+            is VideoPlayerSource.Network -> MediaItem.fromUri(source.url)
         }
-
-        exoPlayer.setMediaSource(createVideoSource())
-        previewExoPlayer.setMediaSource(createVideoSource())
-
-        exoPlayer.prepare()
-        previewExoPlayer.prepare()
+        val factory = ProgressiveMediaSource.Factory(DefaultDataSource.Factory(context))
+        setMediaSource(factory.createMediaSource(item))
+        prepare()
     }
 
     fun playerViewAvailable(playerView: PlayerView) {
@@ -346,7 +303,7 @@ internal class DefaultVideoPlayerController(
         playerView.setBackgroundColor(videoPlayerBackgroundColor)
 
         if (waitPlayerViewToPrepare.compareAndSet(true, false)) {
-            prepare()
+            source?.let { exoPlayer.prepareSource(it) }
         }
     }
 
@@ -359,24 +316,31 @@ internal class DefaultVideoPlayerController(
         // Roll to the nearest "even" integer.
         val seconds = position.toInt() / 1000
         val nearestEven = (seconds - seconds.rem(2)).toLong()
-        coroutineScope.launch {
-            previewSeekDebouncer.put(nearestEven * 1000)
+        previewSeekJob?.cancel()
+        previewSeekJob = coroutineScope.launch {
+            delay(200L)
+            previewExoPlayer.seekTo(nearestEven * 1000L)
         }
     }
 
     override fun reset() {
-        exoPlayer.stop()
-        previewExoPlayer.stop()
+        _exoPlayer?.stop()
+        _previewExoPlayer?.stop()
     }
 
     override fun release() {
         Log.i("VideoPlayerController", "$this release")
-        if (released.compareAndSet(false, true)) {
-            exoPlayer.release()
-            previewExoPlayer.release()
-            _exoPlayer = null
-            _previewExoPlayer = null
-        }
+        updateDurationAndPositionJob?.cancel()
+        autoHideControllerJob?.cancel()
+        previewSeekJob?.cancel()
+        playerView?.player = null
+        playerView = null
+        _exoPlayer?.removeListener(playerListener)
+        _exoPlayer?.release()
+        _previewExoPlayer?.release()
+        _exoPlayer = null
+        _previewExoPlayer = null
+        waitPlayerViewToPrepare.set(source != null)
     }
 
     override fun supportFullScreen(): Boolean {

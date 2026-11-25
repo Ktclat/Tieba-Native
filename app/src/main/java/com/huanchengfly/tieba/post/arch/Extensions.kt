@@ -6,8 +6,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.InternalComposeApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.currentComposer
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,6 +42,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.reflect.KProperty1
 
+val LocalMainTabActive = compositionLocalOf { true }
+
 fun <T> Flow<T>.collectIn(
     lifecycleOwner: LifecycleOwner,
     minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
@@ -52,8 +56,20 @@ fun <T> Flow<T>.collectIn(
 inline fun <reified T : UiState, A> StateFlow<T>.collectPartialAsState(
     prop1: KProperty1<T, A>,
 ): State<A> = key(this, prop1) {
-    val initial = remember { prop1.get(value) }
-    collectPartialAsState(prop1, initial)
+    val projection = remember { mutableStateOf(prop1.get(value)) }
+    val active = LocalMainTabActive.current
+    // Callers may keep the projection in remembered derived state. Refresh the same
+    // holder before the first layout whenever its tab becomes active again.
+    val current = remember(active) {
+        if (active) projection.value = prop1.get(this@collectPartialAsState.value)
+        projection
+    }
+    LaunchedEffect(active) {
+        if (active) {
+            this@collectPartialAsState.collect { current.value = prop1.get(it) }
+        }
+    }
+    current
 }
 
 @Composable
@@ -61,12 +77,9 @@ inline fun <reified T : UiState, A> Flow<T>.collectPartialAsState(
     prop1: KProperty1<T, A>,
     initial: A,
 ): State<A> {
-    return produceState(
-        initialValue = initial,
-        key1 = this,
-        key2 = prop1,
-        key3 = initial
-    ) {
+    val active = LocalMainTabActive.current
+    return produceState(initial, this, prop1, initial, active) {
+        if (!active) return@produceState
         this@collectPartialAsState
             .map {
                 prop1.get(it)
@@ -143,10 +156,10 @@ inline fun <reified VM : ViewModel> hiltViewModel(
 internal fun createHiltViewModelFactory(
     viewModelStoreOwner: ViewModelStoreOwner,
 ): ViewModelProvider.Factory? = if (viewModelStoreOwner is NavBackStackEntry) {
-    HiltViewModelFactory(
-        context = LocalContext.current,
-        navBackStackEntry = viewModelStoreOwner
-    )
+    val context = LocalContext.current
+    remember(viewModelStoreOwner, context) {
+        HiltViewModelFactory(context = context, navBackStackEntry = viewModelStoreOwner)
+    }
 } else {
     // Use the default factory provided by the ViewModelStoreOwner
     // and assume it is an @AndroidEntryPoint annotated fragment or activity
@@ -159,7 +172,7 @@ inline fun <reified VM : BaseViewModel<*, *, *, *>> pageViewModel(
 ): VM {
     return hiltViewModel<VM>(key = key).apply {
         val context = LocalContext.current
-        if (context is BaseComposeActivity) {
+        if (context is BaseComposeActivity && LocalMainTabActive.current) {
             val coroutineScope = rememberCoroutineScope()
 
             DisposableEffect(key1 = this) {
@@ -189,7 +202,7 @@ inline fun <INTENT : UiIntent, reified VM : BaseViewModel<INTENT, *, *, *>> page
     key: String? = null,
 ): VM {
     return pageViewModel<VM>(key = key).apply {
-        if (initialIntent.isNotEmpty()) {
+        if (initialIntent.isNotEmpty() && LocalMainTabActive.current) {
             LaunchedEffect(key1 = initialized) {
                 if (!initialized) {
                     initialized = true

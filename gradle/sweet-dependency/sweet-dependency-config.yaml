@@ -35,7 +35,7 @@ repositories:
 versions:
   accompanist: 0.34.0
   hilt: 2.46.1
-  kotlin: 1.9.22
+  kotlin: 2.0.21
   sketch: 3.3.0
   wire: 4.9.3
 
@@ -61,9 +61,12 @@ plugins:
   org.jetbrains.kotlin.kapt:
     alias: kotlin-kapt
     version-ref: kotlin
+  org.jetbrains.kotlin.plugin.compose:
+    alias: kotlin-compose
+    version-ref: kotlin
   com.google.devtools.ksp:
     alias: kotlin-ksp
-    version: 1.9.22-1.0.17
+    version: 2.0.21-1.0.28
   org.jetbrains.kotlin.plugin.serialization:
     alias: kotlin-serialization
     version-ref: kotlin
@@ -93,7 +96,7 @@ libraries:
   androidx.compose:
     compose-bom:
       alias: compose-bom
-      version: 2024.10.00
+      version: 2025.06.01
   androidx.compose.ui:
     ui-test-junit4:
       alias: compose-ui-test-junit4
@@ -237,7 +240,7 @@ libraries:
   com.google.android.material:
     material:
       alias: google-material
-      version: 1.11.0
+      version: 1.14.0
   androidx.constraintlayout:
     constraintlayout-compose:
       alias: androidx-constraintlayout-compose

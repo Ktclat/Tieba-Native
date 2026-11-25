@@ -7,8 +7,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,22 +24,15 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ContentAlpha
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideTextStyle
-import androidx.compose.material.ScrollableTabRow
-import androidx.compose.material.Surface
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
-import androidx.compose.material.TabRowDefaults
-import androidx.compose.material.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.material.contentColorFor
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.primarySurface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.UiComposable
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -63,8 +53,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideMaterial3Content
+import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedTextStyle
 import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
@@ -142,18 +133,13 @@ private val ScrollableTabRowScrollSpec: AnimationSpec<Float> = tween(
 fun TabRow(
     selectedTabIndex: Int,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colors.primarySurface,
+    backgroundColor: Color = M3Theme.colorScheme.surface,
     contentColor: Color = contentColorFor(backgroundColor),
     indicator: @Composable @UiComposable
         (tabPositions: List<TabPosition>) -> Unit = @Composable { tabPositions ->
-        TabRowDefaults.Indicator(
-            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex])
-        )
+        TabIndicator(selectedTabIndex, tabPositions)
     },
-    divider: @Composable @UiComposable () -> Unit =
-        @Composable {
-            TabRowDefaults.Divider()
-        },
+    divider: @Composable @UiComposable () -> Unit = {},
     tabs: @Composable @UiComposable () -> Unit,
 ) {
     Surface(
@@ -165,7 +151,7 @@ fun TabRow(
             val tabRowWidth = constraints.maxWidth
             val tabMeasurables = subcompose(TabSlots.Tabs, tabs)
             val tabCount = tabMeasurables.size
-            val tabWidth = (tabRowWidth / tabCount)
+            val tabWidth = tabRowWidth / tabCount.coerceAtLeast(1)
             val tabPlaceables = tabMeasurables.map {
                 it.measure(constraints.copy(minWidth = tabWidth, maxWidth = tabWidth))
             }
@@ -236,19 +222,14 @@ fun TabRow(
 fun ScrollableTabRow(
     selectedTabIndex: Int,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colors.primarySurface,
+    backgroundColor: Color = M3Theme.colorScheme.surface,
     contentColor: Color = contentColorFor(backgroundColor),
-    edgePadding: Dp = TabRowDefaults.ScrollableTabRowPadding,
+    edgePadding: Dp = TabRowDefaults.ScrollableTabRowEdgeStartPadding,
     indicator: @Composable @UiComposable
         (tabPositions: List<TabPosition>) -> Unit = @Composable { tabPositions ->
-        TabRowDefaults.Indicator(
-            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex])
-        )
+        TabIndicator(selectedTabIndex, tabPositions)
     },
-    divider: @Composable @UiComposable () -> Unit =
-        @Composable {
-            TabRowDefaults.Divider()
-        },
+    divider: @Composable @UiComposable () -> Unit = {},
     tabs: @Composable @UiComposable () -> Unit,
 ) {
     Surface(
@@ -400,73 +381,39 @@ fun PagerTabIndicator(
     pagerState: PagerState,
     tabPositions: List<TabPosition>,
 ) {
-    if (tabPositions.isNotEmpty()) {
-        val currentPage = minOf(tabPositions.lastIndex, pagerState.currentPage)
-        val currentTab = tabPositions[currentPage]
-        val prevTab = tabPositions.getOrNull(currentPage - 1)
-        val nextTab = tabPositions.getOrNull(currentPage + 1)
-        val fraction = pagerState.currentPageOffsetFraction
-        val currentTabLeft = currentTab.left + 6.dp
-        val indicatorOffset = if (fraction > 0 && nextTab != null) {
-            lerp(currentTabLeft, nextTab.left + 6.dp, fraction)
-        } else if (fraction < 0 && prevTab != null) {
-            lerp(currentTabLeft, prevTab.left + 6.dp, -fraction)
-        } else currentTabLeft
-        val animatedIndicatorOffset by animateDpAsState(
-            targetValue = indicatorOffset,
-            label = "tab-indicator-offset",
-        )
-        val animatedWidth by animateDpAsState(
-            targetValue = (currentTab.width - 12.dp).coerceAtLeast(24.dp),
-            label = "tab-indicator-width",
-        )
-        val indicatorShape = RoundedCornerShape(18.dp)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .wrapContentSize(Alignment.CenterStart)
-                .offset(x = animatedIndicatorOffset)
-                .width(animatedWidth)
-                .height(36.dp)
-                .clip(indicatorShape)
-                .background(M3Theme.colorScheme.secondaryContainer.copy(alpha = 0.32f))
-                .border(
-                    0.75.dp,
-                    M3Theme.colorScheme.primary.copy(alpha = 0.16f),
-                    indicatorShape,
-                )
-        )
-    }
+    val current = tabPositions.getOrNull(pagerState.currentPage) ?: return
+    val fraction = pagerState.currentPageOffsetFraction
+    val adjacent = tabPositions.getOrNull(pagerState.currentPage + if (fraction < 0f) -1 else 1)
+    val center = current.left + current.width / 2
+    val target = adjacent?.let { it.left + it.width / 2 } ?: center
+    // Page motion already interpolates this position on every drag frame.
+    TabSelectionMark(lerp(center, target, kotlin.math.abs(fraction)))
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TabIndicator(
     selectedTabIndex: Int,
     tabPositions: List<TabPosition>
 ) {
-    if (tabPositions.isNotEmpty()) {
-        val currentTab = tabPositions[selectedTabIndex.coerceIn(0, tabPositions.lastIndex)]
-        val animatedIndicatorOffset by animateDpAsState(
-            targetValue = currentTab.left + 6.dp,
-            label = "tab-active-offset",
-        )
-        val indicatorWidth by animateDpAsState(
-            targetValue = (currentTab.width - 12.dp).coerceAtLeast(24.dp),
-            label = "tab-active-width",
-        )
-        val indicatorShape = RoundedCornerShape(18.dp)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .wrapContentSize(Alignment.CenterStart)
-                .offset(x = animatedIndicatorOffset)
-                .width(indicatorWidth)
-                .height(36.dp)
-                .clip(indicatorShape)
-                .background(M3Theme.colorScheme.secondaryContainer.copy(alpha = 0.32f))
-                .border(0.75.dp, M3Theme.colorScheme.primary.copy(alpha = 0.16f), indicatorShape)
-        )
-    }
+    val tab = tabPositions.getOrNull(selectedTabIndex) ?: return
+    val center by animateDpAsState(
+        targetValue = tab.left + tab.width / 2,
+        animationSpec = M3Theme.motionScheme.fastSpatialSpec(),
+        label = "selected-tab-center",
+    )
+    TabSelectionMark(center)
+}
+
+@Composable
+private fun TabSelectionMark(center: Dp) {
+    val width = 24.dp
+    TabRowDefaults.PrimaryIndicator(
+        modifier = Modifier.fillMaxWidth().wrapContentSize(Alignment.BottomStart)
+            .offset(x = center - width / 2),
+        width = width,
+        color = LocalContentColor.current,
+    )
 }
 
 @Composable
@@ -509,7 +456,7 @@ fun TabClickMenu(
             interactionSource = interactionSource,
             selectedContentColor = selectedContentColor,
             unselectedContentColor = unselectedContentColor,
-            content = content
+            content = { ProvideMaterial3Content { content() } }
         )
     }
 }
@@ -548,7 +495,7 @@ fun TabClickMenu(
         )
 
         val tabTextStyle =
-            MaterialTheme.typography.button.copy(fontSize = 13.sp, letterSpacing = 0.sp)
+            M3Theme.typography.labelLarge
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -556,7 +503,7 @@ fun TabClickMenu(
                 .height(48.dp)
                 .padding(start = 16.dp)
         ) {
-            ProvideTextStyle(value = tabTextStyle) {
+            ProvideUnifiedTextStyle(tabTextStyle) {
                 text()
             }
             Icon(

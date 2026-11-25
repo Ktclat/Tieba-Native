@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.compose.runtime.Stable
+import androidx.lifecycle.ViewModelStore
 import com.huanchengfly.tieba.post.arch.BaseViewModel
 import com.huanchengfly.tieba.post.arch.PartialChange
 import com.huanchengfly.tieba.post.arch.PartialChangeProducer
@@ -17,6 +18,22 @@ import javax.inject.Inject
 @Stable
 @HiltViewModel
 class MainViewModel @Inject constructor() : BaseViewModel<MainUiIntent, MainPartialChange, MainUiState, MainUiEvent>() {
+    private val tabStore = ViewModelStore()
+    private var tabAccountId: String? = null
+
+    internal fun tabStoreFor(accountId: String?): ViewModelStore {
+        if (tabAccountId != accountId) {
+            tabStore.clear()
+            tabAccountId = accountId
+        }
+        return tabStore
+    }
+
+    override fun onCleared() {
+        tabStore.clear()
+        super.onCleared()
+    }
+
     override fun createInitialState(): MainUiState = MainUiState()
 
     override fun createPartialChangeProducer(): PartialChangeProducer<MainUiIntent, MainPartialChange, MainUiState> = MainPartialChangeProducer

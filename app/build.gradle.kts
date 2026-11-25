@@ -3,6 +3,7 @@ import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 plugins {
     autowire(libs.plugins.com.android.application)
     autowire(libs.plugins.kotlin.android)
+    autowire(libs.plugins.kotlin.compose)
     autowire(libs.plugins.kotlin.kapt)
     autowire(libs.plugins.kotlin.serialization)
     autowire(libs.plugins.kotlin.parcelize)
@@ -66,7 +67,6 @@ android {
             isJniDebuggable = false
         }
     }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
     compileOptions {
         targetCompatibility = JavaVersion.VERSION_17
         sourceCompatibility = JavaVersion.VERSION_17
@@ -127,8 +127,7 @@ dependencies {
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     implementation(compose.material)
-    // Existing Kotlin 1.9 toolchain: M3 + shared expressive design tokens, not the latest Expressive API.
-    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material3:material3:1.4.0-alpha18")
     implementation(compose.material.icons.core)
     implementation(compose.material.icons.extended)
     implementation(compose.ui.util)
@@ -161,7 +160,7 @@ dependencies {
     implementation(androidx.window)
     implementation(androidx.startup.runtime)
     testImplementation(junit.junit)
-    testImplementation(platform("androidx.compose:compose-bom:2024.10.00"))
+    testImplementation(platform(compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("org.robolectric:robolectric:4.14.1")

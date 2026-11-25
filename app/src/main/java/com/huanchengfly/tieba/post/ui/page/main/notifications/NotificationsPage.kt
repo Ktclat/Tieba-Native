@@ -3,12 +3,11 @@ package com.huanchengfly.tieba.post.ui.page.main.notifications
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.Tab
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,7 +31,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.accountNavIconIfCompact
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Destination(
@@ -56,7 +54,6 @@ fun NotificationsPage(
     val pagerState = rememberPagerState(
         initialPage = initialTab,
     ) { pages.size }
-    val coroutineScope = rememberCoroutineScope()
     ProvideNavigator(navigator = navigator) {
         MyScaffold(
             backgroundColor = Color.Transparent,
@@ -83,12 +80,10 @@ fun NotificationsPage(
                     ) {
                         pages.forEachIndexed { index, pair ->
                             Tab(
-                                text = { Text(text = pair.first) },
+                                text = { androidx.compose.material3.Text(text = pair.first) },
                                 selected = pagerState.currentPage == index,
                                 onClick = {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(index)
-                                    }
+                                    pagerState.requestScrollToPage(index)
                                 },
                             )
                         }
@@ -128,7 +123,6 @@ fun NotificationsPage(
     val pagerState = rememberPagerState(
         initialPage = initialTab,
     ) { pages.size }
-    val coroutineScope = rememberCoroutineScope()
     MyScaffold(
         backgroundColor = Color.Transparent,
         topBar = {
@@ -158,12 +152,10 @@ fun NotificationsPage(
                 ) {
                     pages.forEachIndexed { index, pair -> 
                         Tab(
-                            text = { Text(text = pair.first) },
+                            text = { androidx.compose.material3.Text(text = pair.first) },
                             selected = pagerState.currentPage == index,
                             onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
+                                pagerState.requestScrollToPage(index)
                             },
                         )
                     }

@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -68,6 +69,7 @@ import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
 import com.huanchengfly.tieba.post.ui.page.thread.PostCard
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
+import com.huanchengfly.tieba.post.ui.page.thread.CommentMetadata
 import com.huanchengfly.tieba.post.ui.page.thread.ReplyRecipient
 import com.huanchengfly.tieba.post.ui.page.thread.splitDirectedReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
@@ -522,7 +524,7 @@ internal fun SubPostsContent(
 @Composable
 internal fun SubPostsHeading(totalCount: Int) {
     val colors = M3Theme.colorScheme
-    Column(Modifier.fillMaxWidth().background(colors.surfaceContainerLow)) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surfaceContainerLow) {
         Text(
             text = stringResource(R.string.title_sub_posts_header, totalCount),
             style = M3Theme.typography.titleSmall,
@@ -574,17 +576,14 @@ internal fun SubPostItem(
     val directed = remember(contentRenders) {
         (contentRenders.firstOrNull() as? TextContentRender)?.text?.splitDirectedReply()
     }
-    val colors = M3Theme.colorScheme
-    val rowFrame = Modifier.fillMaxWidth()
-        .padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
-        .replyRail(colors.outlineVariant)
+    val rowPadding = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
     BlockableContent(
         blocked = blocked,
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },
-        modifier = rowFrame.padding(start = 14.dp, top = 12.dp, bottom = 12.dp),
+        modifier = rowPadding,
     ) {
         LongClickMenu(
-            modifier = rowFrame,
+            modifier = Modifier.fillMaxWidth(),
             menuState = menuState,
             indication = null,
             menuContent = {
@@ -632,12 +631,13 @@ internal fun SubPostItem(
             onClick = { onReplyClick(subPost.get()) }.takeUnless { context.appPreferences.hideReply }
         ) {
             CommentLayout(
-                modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
+                modifier = rowPadding,
                 header = {
                     CommentHeader(
                         author = subPost.get { author },
                         threadAuthorId = threadAuthorId,
-                        time = subPost.get { time.toLong() },
+                        time = null,
+                        showMetadata = false,
                         onUserClick = onUserClick,
                         recipient = if (directed != null) { { ReplyRecipient(directed) } } else null,
                         action = if (item.id > 0) {
@@ -659,6 +659,10 @@ internal fun SubPostItem(
                         render.Render()
                     }
                 }
+                CommentMetadata(
+                    time = subPost.get { time.toLong() },
+                    ipAddress = subPost.get { author?.ip_address },
+                )
             }
         }
     }

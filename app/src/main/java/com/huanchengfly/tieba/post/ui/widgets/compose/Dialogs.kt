@@ -13,13 +13,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.ButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material3.OutlinedTextField as M3OutlinedTextField
 import androidx.compose.material3.MaterialTheme as M3Theme
 import androidx.compose.material.ProvideTextStyle
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -68,7 +68,7 @@ fun DialogScope.DialogPositiveButton(
             .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.textButtonColors(
-            backgroundColor = ExtendedTheme.colors.accent,
+            containerColor = ExtendedTheme.colors.accent,
             contentColor = ExtendedTheme.colors.onAccent
         ),
     ) {
@@ -93,7 +93,7 @@ fun DialogScope.DialogNegativeButton(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.textButtonColors(
-            backgroundColor = ExtendedTheme.colors.text.copy(
+            containerColor = ExtendedTheme.colors.text.copy(
                 alpha = 0.1f
             ),
             contentColor = ExtendedTheme.colors.text

@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -94,7 +94,7 @@ fun AboutPage(
                 TextButton(
                     shape = RoundedCornerShape(100),
                     colors = ButtonDefaults.textButtonColors(
-                        backgroundColor = ExtendedTheme.colors.text.copy(
+                        containerColor = ExtendedTheme.colors.text.copy(
                             alpha = 0.1f
                         ),
                         contentColor = ExtendedTheme.colors.text
@@ -104,7 +104,7 @@ fun AboutPage(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = stringResource(id = R.string.source_code), modifier = Modifier.padding(vertical = 4.dp))
+                    androidx.compose.material3.Text(text = stringResource(id = R.string.source_code), modifier = Modifier.padding(vertical = 4.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

@@ -23,10 +23,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
+import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ProvideUnifiedContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -40,9 +42,11 @@ internal fun CommentLayout(
     header: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        header?.invoke()
-        ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
+    ProvideCommentLinkColor(MaterialTheme.colorScheme.surface) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            header?.invoke()
+            ProvideUnifiedContentColor(MaterialTheme.colorScheme.onSurface) { content() }
+        }
     }
 }
 
@@ -67,6 +71,7 @@ internal fun CommentHeader(
     threadAuthorId: Long?,
     time: Long?,
     floor: Int? = null,
+    showMetadata: Boolean = true,
     recipient: (@Composable () -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
     onUserClick: (User) -> Unit,
@@ -94,9 +99,11 @@ internal fun CommentHeader(
         authorId = authorId,
         recipient = recipient,
         action = action,
+        showMetadata = showMetadata,
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CommentHeader(
     name: AnnotatedString,
@@ -111,41 +118,39 @@ internal fun CommentHeader(
     authorId: Long? = null,
     recipient: (@Composable () -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
+    showMetadata: Boolean = true,
+    avatarSize: Dp = Sizes.Small,
 ) {
-    val avatar = portrait?.trim().orEmpty()
-    val hasAuthor = name.isNotBlank() || avatar.isNotEmpty() || onAuthorClick != null ||
+    val hasAuthor = name.isNotBlank() || !portrait.isNullOrBlank() || onAuthorClick != null ||
         userLevel > 0 || isLz || !bawuType.isNullOrBlank()
     if (!hasAuthor && recipient == null) {
-        CommentAuthorRow(action) { CommentMetadata(time, floor, ipAddress) }
+        CommentAuthorRow(action) { if (showMetadata) CommentMetadata(time, floor, ipAddress) }
         return
     }
 
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         CommentAuthorRow(action) {
-            if (hasAuthor) {
-                val profileAction = if (onAuthorClick == null) Modifier else Modifier
-                    .clickable(role = Role.Button, onClick = onAuthorClick)
-                    .heightIn(min = 48.dp)
-                Row(
-                    modifier = Modifier.fillMaxWidth().then(profileAction),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CommentAvatar(name = name.text, portrait = avatar, authorId = authorId)
-                    CommentAuthorName(
-                        userName = name,
-                        userLevel = userLevel,
-                        modifier = Modifier.weight(1f),
-                        isLz = isLz,
-                        bawuType = bawuType,
-                    )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (hasAuthor) {
+                    val profile = if (onAuthorClick == null) Modifier else Modifier
+                        .clickable(role = Role.Button, onClick = onAuthorClick)
+                        .heightIn(min = 48.dp)
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterVertically).then(profile),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        CommentAvatar(name = name.text, portrait = portrait, authorId = authorId, size = avatarSize)
+                        CommentAuthorName(name, userLevel, isLz = isLz, bawuType = bawuType)
+                    }
                 }
+                if (recipient != null) Box(Modifier.align(Alignment.CenterVertically)) { recipient() }
             }
         }
-        if (recipient != null) {
-            Box(Modifier.padding(start = if (hasAuthor) Sizes.Small + 8.dp else 0.dp)) { recipient() }
-        }
-        CommentMetadata(time, floor, ipAddress)
+        if (showMetadata) CommentMetadata(time, floor, ipAddress)
     }
 }
 

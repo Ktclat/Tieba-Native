@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Card
+import androidx.compose.material3.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Scaffold
@@ -282,7 +282,7 @@ fun EditProfileCard(
     color: Color = ExtendedTheme.colors.background,
 ) {
     val context = LocalContext.current
-    Card(elevation = 0.dp, backgroundColor = color) {
+    Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = color)) {
         Column(
             modifier = Modifier
                 .padding(dimensionResource(id = R.dimen.card_margin))

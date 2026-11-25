@@ -14,13 +14,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FractionalThreshold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -88,21 +87,18 @@ fun LoadMoreLayout(
         )
     }
     val coroutineScope = rememberCoroutineScope()
-    DisposableEffect(Unit) {
-        val job = coroutineScope.launch {
-            loadMoreFlow
-                .sample(500)
-                .collect {
-                    curOnLoadMore()
-                    waitingStateReset = true
-                    lastTriggerTime = it
-                }
+    val active = LocalShouldLoad.current
+    LaunchedEffect(active, loadMoreFlow) {
+        if (active) {
+            loadMoreFlow.sample(500).collect {
+                curOnLoadMore()
+                waitingStateReset = true
+                lastTriggerTime = it
+            }
         }
-
-        onDispose { job.cancel() }
     }
 
-    val canLoadMore = remember(enableLoadMore, loadEnd) { enableLoadMore && !loadEnd }
+    val canLoadMore = active && enableLoadMore && !loadEnd
     val curIsEmpty by rememberUpdatedState(newValue = isEmpty)
     val curIsLoading by rememberUpdatedState(newValue = isLoading)
     val curCanLoadMore by rememberUpdatedState(newValue = canLoadMore)
@@ -110,13 +106,15 @@ fun LoadMoreLayout(
 
     // 处理列表滚动到底部时自动加载更多
     val curLazyListState by rememberUpdatedState(newValue = lazyListState)
-    LaunchedEffect(curLazyListState) {
+    LaunchedEffect(curLazyListState, active) {
+        if (!active) return@LaunchedEffect
         curLazyListState?.let { state ->
             snapshotFlow {
                 val shouldPreload =
                     !curIsEmpty && curCanLoadMore && !curIsLoading && curPreloadCount > 0
                 val isInPreloadRange =
-                    state.firstVisibleItemIndex + state.layoutInfo.visibleItemsInfo.size - 1 >= state.layoutInfo.totalItemsCount - curPreloadCount
+                    state.layoutInfo.visibleItemsInfo.isNotEmpty() &&
+                        state.layoutInfo.visibleItemsInfo.last().index >= state.layoutInfo.totalItemsCount - curPreloadCount
                 shouldPreload && isInPreloadRange
             }
                 .distinctUntilChanged()
@@ -162,7 +160,7 @@ fun LoadMoreLayout(
                 ),
                 thresholds = { _, _ -> FractionalThreshold(0.5f) },
                 orientation = Orientation.Vertical,
-                enabled = enableLoadMore && !waitingStateReset,
+                enabled = active && enableLoadMore && !waitingStateReset,
             )
             .fillMaxSize()
             .then(modifier)
@@ -191,7 +189,7 @@ fun DefaultIndicator(
     releaseToLoadText: String = stringResource(id = R.string.release_to_load),
 ) {
     Surface(
-        elevation = 8.dp,
+        shadowElevation = 2.dp,
         shape = RoundedCornerShape(100),
         color = ExtendedTheme.colors.loadMoreIndicator,
         contentColor = ExtendedTheme.colors.text

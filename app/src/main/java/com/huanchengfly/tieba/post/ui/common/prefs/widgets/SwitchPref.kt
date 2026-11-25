@@ -1,22 +1,21 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import android.util.Log
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import com.huanchengfly.tieba.post.ui.common.prefs.LocalPrefsDataStore
 import com.huanchengfly.tieba.post.ui.widgets.compose.Switch
 import kotlinx.coroutines.launch
 
-@ExperimentalMaterialApi
 @Composable
 fun SwitchPref(
     key: String,
@@ -25,7 +24,7 @@ fun SwitchPref(
     summary: @Composable (value: Boolean) -> String? = { null },
     defaultChecked: Boolean = false,  // only used if it doesn't already exist in the datastore
     onCheckedChange: ((Boolean) -> Unit)? = null,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
@@ -33,13 +32,11 @@ fun SwitchPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
+    val prefs by datastore.data.collectAsState(initial = null)
 
-    var checked = defaultChecked
-    prefs?.get(selectionKey)?.also { checked = it } // starting value if it exists in datastore
+    val checked = prefs?.get(selectionKey) ?: defaultChecked
 
     fun edit(newState: Boolean) = run {
-        checked = newState
         onCheckedChange?.invoke(newState)
         scope.launch {
             try {
@@ -54,21 +51,22 @@ fun SwitchPref(
 
     TextPref(
         title = title,
-        modifier = modifier,
+        modifier = modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Switch,
+            onValueChange = { edit(it) },
+        ),
         textColor = textColor,
         summary = summary(checked),
         darkenOnDisable = true,
         leadingIcon = leadingIcon,
         enabled = enabled,
-        onClick = {
-            checked = !checked
-            edit(checked)
-        }
     ) {
         Switch(
             checked = checked,
             enabled = enabled,
-            onCheckedChange = { edit(it) },
+            onCheckedChange = null,
         )
     }
 }
@@ -86,7 +84,6 @@ fun SwitchPref(
  * @param enabled If false, this Pref cannot be checked/unchecked
  * @param leadingIcon Icon which is positioned at the start of the Pref
  */
-@ExperimentalMaterialApi
 @Composable
 fun SwitchPref(
     key: String,
@@ -97,51 +94,20 @@ fun SwitchPref(
     summaryOff: String? = null,
     defaultChecked: Boolean = false,  // only used if it doesn't already exist in the datastore
     onCheckedChange: ((Boolean) -> Unit)? = null,
-    textColor: Color = MaterialTheme.colors.onBackground,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
 
-    val selectionKey = booleanPreferencesKey(key)
-    val scope = rememberCoroutineScope()
-
-    val datastore = LocalPrefsDataStore.current
-    val prefs by remember { datastore.data }.collectAsState(initial = null)
-
-    var checked = defaultChecked
-    prefs?.get(selectionKey)?.also { checked = it } // starting value if it exists in datastore
-
-    fun edit(newState: Boolean) = run {
-        checked = newState
-        onCheckedChange?.invoke(newState)
-        scope.launch {
-            try {
-                datastore.edit { preferences ->
-                    preferences[selectionKey] = newState
-                }
-            } catch (e: Exception) {
-                Log.e("SwitchPref", "Could not write pref $key to database. ${e.printStackTrace()}")
-            }
-        }
-    }
-
-    TextPref(
+    SwitchPref(
+        key = key,
         title = title,
         modifier = modifier,
+        summary = { checked -> (if (checked) summaryOn else summaryOff) ?: summary },
+        defaultChecked = defaultChecked,
+        onCheckedChange = onCheckedChange,
         textColor = textColor,
-        summary = (if (checked) summaryOn else summaryOff) ?: summary,
-        darkenOnDisable = true,
-        leadingIcon = leadingIcon,
         enabled = enabled,
-        onClick = {
-            checked = !checked
-            edit(checked)
-        }
-    ) {
-        Switch(
-            checked = checked,
-            enabled = enabled,
-            onCheckedChange = { edit(it) },
-        )
-    }
+        leadingIcon = leadingIcon,
+    )
 }

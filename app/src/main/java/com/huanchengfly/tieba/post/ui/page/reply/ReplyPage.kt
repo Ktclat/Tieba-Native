@@ -41,13 +41,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Badge
 import androidx.compose.material.BadgedBox
-import androidx.compose.material.Checkbox
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -159,7 +161,6 @@ fun ReplyDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
             color = ExtendedTheme.colors.windowBackground,
-            elevation = 0.dp,
         ) {
             ReplyPageContent(
                 viewModel = pageViewModel(),
@@ -890,17 +891,12 @@ private fun ImagePanel(
         }
         Row(
             modifier = Modifier
-                .padding(vertical = 16.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    onIsOriginImageChange(!isOriginImage)
-                },
+                .toggleable(value = isOriginImage, role = Role.Checkbox, onValueChange = onIsOriginImageChange)
+                .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = isOriginImage, onCheckedChange = onIsOriginImageChange)
+            Checkbox(checked = isOriginImage, onCheckedChange = null)
             Text(text = stringResource(id = R.string.origin_image))
         }
     }

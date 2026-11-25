@@ -131,17 +131,20 @@ private fun expressiveSeedScheme(source: ExtendedColors): ColorScheme {
  * making toolbars, cards, dialogs and settings coherent before all call-sites
  * can be migrated to androidx.compose.material3.MaterialTheme.
  */
-fun ExtendedColors.applyExpressiveScheme(scheme: ColorScheme): ExtendedColors = copy(
+fun ExtendedColors.applyExpressiveScheme(
+    scheme: ColorScheme,
+    useSourceTopBar: Boolean,
+): ExtendedColors = copy(
     primary = scheme.primary,
     onPrimary = scheme.onPrimary,
     accent = scheme.primary,
     onAccent = scheme.onPrimary,
-    topBar = scheme.surface,
-    onTopBar = scheme.onSurface,
-    onTopBarSecondary = scheme.onSurfaceVariant,
-    onTopBarActive = scheme.primary,
-    topBarSurface = scheme.surfaceContainerHigh,
-    onTopBarSurface = scheme.onSurfaceVariant,
+    topBar = if (useSourceTopBar) topBar else scheme.surface,
+    onTopBar = if (useSourceTopBar) onTopBar else scheme.onSurface,
+    onTopBarSecondary = if (useSourceTopBar) onTopBarSecondary else scheme.onSurfaceVariant,
+    onTopBarActive = if (useSourceTopBar) onTopBarActive else scheme.primary,
+    topBarSurface = if (useSourceTopBar) topBarSurface else scheme.surfaceContainerHigh,
+    onTopBarSurface = if (useSourceTopBar) onTopBarSurface else scheme.onSurfaceVariant,
     bottomBar = scheme.surfaceContainerLow,
     bottomBarSurface = scheme.secondaryContainer,
     onBottomBarSurface = scheme.onSecondaryContainer,

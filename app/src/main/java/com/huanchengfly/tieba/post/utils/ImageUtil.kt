@@ -550,21 +550,21 @@ object ImageUtil {
         originUrl: String,
         vararg smallPicUrls: String?
     ): String {
-        val urls = mutableListOf(*smallPicUrls)
-        if (isSmallPic) {
-            if (needReverse(context)) {
-                urls.reverse()
-            }
-            return urls.firstOrNull { !it.isNullOrEmpty() } ?: originUrl
-        }
-        return originUrl
+        return if (isSmallPic) {
+            getThumbnailUrl(context, imageLoadSettings, originUrl, *smallPicUrls)
+        } else originUrl
     }
 
-    private fun needReverse(context: Context): Boolean {
-        return if (imageLoadSettings == SETTINGS_SMART_ORIGIN &&
-            NetworkUtil.isWifiConnected(context)
-        ) false
-        else imageLoadSettings != SETTINGS_ALL_ORIGIN
+    fun getThumbnailUrl(
+        context: Context,
+        loadType: Int,
+        originUrl: String,
+        vararg candidates: String?,
+    ): String {
+        val highQuality = loadType == SETTINGS_ALL_ORIGIN ||
+            (loadType == SETTINGS_SMART_ORIGIN && NetworkUtil.isWifiConnected(context))
+        return if (highQuality) candidates.firstOrNull { !it.isNullOrEmpty() } ?: originUrl
+        else candidates.lastOrNull { !it.isNullOrEmpty() } ?: originUrl
     }
 
     @get:ImageLoadSettings

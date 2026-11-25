@@ -70,6 +70,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.ImmutableList
@@ -98,7 +99,6 @@ fun PersonalizedPage(
         onRefresh = { viewModel.send(PersonalizedUiIntent.Refresh) }
     )
     val lazyListState = rememberLazyListState()
-    viewModel.bindScrollToTopEvent(lazyListState = lazyListState)
     val isEmpty by remember {
         derivedStateOf {
             data.isEmpty()
@@ -112,18 +112,21 @@ fun PersonalizedPage(
     var refreshCount by remember {
         mutableIntStateOf(0)
     }
-    var showRefreshTip by remember {
+    var showRefreshTip by remember(LocalShouldLoad.current) {
         mutableStateOf(false)
     }
 
-    onGlobalEvent<GlobalEvent.Refresh>(
-        filter = { it.key == "personalized" }
-    ) {
-        viewModel.send(PersonalizedUiIntent.Refresh)
-    }
-    viewModel.onEvent<PersonalizedUiEvent.RefreshSuccess> {
-        refreshCount = it.count
-        showRefreshTip = true
+    if (LocalShouldLoad.current) {
+        viewModel.bindScrollToTopEvent(lazyListState = lazyListState)
+        onGlobalEvent<GlobalEvent.Refresh>(
+            filter = { it.key == "personalized" }
+        ) {
+            viewModel.send(PersonalizedUiIntent.Refresh)
+        }
+        viewModel.onEvent<PersonalizedUiEvent.RefreshSuccess> {
+            refreshCount = it.count
+            showRefreshTip = true
+        }
     }
 
     if (showRefreshTip) {

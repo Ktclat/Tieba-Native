@@ -31,12 +31,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.FloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Tab
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -625,8 +625,8 @@ fun ForumPage(
                                     }
                                 }
                             },
-                            backgroundColor = ExtendedTheme.colors.windowBackground,
-                            contentColor = ExtendedTheme.colors.primary,
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.navigationBarsPadding()
                         ) {
                             Icon(
@@ -802,12 +802,10 @@ fun ForumPage(
                                 TabClickMenu(
                                     selected = currentPage == 0,
                                     onClick = {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(0)
-                                        }
+                                        pagerState.requestScrollToPage(0)
                                     },
                                     text = {
-                                        Text(
+                                        androidx.compose.material3.Text(
                                             text = stringResource(id = R.string.tab_forum_latest),
                                             style = tabTextStyle
                                         )
@@ -843,9 +841,7 @@ fun ForumPage(
                                 Tab(
                                     selected = currentPage == 1,
                                     onClick = {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(1)
-                                        }
+                                        pagerState.requestScrollToPage(1)
                                     },
                                     selectedContentColor = ExtendedTheme.colors.primary,
                                     unselectedContentColor = ExtendedTheme.colors.textSecondary
@@ -856,7 +852,7 @@ fun ForumPage(
                                             .height(48.dp)
                                             .padding(horizontal = 16.dp)
                                     ) {
-                                        Text(
+                                        androidx.compose.material3.Text(
                                             text = stringResource(id = R.string.tab_forum_good),
                                             style = tabTextStyle
                                         )

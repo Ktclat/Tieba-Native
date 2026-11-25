@@ -5,10 +5,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.view.View
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,21 +22,25 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -40,6 +48,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -47,11 +56,17 @@ import androidx.compose.ui.unit.width
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.captureReviewImage
 import com.huanchengfly.tieba.post.ui.common.theme.compose.ExtendedColors
-import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
+import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import kotlinx.collections.immutable.toImmutableList
 import java.io.File
 import kotlin.math.roundToInt
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -69,7 +84,16 @@ class FloatingNavigationBarTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var view: View
     private val pageAtActivation = mutableListOf<Int>()
-    private val measuredPages = mutableSetOf<Int>()
+    private val measures = mutableMapOf<Int, Int>()
+    private val compositions = mutableListOf<Int>()
+    private val disposals = mutableListOf<Int>()
+    private val requests = mutableListOf<Int>()
+    private val backTargets = mutableListOf<Int>()
+    private val pageFocus = mutableMapOf<Int, Boolean>()
+    private val focusRequests = mutableMapOf<Int, FocusRequester>()
+    private lateinit var tabSelection: MainTabSelection
+    private val tabLifecycles = mutableMapOf<Int, LifecycleOwner>()
+    private lateinit var backDispatcher: OnBackPressedDispatcher
     private val measuredAtActivation = mutableListOf<Boolean>()
     private var hideFraction by mutableFloatStateOf(0f)
     private val refreshedPages = mutableListOf<Int>()
@@ -90,8 +114,10 @@ class FloatingNavigationBarTest {
                     }
                 }
             }
-            val pager = rememberPagerState { titles.size }
-            LaunchedEffect(pager.currentPage) { hideFraction = 0f }
+            val selection = rememberMainTabSelection("0")
+            SideEffect { tabSelection = selection }
+            backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            LaunchedEffect(selection.id) { hideFraction = 0f }
             val items = remember {
                 listOf(
                     R.string.title_main to R.drawable.ic_animated_rounded_inventory_2,
@@ -104,8 +130,8 @@ class FloatingNavigationBarTest {
                         icon = { AnimatedImageVector.animatedVectorResource(icon) },
                         title = { stringResource(title) },
                         onClick = {
-                            pageAtActivation += pager.currentPage
-                            measuredAtActivation += index in measuredPages
+                            pageAtActivation += selection.id.toInt()
+                            measuredAtActivation += index in measures
                         },
                         content = { FeedPage(index) },
                     )
@@ -129,8 +155,8 @@ class FloatingNavigationBarTest {
                                 navigationInsets = WindowInsets(bottom = 24.dp),
                             ) {
                                 FloatingBottomNavigation(
-                                    currentPosition = pager.currentPage,
-                                    onSelect = { pager.selectMainTab(it) { index -> refreshedPages += index } },
+                                    currentPosition = selection.id.toInt(),
+                                    onSelect = { index -> selection.select(index.toString()) { refreshedPages += index } },
                                     navigationItems = items,
                                     themeColors = colors,
                                     modifier = Modifier.testTag("capsule"),
@@ -138,13 +164,11 @@ class FloatingNavigationBarTest {
                             }
                         },
                     ) { padding ->
-                        LazyLoadHorizontalPager(
-                            state = pager,
-                            contentPadding = padding,
-                            key = { items[it].id },
-                            userScrollEnabled = false,
-                            modifier = Modifier.fillMaxSize(),
-                        ) { items[it].content() }
+                        MainTabHost(
+                            selectedId = selection.id,
+                            navigationItems = items,
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                        )
                     }
                 }
             }
@@ -153,7 +177,26 @@ class FloatingNavigationBarTest {
 
     @Composable
     private fun FeedPage(index: Int) {
-        Column(Modifier.fillMaxSize().onSizeChanged { measuredPages += index }.testTag("page-$index")) {
+        val owner = LocalLifecycleOwner.current
+        val requester = remember { FocusRequester() }
+        DisposableEffect(index) {
+            focusRequests[index] = requester
+            compositions += index
+            tabLifecycles[index] = owner
+            onDispose { disposals += index }
+        }
+        var loaded by remember { mutableStateOf(false) }
+        LazyLoad(loaded) {
+            requests += index
+            loaded = true
+        }
+        BackHandler { backTargets += index }
+        Column(Modifier.fillMaxSize().layout { measurable, constraints ->
+            measures[index] = measures.getOrDefault(index, 0) + 1
+            val child = measurable.measure(constraints)
+            layout(child.width, child.height) { child.place(0, 0) }
+        }.testTag("page-$index").focusRequester(requester)
+            .onFocusChanged { pageFocus[index] = it.isFocused }.focusable()) {
             Text(titles[index], Modifier.padding(16.dp), style = MaterialTheme.typography.headlineMedium)
             HorizontalDivider()
             LazyColumn(Modifier.fillMaxSize().testTag("feed")) {
@@ -241,7 +284,7 @@ class FloatingNavigationBarTest {
         compose.onNodeWithTag("page-0").assertIsDisplayed()
         compose.runOnIdle {
             assertTrue(pageAtActivation.isEmpty())
-            assertTrue("The destination must start cold", 3 !in measuredPages)
+            assertTrue("The destination must start cold", 3 !in measures)
         }
         destination.performTouchInput { up() }
 
@@ -255,6 +298,104 @@ class FloatingNavigationBarTest {
         assertEquals(viewport, compose.onNodeWithTag("page-3").assertIsDisplayed().getUnclippedBoundsInRoot())
         compose.onNodeWithText("收藏 1").assertIsDisplayed()
         compose.onNodeWithTag("page-0").assertIsNotDisplayed()
+    }
+
+    @Test fun revisitingAnOpenedTabKeepsItsListAndOnlyTheVisibleTabHandlesBack() {
+        show()
+        fun open(index: Int) = compose.onNode(hasText(titles[index]) and hasClickAction()).performClick()
+        compose.onNodeWithTag("feed").performScrollToIndex(12)
+        compose.onNodeWithText("帖子 13").assertIsDisplayed()
+        open(3)
+        compose.onNodeWithText("收藏 1").assertIsDisplayed()
+        compose.onNodeWithText("帖子 13").assertDoesNotExist()
+        val measurements = compose.runOnIdle { measures.toMap() }
+        compose.runOnIdle { hideFraction = 0.25f }
+        compose.runOnIdle {
+            assertEquals(measurements[0], measures[0])
+            assertTrue(measures.getValue(3) > measurements.getValue(3))
+            hideFraction = 0f
+        }
+        compose.runOnIdle {
+            assertEquals(Lifecycle.State.CREATED, tabLifecycles.getValue(0).lifecycle.currentState)
+            backDispatcher.onBackPressed()
+        }
+        open(0)
+        compose.onNodeWithText("帖子 13").assertIsDisplayed()
+        compose.onNodeWithText("收藏 1").assertDoesNotExist()
+        compose.runOnIdle {
+            backDispatcher.onBackPressed()
+            assertEquals(listOf(3, 0), backTargets)
+            assertEquals(listOf(0, 3), compositions)
+            assertEquals(listOf(0, 3), requests)
+            assertTrue(disposals.isEmpty())
+            assertEquals(setOf(0, 3), measures.keys)
+        }
+    }
+
+    @Test fun switchingFromAFocusedPageReleasesItAndRejectsFocusOnItsHiddenChildren() {
+        show()
+        compose.runOnIdle { focusRequests.getValue(0).requestFocus() }
+        compose.runOnIdle {
+            assertEquals(true, pageFocus[0])
+            tabSelection.select("3")
+        }
+        compose.onNodeWithText("收藏 1").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(false, pageFocus[0])
+            assertTrue(!focusRequests.getValue(0).requestFocus())
+            assertTrue(focusRequests.getValue(3).requestFocus())
+        }
+    }
+
+    @Test fun restoresSelectedTabByIdEvenIfExploreWasRemoved() {
+        val restoration = StateRestorationTester(compose)
+        var includeExplore by mutableStateOf(true)
+        lateinit var selection: MainTabSelection
+        restoration.setContent {
+            selection = rememberMainTabSelection("home")
+            val tabs = if (includeExplore) listOf("home", "explore", "notification", "user")
+                else listOf("home", "notification", "user")
+            Text("${selection.id} at ${tabs.indexOf(selection.id)}")
+        }
+        compose.runOnIdle { selection.select("notification") }
+        compose.onNodeWithText("notification at 2").assertExists()
+        compose.runOnIdle { includeExplore = false }
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("notification at 1").assertExists()
+    }
+
+    @Test fun changingAccountClearsThePreviousTabsModelsAndRememberedContent() {
+        var account by mutableStateOf("first")
+        val models = mutableListOf<AccountTabProbe>()
+        val remembered = mutableListOf<Any>()
+        compose.setContent {
+            val main: MainViewModel = viewModel()
+            MainTabAccountScope(main, account) {
+                val probe: AccountTabProbe = viewModel()
+                val content = remember { Any() }
+                DisposableEffect(probe) {
+                    models += probe
+                    remembered += content
+                    onDispose {}
+                }
+            }
+        }
+        compose.runOnIdle {
+            models.single().handle["accountNote"] = "first account only"
+            account = "second"
+        }
+        compose.runOnIdle {
+            assertEquals(2, models.size)
+            assertTrue(models.first().cleared)
+            assertTrue(!models.last().cleared)
+            assertEquals(null, models.last().handle.get<String>("accountNote"))
+            assertTrue(remembered[0] !== remembered[1])
+        }
+    }
+
+    class AccountTabProbe(val handle: SavedStateHandle) : ViewModel() {
+        var cleared = false
+        override fun onCleared() { cleared = true }
     }
 
     @Test fun rapidTapsUseTheLatestPageAndCancellationDoesNotSelect() {
@@ -271,9 +412,13 @@ class FloatingNavigationBarTest {
         }
         compose.runOnIdle { assertTrue(pageAtActivation.isEmpty()) }
         compose.onRoot().performTouchInput {
-            click(secondCenter)
-            click(thirdCenter)
-            click(thirdCenter)
+            // Keep the three real down/up pairs in the same frame; click() inserts a dwell time.
+            down(secondCenter)
+            up()
+            down(thirdCenter)
+            up()
+            down(thirdCenter)
+            up()
         }
         compose.runOnIdle {
             assertEquals(listOf(1, 2, 2), pageAtActivation)
@@ -283,6 +428,10 @@ class FloatingNavigationBarTest {
         third.assertIsSelected()
         compose.onNodeWithTag("page-2").assertIsDisplayed()
         compose.onNodeWithText("消息 1").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(listOf(0, 2), compositions)
+            assertEquals(setOf(0, 2), measures.keys)
+        }
     }
 
     @Test fun physicalLeftDragAdvancesTabInRtl() {
