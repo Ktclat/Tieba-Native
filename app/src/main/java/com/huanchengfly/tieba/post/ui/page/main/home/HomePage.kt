@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.main.home
 
 import androidx.compose.animation.AnimatedVisibility
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -366,33 +369,23 @@ fun HomePage(
                                     label = "rotate"
                                 )
                                 Column {
-                                    Row(
-                                        verticalAlignment = CenterVertically,
-                                        modifier = Modifier
-                                            .clickable(role = Role.Button) {
-                                                viewModel.send(
-                                                    HomeUiIntent.ToggleHistory(
-                                                        expandHistoryForum
-                                                    )
-                                                )
-                                            }
-                                            .padding(vertical = 8.dp)
-                                            .padding(end = 16.dp)
+                                    TextButton(
+                                        onClick = { viewModel.send(HomeUiIntent.ToggleHistory(expandHistoryForum)) },
+                                        shapes = ButtonDefaults.shapes(),
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
                                     ) {
-                                        Header(
-                                            text = stringResource(id = R.string.title_history_forum),
-                                            invert = false
-                                        )
-
-                                        Spacer(modifier = Modifier.weight(1f))
-
+                                        Text(stringResource(R.string.title_history_forum))
+                                        Spacer(Modifier.width(4.dp))
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                            contentDescription = stringResource(id = R.string.desc_show),
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .rotate(rotate)
+                                            contentDescription = stringResource(
+                                                if (expandHistoryForum) R.string.button_expand_less_history
+                                                else R.string.button_expand_more_history
+                                            ),
+                                            modifier = Modifier.size(ButtonDefaults.IconSize).rotate(rotate),
                                         )
+                                        Spacer(Modifier.weight(1f))
                                     }
                                     AnimatedVisibility(visible = expandHistoryForum) {
                                         LazyRow(
@@ -543,6 +536,7 @@ fun EmptyScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(text = stringResource(id = R.string.button_login))
                 }
@@ -553,6 +547,7 @@ fun EmptyScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(text = stringResource(id = R.string.button_go_to_explore))
                 }

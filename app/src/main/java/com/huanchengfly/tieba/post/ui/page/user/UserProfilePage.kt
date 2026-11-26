@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.user
 
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
@@ -769,6 +771,7 @@ private fun UserProfileDetail(
                     } else {
                         ButtonDefaults.outlinedButtonBorder(enabled = true)
                     },
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

@@ -2,6 +2,7 @@
 
 package com.huanchengfly.tieba.post.ui.page.photoview
 
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.LoadingIndicator
@@ -205,7 +206,7 @@ class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
                                     startActivity(chooser)
                                 }
                             }
-                        }) {
+                        }, shapes = IconButtonDefaults.shapes()) {
                             Icon(
                                 imageVector = Icons.Rounded.Share,
                                 contentDescription = stringResource(id = R.string.title_share_pic)
@@ -216,7 +217,7 @@ class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
                                 this@PhotoViewActivity,
                                 items[index].originUrl
                             )
-                        }) {
+                        }, shapes = IconButtonDefaults.shapes()) {
                             Icon(
                                 imageVector = Icons.Rounded.Download,
                                 contentDescription = stringResource(id = R.string.desc_download_pic)

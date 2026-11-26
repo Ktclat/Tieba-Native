@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.huanchengfly.tieba.post.ui.page.settings.block.blocklist
 
@@ -158,6 +158,7 @@ fun BlockListPage(
                             addBlockCategory = category
                             dialogState.show()
                         },
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Icon(if (black) Icons.Outlined.Block else Icons.Outlined.CheckCircle, null,
                             modifier = Modifier.size(ButtonDefaults.IconSize))

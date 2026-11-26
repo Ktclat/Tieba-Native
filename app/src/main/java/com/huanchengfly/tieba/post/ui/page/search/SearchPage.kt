@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -228,7 +231,7 @@ internal fun SearchSuggestionList(
                 headlineContent = { Text(term) },
                 leadingContent = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingContent = {
-                    IconButton(onClick = { onFill(term) }) {
+                    IconButton(onClick = { onFill(term) }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Rounded.Edit, stringResource(R.string.search_fill_suggestion, term))
                     }
                 },
@@ -302,7 +305,7 @@ internal fun SearchTopBar(
         focusRequester = focusRequester,
         placeholder = { Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         prependIcon = {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
             }
         },

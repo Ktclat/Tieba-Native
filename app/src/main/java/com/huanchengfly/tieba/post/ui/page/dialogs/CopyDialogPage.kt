@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.dialogs
 
 import androidx.compose.foundation.background
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -102,7 +105,7 @@ private fun CopyTextPageContent(
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onCancel) {
+                IconButton(onClick = onCancel, shapes = IconButtonDefaults.shapes()) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(id = R.string.btn_close)
@@ -138,7 +141,8 @@ private fun CopyTextPageContent(
                 onClick = {
                     onCopy(text)
                     onCancel()
-                }
+                },
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(text = stringResource(id = R.string.btn_copy_all))
             }
@@ -150,7 +154,8 @@ private fun CopyTextPageContent(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                     contentColor = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(text = stringResource(id = R.string.btn_close))
             }

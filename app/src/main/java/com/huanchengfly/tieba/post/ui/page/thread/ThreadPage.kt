@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -204,6 +205,7 @@ fun PostAgreeBtn(
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = 112.dp)
             .semantics { selected = hasAgreed },
+        shapes = ButtonDefaults.shapes(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1266,7 +1268,7 @@ fun ThreadPage(
                                             },
                                             actions = {
                                                 if (canReload) {
-                                                    Button(onClick = { reload() }) {
+                                                    Button(onClick = { reload() }, shapes = ButtonDefaults.shapes()) {
                                                         Text(text = stringResource(id = R.string.btn_refresh))
                                                     }
                                                 }
@@ -1404,7 +1406,7 @@ internal fun ThreadBottomBar(
                     ReplyPrompt(signedIn, user.get { displayPortrait }, onClickReply, Modifier.weight(1f))
                 } else Spacer(Modifier.weight(1f))
                 PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
-                IconButton(onClick = onClickMore) {
+                IconButton(onClick = onClickMore, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
                 }
             }
@@ -1422,6 +1424,7 @@ internal fun ReplyPrompt(signedIn: Boolean, portrait: String?, onClick: () -> Un
         onClick = onClick,
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        shapes = ButtonDefaults.shapes(),
     ) {
         if (signedIn) {
             Avatar(data = StringUtil.getAvatarUrl(portrait.orEmpty()), size = Sizes.Tiny, contentDescription = null)
@@ -1471,13 +1474,13 @@ internal fun ThreadReadingMarkDialog(
                     }
                     onLeave()
                 }
-            }) {
+            }, shapes = ButtonDefaults.shapes()) {
                 if (saving) LoadingIndicator(Modifier.size(20.dp))
                 else Text(stringResource(R.string.save_reading_mark_and_return))
             }
         },
         dismissButton = {
-            TextButton(enabled = !saving, onClick = onLeave) {
+            TextButton(enabled = !saving, onClick = onLeave, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.return_without_saving_reading_mark))
             }
         },

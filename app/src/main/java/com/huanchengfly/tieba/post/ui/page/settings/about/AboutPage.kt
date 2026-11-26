@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.about
 
 import androidx.compose.foundation.Image
@@ -91,7 +93,7 @@ fun AboutPage(
             ) {
                 val context = LocalContext.current
                 TextButton(
-                    shape = RoundedCornerShape(100),
+                    shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(100)),
                     colors = ButtonDefaults.textButtonColors(
                         containerColor = MaterialTheme.colorScheme.onSurface.copy(
                             alpha = 0.1f

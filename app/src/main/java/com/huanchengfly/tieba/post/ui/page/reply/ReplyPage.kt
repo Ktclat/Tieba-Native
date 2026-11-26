@@ -45,6 +45,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.foundation.selection.toggleable
@@ -459,6 +461,7 @@ internal fun ReplyPageContent(
             IconButton(
                 onClick = { switchToPanel(EMOJI) },
                 enabled = !isReplying,
+                shapes = IconButtonDefaults.shapes(),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.EmojiEmotions,
@@ -470,6 +473,7 @@ internal fun ReplyPageContent(
                 IconButton(
                     onClick = { switchToPanel(IMAGE) },
                     enabled = !isReplying,
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     BadgedBox(
                         badge = {
@@ -511,11 +515,12 @@ internal fun ReplyPageContent(
                     color = MaterialTheme.colorScheme.primary
                 )
             } else if (failure != null) {
-                Button(onClick = ::submit, enabled = canSend) { Text(stringResource(R.string.reply_retry)) }
+                Button(onClick = ::submit, enabled = canSend, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.reply_retry)) }
             } else {
                 FilledIconButton(
                     onClick = ::submit,
                     enabled = canSend,
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
@@ -696,7 +701,7 @@ internal fun ReplyLoginPrompt(recipient: String?, onLogin: () -> Unit, onBack: (
                 navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
             )
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Button(onClick = onLogin) { Text(stringResource(R.string.login_to_reply)) }
+                Button(onClick = onLogin, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.login_to_reply)) }
             }
         }
     }
@@ -722,7 +727,7 @@ private fun EmoticonPanel(
                 .padding(top = 16.dp)
         ) {
             items(emoticons, key = { it.id }) { emoticon ->
-                IconButton(onClick = { onEmoticonClick(emoticon) }) {
+                IconButton(onClick = { onEmoticonClick(emoticon) }, shapes = IconButtonDefaults.shapes()) {
                     Image(
                         painter = EmoticonManager.rememberEmoticonPainter(emoticon.id),
                         contentDescription = stringResource(R.string.emoticon, emoticon.name),
@@ -778,7 +783,8 @@ private fun ImagePanel(
                     )
                     IconButton(
                         onClick = { onRemoveImage(index) },
-                        modifier = Modifier.align(Alignment.TopEnd)
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        shapes = IconButtonDefaults.shapes(),
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,

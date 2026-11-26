@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.forum
 
 import com.huanchengfly.tieba.post.collectPreferenceAsState
@@ -30,6 +32,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -288,7 +291,7 @@ private fun ForumHeader(
                 Button(
                     onClick = onBtnClick,
                     elevation = null,
-                    shape = RoundedCornerShape(100),
+                    shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(100)),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -934,7 +937,8 @@ private fun BackNavigationIconPlaceholder() {
     IconButton(
         onClick = {},
         enabled = false,
-        modifier = Modifier.alpha(0f)
+        modifier = Modifier.alpha(0f),
+        shapes = IconButtonDefaults.shapes(),
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -966,7 +970,8 @@ private fun ForumToolbar(
                 IconButton(
                     onClick = {
                         navigator.navigate(ForumSearchPostPageDestination(forumName, forumId))
-                    }
+                    },
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Search,

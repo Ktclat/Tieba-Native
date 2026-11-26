@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.font
 
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,7 +75,7 @@ internal fun FontSizeScreen(
                 title = { Text(stringResource(R.string.title_custom_font_size)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !saving,
-                        modifier = Modifier.semantics { testTag = "font-back" }) {
+                        modifier = Modifier.semantics { testTag = "font-back" }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
                     }
                 },
@@ -101,6 +105,7 @@ internal fun FontSizeScreen(
                             enabled = !saving && index != savedIndex,
                             modifier = Modifier.fillMaxWidth().semantics { testTag = "font-save" },
                             contentPadding = PaddingValues(vertical = 14.dp, horizontal = 24.dp),
+                            shapes = ButtonDefaults.shapes(),
                         ) {
                             Text(stringResource(if (saving) R.string.native_font_saving else R.string.native_font_save))
                         }
@@ -161,10 +166,12 @@ internal fun FontSizeScreen(
                                     FilledTonalIconButton(
                                         onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
                                         modifier = Modifier.semantics { testTag = "font-decrease" },
+                                        shapes = IconButtonDefaults.shapes(),
                                     ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
                                     FilledTonalIconButton(
                                         onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
                                         modifier = Modifier.semantics { testTag = "font-increase" },
+                                        shapes = IconButtonDefaults.shapes(),
                                     ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
                                 }
                             }
@@ -186,6 +193,7 @@ internal fun FontSizeScreen(
                                 enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
                                 modifier = Modifier.fillMaxWidth().semantics { testTag = "font-reset" },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                shapes = ButtonDefaults.shapes(),
                             ) {
                                 Text(
                                     stringResource(R.string.native_font_reset),

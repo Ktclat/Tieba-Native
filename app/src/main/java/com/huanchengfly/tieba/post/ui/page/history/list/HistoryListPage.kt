@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -119,7 +121,7 @@ internal fun HistoryListPage(
                 when {
                     state.error != null -> {
                         Text(stringResource(R.string.text_load_failed))
-                        TextButton(onClick = { viewModel.refresh(query) }) { Text(stringResource(R.string.button_retry)) }
+                        TextButton(onClick = { viewModel.refresh(query) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_retry)) }
                     }
                     state.hasMore -> {
                         LaunchedEffect(viewModel, query, state.hasMore) { viewModel.loadMore() }
@@ -127,7 +129,7 @@ internal fun HistoryListPage(
                     }
                     query.isNotEmpty() -> {
                         Text(stringResource(R.string.history_no_matches))
-                        TextButton(onClick = onClearQuery) { Text(stringResource(R.string.history_clear_query)) }
+                        TextButton(onClick = onClearQuery, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.history_clear_query)) }
                     }
                     else -> {
                         val label = if (type == HistoryUtil.TYPE_THREAD) R.string.history_empty_thread else R.string.history_empty_forum
@@ -244,7 +246,7 @@ private fun HistoryRows(
             }
             if (state.error != null) {
                 item {
-                    TextButton(onClick = onLoadMore, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onLoadMore, modifier = Modifier.fillMaxWidth(), shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.button_retry))
                     }
                 }
@@ -283,7 +285,7 @@ private fun HistoryItem(
         },
         trailingContent = {
             Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(more, row.menu) }
+                IconButton(onClick = { menuOpen = true }, shapes = IconButtonDefaults.shapes()) { Icon(more, row.menu) }
                 if (menuOpen != null) DropdownMenu(expanded = menuOpen == true, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.title_delete)) },

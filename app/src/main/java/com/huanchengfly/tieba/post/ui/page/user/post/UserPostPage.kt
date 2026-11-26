@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -163,7 +164,7 @@ fun UserPostPage(
                         image = { StateIllustration(Icons.Rounded.Forum) },
                         actions = {
                             if (canReload) {
-                                Button(onClick = { reload() }) {
+                                Button(onClick = { reload() }, shapes = ButtonDefaults.shapes()) {
                                     Text(text = stringResource(id = R.string.btn_refresh))
                                 }
                             }

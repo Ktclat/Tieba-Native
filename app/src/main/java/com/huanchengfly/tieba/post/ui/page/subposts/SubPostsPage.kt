@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.subposts
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -433,12 +436,12 @@ internal fun SubPostsTopBar(floor: Int?, onNavigateUp: () -> Unit, onOpenThread:
             Text(text = title, style = MaterialTheme.typography.titleLarge)
         },
         navigationIcon = {
-            IconButton(onClick = onNavigateUp) {
+            IconButton(onClick = onNavigateUp, shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.button_back))
             }
         },
         actions = {
-            IconButton(onClick = onOpenThread) {
+            IconButton(onClick = onOpenThread, shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.Rounded.OpenInBrowser, contentDescription = stringResource(R.string.btn_open_origin_thread))
             }
         },

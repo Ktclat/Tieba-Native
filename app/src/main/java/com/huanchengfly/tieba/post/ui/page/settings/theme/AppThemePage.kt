@@ -1,7 +1,10 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.theme
 
 import android.os.Build
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -294,11 +297,11 @@ internal fun CustomColorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { save(color.toArgb(), toolbar, darkIcons) }, enabled = validHex) {
+            TextButton(onClick = { save(color.toArgb(), toolbar, darkIcons) }, enabled = validHex, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.button_finish))
             }
         },
-        dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.button_cancel)) } },
+        dismissButton = { TextButton(onClick = dismiss, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_cancel)) } },
     )
 }
 

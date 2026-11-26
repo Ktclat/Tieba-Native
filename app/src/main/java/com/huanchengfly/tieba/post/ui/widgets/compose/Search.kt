@@ -304,13 +304,11 @@ fun SearchThreadItem(
                 ThreadAgreeBtn(
                     hasAgree = false,
                     agreeNum = item.likeNum.toIntOrNull() ?: 0,
-                    onClick = {},
                     modifier = Modifier.weight(1f)
                 )
 
                 ThreadShareBtn(
                     shareNum = item.shareNum.toLongOrNull() ?: 0L,
-                    onClick = {},
                     modifier = Modifier.weight(1f)
                 )
             }

@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
@@ -239,7 +241,7 @@ fun LoginPage(navigator: DestinationsNavigator) {
             navigationIcon = { BackNavigationIcon(onBackPressed = ::close) },
             actions = {
                 if (stage !in setOf(LoginStage.Verifying, LoginStage.Complete)) Box {
-                    IconButton(onClick = { menuOpen = true }, enabled = !switching) {
+                    IconButton(onClick = { menuOpen = true }, enabled = !switching, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -285,20 +287,41 @@ fun LoginPage(navigator: DestinationsNavigator) {
                         }
                         when (stage) {
                             LoginStage.Verifying, LoginStage.Complete -> LoadingIndicator()
-                            LoginStage.PageFailed -> Button(onClick = {
-                                request(network.pending ?: LoginAttempt.OpenPage)
-                            }) { Text(stringResource(R.string.button_retry)) }
+                            LoginStage.PageFailed -> Button(
+                                onClick = { request(network.pending ?: LoginAttempt.OpenPage) },
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text(stringResource(R.string.button_retry)) }
                             LoginStage.VerificationFailed -> {
-                                Button(onClick = { request(LoginAttempt.Verify) }) { Text(stringResource(R.string.button_retry)) }
-                                TextButton(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.Verify) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.button_retry)) }
+                                TextButton(
+                                    onClick = { request(LoginAttempt.OpenPage) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_restart)) }
                             }
                             LoginStage.MissingSession -> {
-                                Button(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
-                                TextButton(onClick = { request(LoginAttempt.CheckSession) }) { Text(stringResource(R.string.login_check_again)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.OpenPage) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_restart)) }
+                                TextButton(
+                                    onClick = { request(LoginAttempt.CheckSession) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_check_again)) }
                             }
                             LoginStage.ExistingSession -> {
-                                Button(onClick = { request(LoginAttempt.Confirm) }, enabled = !switching) { Text(stringResource(R.string.login_use_current)) }
-                                TextButton(enabled = !switching, onClick = { request(LoginAttempt.ChangeAccount) }) { Text(stringResource(R.string.login_other_account)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.Confirm) },
+                                    enabled = !switching,
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_use_current)) }
+                                TextButton(
+                                    enabled = !switching,
+                                    onClick = { request(LoginAttempt.ChangeAccount) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_other_account)) }
                             }
                             else -> Unit
                         }
