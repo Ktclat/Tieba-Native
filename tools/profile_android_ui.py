@@ -62,7 +62,7 @@ def summarize(rows):
 
 def launch():
     adb("shell", "am", "force-stop", PACKAGE)
-    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+    return adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60).decode()
 
 
 def press(point):
@@ -125,7 +125,8 @@ def run_block(apk, directory):
     if "package:" + PACKAGE in adb("shell", "pm", "list", "packages", PACKAGE).decode().splitlines():
         adb("uninstall", PACKAGE, timeout=60)
     adb("install", "-g", str(apk), timeout=120)
-    launch()
+    launch_report = launch()
+    (directory / "cold-start.txt").write_text(launch_report)
     find_label("随便看看", recover_launcher=True)
     profile = find_label("我")
     press(profile)
@@ -171,7 +172,8 @@ def run_block(apk, directory):
         up = measure(directory, "history_scroll_up", repetition, lambda: swipe(False))
         down = measure(directory, "history_scroll_down", repetition, lambda: swipe(True))
         readings["history_scroll"].append(up + down)
-    return readings
+    match = re.search(r"^TotalTime:\s*(\d+)", launch_report, re.MULTILINE)
+    return readings, int(match.group(1)) if match else None
 
 
 def main():
@@ -217,7 +219,7 @@ def main():
         directory = args.output / f"{index + 1}-{version}"
         print(f"Profiling {directory.name}", flush=True)
         try:
-            readings = run_block(apks[version], directory)
+            readings, cold_start = run_block(apks[version], directory)
         except Exception:
             for filename, command in {
                 "failure.png": ["exec-out", "screencap", "-p"],
@@ -228,7 +230,7 @@ def main():
                 if diagnostic.returncode == 0:
                     (directory / filename).write_bytes(diagnostic.stdout)
             raise
-        block = {"version": version}
+        block = {"version": version, "cold_start_to_initial_display_ms": cold_start}
         for scenario, batches in readings.items():
             block[scenario] = [summarize(batch) for batch in batches]
             for batch in batches:
