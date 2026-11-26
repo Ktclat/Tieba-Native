@@ -2,6 +2,10 @@
 
 package com.huanchengfly.tieba.post.ui.page.history.list
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -23,6 +27,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,17 +38,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.gson.JsonParseException
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.hiltViewModel
@@ -57,8 +71,13 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
-import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.HistoryUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.time.ZoneId
 
 @Composable
 internal fun HistoryListPage(
@@ -91,7 +110,7 @@ internal fun HistoryListPage(
         state.isRefreshing || state.query != query -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
         }
-        state.todayHistoryData.isEmpty() && state.beforeHistoryData.isEmpty() -> {
+        state.rows.isEmpty() -> {
             Column(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
                 verticalArrangement = Arrangement.Center,
@@ -149,6 +168,39 @@ internal fun HistoryListPage(
     }
 }
 
+@Composable
+private fun rememberHistoryGroups(visits: List<History>): HistoryGroups? {
+    val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val groups by produceState<HistoryGroups?>(null, visits, locale, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            val clockChanged = Channel<Unit>(Channel.CONFLATED)
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) { clockChanged.trySend(Unit) }
+            }
+            val filter = IntentFilter(Intent.ACTION_TIME_CHANGED).apply { addAction(Intent.ACTION_TIMEZONE_CHANGED) }
+            // Both actions are protected system broadcasts.
+            context.registerReceiver(receiver, filter)
+            try {
+                var timeline = HistoryTimeline(context, locale, ZoneId.systemDefault())
+                while (isActive) {
+                    val result = withContext(Dispatchers.Default) { timeline.group(visits, System.currentTimeMillis()) }
+                    value = result
+                    val waitMillis = (result.nextChange - System.currentTimeMillis()).coerceAtLeast(1)
+                    if (withTimeoutOrNull(waitMillis) { clockChanged.receive() } != null) {
+                        timeline = HistoryTimeline(context, locale, ZoneId.systemDefault())
+                    }
+                }
+            } finally {
+                context.unregisterReceiver(receiver)
+                clockChanged.close()
+            }
+        }
+    }
+    return groups
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HistoryRows(
@@ -158,6 +210,10 @@ private fun HistoryRows(
     onClick: (History) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val groups = rememberHistoryGroups(state.rows) ?: return
+    val leading = rememberVectorPainter(if (state.rows.first().type == HistoryUtil.TYPE_THREAD) Icons.Outlined.Person else Icons.Outlined.Forum)
+    val more = rememberVectorPainter(Icons.Outlined.MoreVert)
+    val rowColors = ListItemDefaults.colors(containerColor = Color.Transparent)
     LoadMoreLayout(
         isLoading = state.isLoadingMore,
         onLoadMore = onLoadMore,
@@ -167,11 +223,8 @@ private fun HistoryRows(
         isEmpty = false,
     ) {
         MyLazyColumn(Modifier.fillMaxSize(), state = listState) {
-            val groups = listOf(
-                R.string.title_history_today to state.todayHistoryData,
-                R.string.title_history_before to state.beforeHistoryData,
-            )
-            for ((label, rows) in groups) {
+            val sections = listOf(R.string.title_history_today to groups.today, R.string.title_history_before to groups.earlier)
+            for ((label, rows) in sections) {
                 if (rows.isEmpty()) continue
                 stickyHeader(key = "group-$label") {
                     Text(
@@ -180,13 +233,13 @@ private fun HistoryRows(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.background)
+                            .background(MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .semantics { heading() },
                     )
                 }
-                items(rows, key = { it.id }) { entry ->
-                    HistoryItem(entry, onClick = onClick, onDelete = onDelete)
+                items(rows, key = { it.visit.id }, contentType = { "visit" }) { entry ->
+                    HistoryItem(entry, rowColors, leading, more, onClick = onClick, onDelete = onDelete)
                 }
             }
             if (state.error != null) {
@@ -202,35 +255,36 @@ private fun HistoryRows(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HistoryItem(info: History, onClick: (History) -> Unit, onDelete: (History) -> Unit) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val thread = info.type == HistoryUtil.TYPE_THREAD
-    val title = info.title.ifBlank { info.data }
-    val menuLabel = stringResource(R.string.history_item_actions, title)
-    val time = DateTimeUtils.getRelativeTimeString(LocalContext.current, info.timestamp)
+private fun HistoryItem(
+    row: VisitLabel,
+    colors: ListItemColors,
+    leading: Painter,
+    more: Painter,
+    onClick: (History) -> Unit,
+    onDelete: (History) -> Unit,
+) {
+    val info = row.visit
+    // Compose the anchored popup on first use and keep it mounted for its exit transition.
+    var menuOpen by remember { mutableStateOf<Boolean?>(null) }
     ListItem(
+        colors = colors,
         modifier = Modifier.combinedClickable(
             role = Role.Button,
             onClick = { onClick(info) },
-            onLongClickLabel = menuLabel,
+            onLongClickLabel = row.menu,
             onLongClick = { menuOpen = true },
         ),
-        headlineContent = { Text(title) },
-        supportingContent = {
-            val subtitle = if (thread && !info.username.isNullOrBlank()) {
-                stringResource(R.string.history_author_time, info.username, time)
-            } else time
-            Text(subtitle)
-        },
+        headlineContent = { Text(row.title) },
+        supportingContent = { Text(row.subtitle) },
         leadingContent = {
             if (info.avatar.isNullOrBlank()) {
-                Icon(if (thread) Icons.Outlined.Person else Icons.Outlined.Forum, contentDescription = null)
+                Icon(leading, contentDescription = null)
             } else Avatar(data = info.avatar, size = Sizes.Small, contentDescription = null)
         },
         trailingContent = {
             Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, menuLabel) }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                IconButton(onClick = { menuOpen = true }) { Icon(more, row.menu) }
+                if (menuOpen != null) DropdownMenu(expanded = menuOpen == true, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.title_delete)) },
                         onClick = {

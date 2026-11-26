@@ -130,7 +130,7 @@ class HistorySearchTest {
         viewModel.refresh("Thread")
         waitFor { !viewModel.uiState.value.isRefreshing }
         val first = viewModel.uiState.value
-        val firstRows = first.todayHistoryData + first.beforeHistoryData
+        val firstRows = first.rows
         assertEquals(100, firstRows.size)
         assertTrue(first.hasMore)
         val target = firstRows.single { it.data == "130" }
@@ -140,7 +140,7 @@ class HistorySearchTest {
         viewModel.refresh("Thread 13")
         waitFor {
             val state = viewModel.uiState.value
-            val rows = state.todayHistoryData + state.beforeHistoryData
+            val rows = state.rows
             !state.isRefreshing && state.query == "Thread 13" && rows.map { it.data } == listOf("13")
         }
         val state = viewModel.uiState.value

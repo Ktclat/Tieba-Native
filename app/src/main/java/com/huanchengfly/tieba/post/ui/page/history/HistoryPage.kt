@@ -85,6 +85,7 @@ fun HistoryPage(navigator: DestinationsNavigator) {
     BackHandler(enabled = searching, onBack = ::back)
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             Column {
