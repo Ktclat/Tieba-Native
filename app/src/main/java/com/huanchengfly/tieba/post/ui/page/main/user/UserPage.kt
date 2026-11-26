@@ -1,11 +1,14 @@
 package com.huanchengfly.tieba.post.ui.page.main.user
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.ui.text.style.TextOverflow
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,8 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -27,10 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -65,54 +64,21 @@ import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
 
 @Composable
-private fun StatCardPlaceholder(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.loadingPlaceholder(visible = true),
-        verticalAlignment = Alignment.CenterVertically,
+private fun StatCard(account: Account?) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        StatCardItem(
-            statNum = 0,
-            statText = stringResource(id = R.string.text_stat_follow)
-        )
-        VerticalDivider(modifier = Modifier.height(16.dp))
-        StatCardItem(
-            statNum = 0,
-            statText = stringResource(id = R.string.text_stat_fans)
-        )
-        VerticalDivider(modifier = Modifier.height(16.dp))
-        StatCardItem(
-            statNum = 0,
-            statText = stringResource(id = R.string.title_stat_posts_num)
-        )
-    }
-}
-
-@Composable
-private fun StatCard(
-    account: Account,
-    modifier: Modifier = Modifier
-) {
-    val postNum by animateIntAsState(targetValue = account.postNum?.toIntOrNull() ?: 0)
-    val fansNum by animateIntAsState(targetValue = account.fansNum?.toIntOrNull() ?: 0)
-    val concernNum by animateIntAsState(targetValue = account.concernNum?.toIntOrNull() ?: 0)
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        StatCardItem(
-            statNum = concernNum,
-            statText = stringResource(id = R.string.text_stat_follow)
-        )
-        VerticalDivider(modifier = Modifier.height(16.dp))
-        StatCardItem(
-            statNum = fansNum,
-            statText = stringResource(id = R.string.text_stat_fans)
-        )
-        VerticalDivider(modifier = Modifier.height(16.dp))
-        StatCardItem(
-            statNum = postNum,
-            statText = stringResource(id = R.string.title_stat_posts_num)
-        )
+        Row(
+            modifier = Modifier.padding(vertical = 12.dp).loadingPlaceholder(visible = account == null),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            StatCardItem(account?.concernNum?.toIntOrNull() ?: 0, stringResource(R.string.text_stat_follow))
+            VerticalDivider(Modifier.height(16.dp))
+            StatCardItem(account?.fansNum?.toIntOrNull() ?: 0, stringResource(R.string.text_stat_fans))
+            VerticalDivider(Modifier.height(16.dp))
+            StatCardItem(account?.postNum?.toIntOrNull() ?: 0, stringResource(R.string.title_stat_posts_num))
+        }
     }
 }
 
@@ -124,47 +90,22 @@ private fun InfoCard(
     avatar: String? = null,
     isPlaceholder: Boolean = false
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(18.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .align(Alignment.Bottom)
-        ) {
-            Text(
-                text = userName,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .loadingPlaceholder(visible = isPlaceholder),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = userIntro,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .loadingPlaceholder(visible = isPlaceholder),
-            )
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        if (avatar != null) {
-            Avatar(
-                data = avatar,
-                size = Sizes.Large,
-                contentDescription = stringResource(id = R.string.desc_user_avatar),
-                modifier = Modifier
-                    .align(Alignment.Bottom)
-                    .loadingPlaceholder(visible = isPlaceholder),
-            )
-        }
-    }
+    ListItem(
+        modifier = modifier,
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = {
+            if (isPlaceholder) Spacer(Modifier.size(112.dp, 20.dp).loadingPlaceholder(true))
+            else Text(userName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        supportingContent = {
+            if (isPlaceholder) Spacer(Modifier.size(164.dp, 16.dp).loadingPlaceholder(true))
+            else Text(userIntro, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
+        leadingContent = {
+            if (isPlaceholder) Spacer(Modifier.size(Sizes.Medium).loadingPlaceholder(true, shape = CircleShape))
+            else Avatar(data = avatar, size = Sizes.Medium, contentDescription = null)
+        },
+    )
 }
 
 @Composable
@@ -191,37 +132,16 @@ private fun RowScope.StatCardItem(
 
 @Composable
 private fun LoginTipCard(onLogin: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .clickable(role = Role.Button, onClick = onLogin)
-            .padding(18.dp),
+    Card(
+        onClick = onLogin,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .align(Alignment.Bottom)
-        ) {
-            Text(
-                text = stringResource(id = R.string.tip_login),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .fillMaxWidth(),
-            )
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Icon(
-            imageVector = Icons.Rounded.AccountCircle,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .clip(CircleShape)
-                .size(Sizes.Large)
-                .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
-                .padding(16.dp),
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = { Text(stringResource(R.string.tip_login), style = MaterialTheme.typography.titleMedium) },
+            leadingContent = { Icon(Icons.Rounded.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp)) },
+            trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ic_round_chevron_right), contentDescription = null) },
         )
     }
 }
@@ -259,8 +179,8 @@ fun UserPage(
             .statusBarsPadding()
             .fillMaxSize()
     ) { contentPaddings ->
-        PullToRefreshBox(
-            isRefreshing = isLoading,
+        PullToRefreshLayout(
+            refreshing = isLoading,
             onRefresh = { viewModel.send(UserUiIntent.Refresh) },
             modifier = Modifier
                 .fillMaxSize()
@@ -272,46 +192,32 @@ fun UserPage(
                     .fillMaxSize()
             ) {
                 if (account != null) {
-                    InfoCard(
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .clickable {
-                                navigator.navigate(UserProfilePageDestination(account!!.uid.toLong()))
-                            }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        userName = account!!.nameShow ?: account!!.name,
-                        userIntro = account!!.intro ?: stringResource(id = R.string.tip_no_intro),
-                        avatar = StringUtil.getAvatarUrl(account!!.portrait),
-                    )
-                    StatCard(
-                        account = account!!,
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
-                            .padding(vertical = 18.dp)
-                    )
+                    val selected = checkNotNull(account)
+                    Card(
+                        onClick = { navigator.navigate(UserProfilePageDestination(selected.uid.toLong())) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    ) {
+                        InfoCard(
+                            userName = selected.nameShow ?: selected.name,
+                            userIntro = selected.intro ?: stringResource(R.string.tip_no_intro),
+                            avatar = StringUtil.getAvatarUrl(selected.portrait),
+                        )
+                    }
+                    StatCard(selected)
                 } else if (isLoading) {
-                    InfoCard(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 16.dp)
-                            .padding(top = 8.dp),
-                        isPlaceholder = true,
-                    )
-                    StatCardPlaceholder(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
-                            .padding(vertical = 18.dp)
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    ) {
+                        InfoCard(isPlaceholder = true)
+                    }
+                    StatCard(null)
                 } else {
                     LoginTipCard(
                         onLogin = { navigator.navigate(LoginPageDestination) },
                         modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 16.dp)
-                            .padding(top = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
                 if (account != null) {

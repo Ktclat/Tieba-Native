@@ -135,7 +135,7 @@ fun HistoryPage(navigator: DestinationsNavigator) {
                     pages.forEachIndexed { index, title ->
                         Tab(
                             selected = pager.currentPage == index,
-                            onClick = { scope.launch { pager.animateScrollToPage(index) } },
+                            onClick = { pager.requestScrollToPage(index) },
                             text = { Text(stringResource(title)) },
                             selectedContentColor = MaterialTheme.colorScheme.onSurface,
                             unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

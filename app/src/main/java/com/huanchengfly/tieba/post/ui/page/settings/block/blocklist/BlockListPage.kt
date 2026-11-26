@@ -2,10 +2,11 @@
 
 package com.huanchengfly.tieba.post.ui.page.settings.block.blocklist
 
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ListItem
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -145,55 +146,23 @@ fun BlockListPage(
             )
         },
         bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                addBlockCategory = Block.CATEGORY_BLACK_LIST
-                                dialogState.show()
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (category in listOf(Block.CATEGORY_BLACK_LIST, Block.CATEGORY_WHITE_LIST)) {
+                    val black = category == Block.CATEGORY_BLACK_LIST
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            addBlockCategory = category
+                            dialogState.show()
+                        },
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Block,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(id = R.string.title_add_black),
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                addBlockCategory = Block.CATEGORY_WHITE_LIST
-                                dialogState.show()
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(id = R.string.title_add_white),
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Icon(if (black) Icons.Outlined.Block else Icons.Outlined.CheckCircle, null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(if (black) R.string.title_add_black else R.string.title_add_white))
                     }
                 }
             }
@@ -252,68 +221,31 @@ fun BlockListPage(
 
 @Composable
 private fun BlockItemPlaceholder() {
-    Row(
-        modifier = Modifier.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Block,
-            contentDescription = null,
-            modifier = Modifier.loadingPlaceholder(visible = true)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = stringResource(id = R.string.title_block_settings),
-            modifier = Modifier.loadingPlaceholder(visible = true)
-        )
-    }
+    ListItem(
+        leadingContent = { Icon(Icons.Outlined.Block, null, Modifier.loadingPlaceholder(visible = true)) },
+        headlineContent = { Text(stringResource(R.string.title_block_settings), Modifier.loadingPlaceholder(visible = true)) },
+    )
 }
 
 @Composable
 private fun BlockItem(
     item: Block,
 ) {
-    Row(
-        modifier = Modifier.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = if (item.type == Block.TYPE_USER) Icons.Outlined.AccountCircle else ImageVector.vectorResource(
-                id = R.drawable.ic_comment_new
-            ),
-            contentDescription = if (item.type == Block.TYPE_USER) stringResource(
-                id = R.string.block_type_user
-            ) else stringResource(
-                id = R.string.block_type_keywords
-            )
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            if (item.type == Block.TYPE_USER) {
-                Text(
-                    text = "${item.username}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "UID: ${item.uid}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            } else {
-                val keywordsList: List<String> = runCatching {
-                    GsonUtil.getGson()
-                        .fromJson<List<String>>(
-                            item.keywords ?: "[]",
-                            object : TypeToken<List<String>>() {}.type
-                        )
-                }.getOrDefault(emptyList())
-                Text(
-                    text = keywordsList.joinToString(" "),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
+    val isUser = item.type == Block.TYPE_USER
+    val title = if (isUser) item.username.orEmpty() else remember(item.keywords) {
+        runCatching {
+            GsonUtil.getGson().fromJson<List<String>>(item.keywords ?: "[]", object : TypeToken<List<String>>() {}.type)
+                .orEmpty().joinToString(" ")
+        }.getOrDefault("")
     }
+    ListItem(
+        leadingContent = {
+            Icon(
+                imageVector = if (isUser) Icons.Outlined.AccountCircle else ImageVector.vectorResource(R.drawable.ic_comment_new),
+                contentDescription = stringResource(if (isUser) R.string.block_type_user else R.string.block_type_keywords),
+            )
+        },
+        headlineContent = { Text(title) },
+        supportingContent = if (isUser) {{ Text("UID: ${item.uid}") }} else null,
+    )
 }

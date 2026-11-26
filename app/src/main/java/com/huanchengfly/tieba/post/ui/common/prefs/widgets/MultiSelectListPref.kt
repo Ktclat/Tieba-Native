@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -64,9 +65,7 @@ fun MultiSelectListPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val selected = prefs?.get(selectionKey) ?: defaultValue
+    val selected by datastore.collectPreferenceAsState(selectionKey, defaultValue)
 
     fun toggle(entryKey: String) {
         scope.launch {

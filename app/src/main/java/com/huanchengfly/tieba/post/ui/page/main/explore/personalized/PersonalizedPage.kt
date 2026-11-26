@@ -1,6 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.personalized
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
@@ -151,8 +151,8 @@ fun PersonalizedPage(
             }
         }
     ) {
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
+        PullToRefreshLayout(
+            refreshing = isRefreshing,
             onRefresh = { viewModel.send(PersonalizedUiIntent.Refresh) },
         ) {
             LoadMoreLayout(
@@ -258,7 +258,8 @@ private fun FeedList(
 ) {
     val data = dataProvider()
     val refreshPosition = refreshPositionProvider()
-    val hiddenThreadIds = hiddenThreadIdsProvider()
+    val hiddenIds = hiddenThreadIdsProvider()
+    val hiddenThreadIds = remember(hiddenIds) { hiddenIds.toHashSet() }
 
     MyLazyColumn(
         state = state,
@@ -277,14 +278,8 @@ private fun FeedList(
                 }
             }
         ) { index, (item, blocked, personalized, hidden) ->
-            val isHidden =
-                remember(
-                    hiddenThreadIds,
-                    item,
-                    hidden
-                ) { hiddenThreadIds.contains(item.get { threadId }) || hidden }
-            val isRefreshPosition =
-                remember(index, refreshPosition) { index + 1 == refreshPosition }
+            val isHidden = hidden || item.get { threadId } in hiddenThreadIds
+            val isRefreshPosition = index + 1 == refreshPosition
             Container {
                 AnimatedVisibility(
                     visible = !isHidden,

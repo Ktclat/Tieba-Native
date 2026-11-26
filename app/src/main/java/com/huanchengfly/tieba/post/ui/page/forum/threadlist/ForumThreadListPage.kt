@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -52,7 +53,6 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumRuleDetailPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
-import com.huanchengfly.tieba.post.ui.page.forum.getSortType
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
@@ -64,42 +64,19 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-private fun getFirstLoadIntent(
-    context: Context,
-    forumName: String,
-    isGood: Boolean = false,
-): ForumThreadListUiIntent {
+private fun getFirstLoadIntent(forumName: String, isGood: Boolean, sortType: Int): ForumThreadListUiIntent {
     return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, 0)
-    else ForumThreadListUiIntent.FirstLoad(forumName, getSortType(context, forumName), null)
+    else ForumThreadListUiIntent.FirstLoad(forumName, sortType, null)
 }
 
 private fun getRefreshIntent(
-    context: Context,
     forumName: String,
-    isGood: Boolean = false,
-    sortType: Int = getSortType(context, forumName),
+    isGood: Boolean,
+    sortType: Int,
     goodClassifyId: Int? = if (isGood) 0 else null,
 ): ForumThreadListUiIntent {
     return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, goodClassifyId)
     else ForumThreadListUiIntent.Refresh(forumName, sortType, null)
-}
-
-private fun getLoadMoreIntent(
-    context: Context,
-    forumId: Long,
-    forumName: String,
-    page: Int,
-    threadListIds: List<Long>,
-    isGood: Boolean = false,
-): ForumThreadListUiIntent {
-    return if (isGood) ForumThreadListUiIntent.LoadMore(forumId, forumName, page, threadListIds, 0)
-    else ForumThreadListUiIntent.LoadMore(
-        forumId,
-        forumName,
-        page,
-        threadListIds,
-        getSortType(context, forumName)
-    )
 }
 
 private enum class ItemType {
@@ -120,9 +97,9 @@ private fun GoodClassifyTabs(
             items = goodClassifyHolders,
             key = { it.get { "${class_id}_$class_name" } }
         ) { holder ->
-            Chip(
-                text = holder.get { class_name },
-                invertColor = selectedItem == holder.get { class_id },
+            FilterChip(
+                label = { Text(holder.get { class_name }) },
+                selected = selectedItem == holder.get { class_id },
                 onClick = { onSelected(holder.get { class_id }) }
             )
         }
@@ -254,6 +231,7 @@ fun ForumThreadListPage(
     forumId: Long,
     forumName: String,
     isGood: Boolean = false,
+    sortType: Int,
     onRefreshingChanged: (Boolean) -> Unit,
     viewModel: ForumThreadListViewModel = if (isGood) pageViewModel<GoodThreadListViewModel>() else pageViewModel<LatestThreadListViewModel>()
 ) {
@@ -264,13 +242,13 @@ fun ForumThreadListPage(
     val lazyListState = rememberLazyListState()
 
     LazyLoad(loaded = viewModel.initialized) {
-        viewModel.send(getFirstLoadIntent(context, forumName, isGood))
+        viewModel.send(getFirstLoadIntent(forumName, isGood, sortType))
         viewModel.initialized = true
     }
     onGlobalEvent<ForumThreadListUiEvent.Refresh>(
         filter = { it.isGood == isGood },
     ) {
-        viewModel.send(getRefreshIntent(context, forumName, isGood, it.sortType))
+        viewModel.send(getRefreshIntent(forumName, isGood, it.sortType))
     }
     onGlobalEvent<ForumThreadListUiEvent.BackToTop>(
         filter = { it.isGood == isGood },
@@ -347,9 +325,9 @@ fun ForumThreadListPage(
                     onSelected = {
                         viewModel.send(
                             getRefreshIntent(
-                                context,
                                 forumName,
-                                true,
+                                isGood = true,
+                                sortType = sortType,
                                 goodClassifyId = it
                             )
                         )
@@ -361,13 +339,8 @@ fun ForumThreadListPage(
                 isLoading = isLoadingMore,
                 onLoadMore = {
                     viewModel.send(
-                        getLoadMoreIntent(
-                            context,
-                            forumId,
-                            forumName,
-                            currentPage,
-                            threadListIds,
-                            isGood
+                        ForumThreadListUiIntent.LoadMore(
+                            forumId, forumName, currentPage, threadListIds, if (isGood) 0 else sortType,
                         )
                     )
                 },

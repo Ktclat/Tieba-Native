@@ -13,6 +13,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
+import android.view.MotionEvent
+import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,9 +44,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -91,6 +101,8 @@ import com.huanchengfly.tieba.post.utils.registerPickMediasLauncher
 import com.huanchengfly.tieba.post.utils.requestIgnoreBatteryOptimizations
 import com.huanchengfly.tieba.post.utils.requestPermission
 import com.ramcosta.composedestinations.DestinationsNavHost
+import com.ramcosta.composedestinations.animations.defaults.RootNavGraphDefaultAnimations
+import com.ramcosta.composedestinations.rememberNavHostEngine
 import com.ramcosta.composedestinations.navigation.navigate
 import com.ramcosta.composedestinations.spec.DestinationSpec
 import com.ramcosta.composedestinations.spec.Direction
@@ -122,6 +134,32 @@ val LocalDestination = compositionLocalOf<DestinationSpec<*>?> { null }
 
 @AndroidEntryPoint
 class MainActivityV2 : BaseComposeActivity() {
+    private var backSlideDirection: SlideDirection? = null
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        // Android sends the original down to the window, then cancels its touch stream when it
+        // takes the edge gesture. Navigation Compose owns all back progress and stack changes.
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                val decor = window.decorView
+                val edges = ViewCompat.getRootWindowInsets(decor)?.getInsets(WindowInsetsCompat.Type.systemGestures())
+                backSlideDirection = when {
+                    edges == null -> null
+                    edges.left > 0 && event.x <= edges.left -> SlideDirection.Right
+                    edges.right > 0 && event.x >= decor.width - edges.right -> SlideDirection.Left
+                    else -> null
+                }
+            }
+            MotionEvent.ACTION_UP -> backSlideDirection = null
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) backSlideDirection = null
+        return super.onKeyDown(keyCode, event)
+    }
+
     private val handler = Handler(Looper.getMainLooper())
     private val newMessageReceiver: BroadcastReceiver = NewMessageReceiver()
 
@@ -214,13 +252,9 @@ class MainActivityV2 : BaseComposeActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent?.let {
-            if (!checkIntent(it)) {
-                myNavController?.handleDeepLink(it)
-            }
-        }
+        if (!checkIntent(intent)) myNavController?.handleDeepLink(intent)
     }
 
     private fun fetchAccount() {
@@ -382,6 +416,7 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     @Composable
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun Content() {
         val okSignAlertDialogState = rememberDialogState()
         ClipBoardDetectDialog()
@@ -434,7 +469,26 @@ class MainActivityV2 : BaseComposeActivity() {
                     LocalNavController provides navController,
                     LocalDestination provides currentDestination,
                 ) {
-                    DestinationsNavHost(navController = navController, navGraph = NavGraphs.root)
+                    val motion = MaterialTheme.motionScheme.fastEffectsSpec<IntOffset>()
+                    val transitions = remember(motion) {
+                        RootNavGraphDefaultAnimations(
+                            enterTransition = { slideIntoContainer(SlideDirection.Start, motion) },
+                            exitTransition = { slideOutOfContainer(SlideDirection.Start, motion) },
+                            popEnterTransition = {
+                                backSlideDirection?.let { slideIntoContainer(it, motion) }
+                                    ?: fadeIn(tween(140, delayMillis = 70))
+                            },
+                            popExitTransition = {
+                                backSlideDirection?.let { slideOutOfContainer(it, motion) }
+                                    ?: fadeOut(tween(70))
+                            },
+                        )
+                    }
+                    DestinationsNavHost(
+                        navController = navController,
+                        navGraph = NavGraphs.root,
+                        engine = rememberNavHostEngine(rootDefaultAnimations = transitions),
+                    )
                 }
 
                 SideEffect {

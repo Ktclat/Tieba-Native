@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.reply
 
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
@@ -13,8 +15,6 @@ import android.net.Uri
 import android.util.Log
 import android.view.View
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,7 +50,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilledIconButton
@@ -98,7 +98,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.addTextChangedListener
 import com.github.panpf.sketch.compose.AsyncImage
 import com.google.android.material.textfield.TextInputLayout
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -217,10 +216,12 @@ internal fun ReplyPageContent(
 
     fun insertEmoticon(text: String) {
         editTextView?.apply {
-            val start = selectionStart
-            this.text?.insert(start, text)
-            this.setText(StringUtil.getEmoticonContent(this, this.text))
-            setSelection(start + text.length)
+            val buffer = editableText
+            val start = selectionStart.coerceIn(0, buffer.length)
+            val end = selectionEnd.coerceIn(0, buffer.length)
+            val from = minOf(start, end)
+            buffer.replace(from, maxOf(start, end), StringUtil.getEmoticonContent(this, text))
+            setSelection(from + text.length)
         }
     }
 
@@ -505,9 +506,8 @@ internal fun ReplyPageContent(
 //            }
             Spacer(modifier = Modifier.weight(1f))
             if (isReplying) {
-                CircularProgressIndicator(
+                LoadingIndicator(
                     modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
             } else if (failure != null) {
@@ -721,24 +721,15 @@ private fun EmoticonPanel(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         ) {
-            items(emoticons) { emoticon ->
-                Image(
-                    painter = rememberDrawablePainter(
-                        drawable = EmoticonManager.getEmoticonDrawable(
-                            LocalContext.current,
-                            emoticon.id
-                        )
-                    ),
-                    contentDescription = stringResource(
-                        id = R.string.emoticon,
-                        emoticon.name
-                    ),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .padding(8.dp)
-                        .clickable { onEmoticonClick(emoticon) },
-                )
+            items(emoticons, key = { it.id }) { emoticon ->
+                IconButton(onClick = { onEmoticonClick(emoticon) }) {
+                    Image(
+                        painter = EmoticonManager.rememberEmoticonPainter(emoticon.id),
+                        contentDescription = stringResource(R.string.emoticon, emoticon.name),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
             }
         }
     }
@@ -798,27 +789,19 @@ private fun ImagePanel(
             }
             if (selectedImages.size < 9) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .aspectRatio(1f)
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable {
-                                coroutineScope.emitGlobalEvent(
-                                    GlobalEvent.StartSelectImages(
-                                        id,
-                                        9 - selectedImages.size,
-                                        PickMediasRequest.ImageOnly
-                                    )
-                                )
-                            },
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        onClick = {
+                            coroutineScope.emitGlobalEvent(
+                                GlobalEvent.StartSelectImages(id, 9 - selectedImages.size, PickMediasRequest.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = stringResource(id = R.string.desc_add_image),
-                            modifier = Modifier.size(48.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Add, stringResource(R.string.desc_add_image), Modifier.size(32.dp))
+                        }
                     }
                 }
             }

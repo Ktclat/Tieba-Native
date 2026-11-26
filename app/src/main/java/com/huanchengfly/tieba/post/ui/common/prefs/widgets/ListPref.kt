@@ -16,7 +16,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,9 +75,7 @@ fun ListPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val selected = prefs?.get(selectionKey) ?: defaultValue
+    val selected by datastore.collectPreferenceAsState(selectionKey, defaultValue)
 
     fun select(value: String) {
         showDialog = false

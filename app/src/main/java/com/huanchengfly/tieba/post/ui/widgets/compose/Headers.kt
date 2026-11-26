@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun UserHeaderPlaceholder(
@@ -61,11 +57,7 @@ fun UserHeader(
     content: @Composable (RowScope.() -> Unit)? = null,
 ) {
     val clickableModifier = if (onClick != null) {
-        Modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = onClick,
-        )
+        Modifier.clickable(onClick = onClick)
     } else Modifier
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -83,23 +75,13 @@ fun UserHeader(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             ProvideTextStyle(
-                value = MaterialTheme.typography.titleMedium.merge(
-                    TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 13.sp
-                    )
-                )
+                value = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onSurface)
             ) {
                 name()
             }
             if (desc != null) {
                 ProvideTextStyle(
-                    value = MaterialTheme.typography.bodySmall.merge(
-                        TextStyle(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
-                        )
-                    )
+                    value = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ) {
                     desc()
                 }

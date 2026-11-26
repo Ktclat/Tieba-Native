@@ -1,27 +1,19 @@
 package com.huanchengfly.tieba.post.ui.page.main.home
 
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.semantics.Role
-import androidx.compose.material3.rememberSearchBarState
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,28 +22,33 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,34 +58,34 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
-import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
+import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.collectPreferenceAsState
 import com.huanchengfly.tieba.post.dataStore
-import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
-import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyVerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import androidx.compose.material3.TextButton
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.accountNavIconIfCompact
@@ -96,9 +93,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
-import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import kotlinx.coroutines.launch
 
 private val ListSingleKey = booleanPreferencesKey("listSingle")
@@ -145,64 +140,6 @@ private fun Header(
 }
 
 @Composable
-private fun ForumItemPlaceholder(
-    showAvatar: Boolean,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        if (showAvatar) {
-            Image(
-                painter = rememberDrawablePainter(
-                    drawable = ImageUtil.getPlaceHolder(
-                        LocalContext.current,
-                        0
-                    )
-                ),
-                contentDescription = null,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .size(40.dp)
-                    .align(CenterVertically)
-                    .loadingPlaceholder(visible = true),
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-        }
-        Text(
-            color = MaterialTheme.colorScheme.onSurface,
-            text = "",
-            modifier = Modifier
-                .weight(1f)
-                .align(CenterVertically)
-                .loadingPlaceholder(visible = true),
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .width(54.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    shape = RoundedCornerShape(3.dp)
-                )
-                .padding(vertical = 4.dp)
-                .align(CenterVertically)
-                .loadingPlaceholder(visible = true)
-        ) {
-            Text(
-                text = "0",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.align(Center)
-            )
-        }
-    }
-}
-
-@Composable
 private fun ForumItemMenuContent(
     menuState: MenuState,
     isTopForum: Boolean,
@@ -239,60 +176,27 @@ private fun ForumItemContent(
     item: HomeUiState.Forum,
     showAvatar: Boolean
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        AnimatedVisibility(visible = showAvatar) {
-            Row {
-                Avatar(data = item.avatar, size = 40.dp, contentDescription = null)
-                Spacer(modifier = Modifier.width(14.dp))
-            }
-        }
-        Text(
-            color = MaterialTheme.colorScheme.onSurface,
-            text = item.forumName,
-            modifier = Modifier
-                .weight(1f)
-                .align(CenterVertically),
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .width(54.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    shape = RoundedCornerShape(3.dp)
-                )
-                .padding(vertical = 4.dp)
-                .align(CenterVertically)
-        ) {
-            Row(
-                modifier = Modifier.align(Center),
+    ListItem(
+        headlineContent = {
+            Text(item.forumName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        leadingContent = if (showAvatar) {
+            { Avatar(data = item.avatar, size = 40.dp, contentDescription = null) }
+        } else null,
+        trailingContent = {
+            Badge(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ) {
-                Text(
-                    text = "Lv.${item.levelId}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(CenterVertically)
-                )
+                Text("Lv.${item.levelId}")
                 if (item.isSign) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = stringResource(id = R.string.tip_signed),
-                        modifier = Modifier
-                            .size(12.dp)
-                            .align(CenterVertically),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Rounded.Check, stringResource(R.string.tip_signed), Modifier.size(12.dp))
                 }
             }
-        }
-    }
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
 }
 
 @Composable
@@ -338,15 +242,16 @@ fun HomePage(
     val account = LocalAccount.current
     val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val isLoading by viewModel.uiState.collectPartialAsState(HomeUiState::isLoading)
-    val forums by viewModel.uiState.collectPartialAsState(HomeUiState::forums)
-    val topForums by viewModel.uiState.collectPartialAsState(HomeUiState::topForums)
-    val historyForums by viewModel.uiState.collectPartialAsState(HomeUiState::historyForums)
-    val expandHistoryForum by viewModel.uiState.collectPartialAsState(HomeUiState::expandHistoryForum)
-    val error by viewModel.uiState.collectPartialAsState(HomeUiState::error)
-    val isLoggedIn = remember(account) { account != null }
-    val isEmpty by remember { derivedStateOf { forums.isEmpty() } }
-    val hasTopForum by remember { derivedStateOf { topForums.isNotEmpty() } }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val forums = state.forums
+    val topForums = state.topForums
+    val historyForums = state.historyForums
+    val expandHistoryForum = state.expandHistoryForum
+    val isLoading = state.isLoading
+    val error = state.error
+    val isLoggedIn = account != null
+    val isEmpty = forums.isEmpty()
+    val hasTopForum = topForums.isNotEmpty()
     val preferences = context.dataStore
     val scope = rememberCoroutineScope()
     val historyEnabled by preferences.collectPreferenceAsState(
@@ -354,7 +259,7 @@ fun HomePage(
     )
     val showHistoryForum = historyEnabled && historyForums.isNotEmpty()
     val listSingle by preferences.collectPreferenceAsState(ListSingleKey, defaultValue = false)
-    val isError by remember { derivedStateOf { error != null } }
+    val isError = error != null
     val gridCells = remember(listSingle) { if (listSingle) GridCells.Fixed(1) else GridCells.Adaptive(180.dp) }
 
     val active = LocalShouldLoad.current
@@ -418,8 +323,8 @@ fun HomePage(
         },
         modifier = Modifier.fillMaxSize(),
     ) { contentPaddings ->
-        PullToRefreshBox(
-            isRefreshing = isLoading,
+        PullToRefreshLayout(
+            refreshing = isLoading && !isEmpty,
             onRefresh = { viewModel.send(HomeUiIntent.Refresh) },
             modifier = Modifier
                 .padding(contentPaddings),
@@ -445,9 +350,6 @@ fun HomePage(
                             onOpenExplore = onOpenExplore
                         )
                     },
-                    loadingScreen = {
-                        HomePageSkeletonScreen(listSingle = listSingle, gridCells = gridCells)
-                    },
                     errorScreen = {
                         error?.let { ErrorScreen(error = it) }
                     }
@@ -467,10 +369,7 @@ fun HomePage(
                                     Row(
                                         verticalAlignment = CenterVertically,
                                         modifier = Modifier
-                                            .clickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = null
-                                            ) {
+                                            .clickable(role = Role.Button) {
                                                 viewModel.send(
                                                     HomeUiIntent.ToggleHistory(
                                                         expandHistoryForum
@@ -497,47 +396,17 @@ fun HomePage(
                                     }
                                     AnimatedVisibility(visible = expandHistoryForum) {
                                         LazyRow(
-                                            contentPadding = PaddingValues(bottom = 8.dp),
+                                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
-                                            item(key = "Spacer1") {
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                            }
-                                            items(
-                                                historyForums,
-                                                key = { it.data }
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .padding(horizontal = 4.dp)
-                                                        .height(IntrinsicSize.Min)
-                                                        .clip(RoundedCornerShape(100))
-                                                        .background(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                                        .clickable {
-                                                            navigator.navigate(
-                                                                ForumPageDestination(
-                                                                    it.data
-                                                                )
-                                                            )
-                                                        }
-                                                        .padding(4.dp),
-                                                    verticalAlignment = CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                ) {
-                                                    Avatar(
-                                                        data = it.avatar,
-                                                        contentDescription = null,
-                                                        size = 24.dp,
-                                                        shape = CircleShape
-                                                    )
-                                                    Text(
-                                                        text = it.title,
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        modifier = Modifier.padding(end = 4.dp)
-                                                    )
-                                                }
-                                            }
-                                            item(key = "Spacer2") {
-                                                Spacer(modifier = Modifier.width(12.dp))
+                                            items(historyForums, key = { it.data }) { forum ->
+                                                AssistChip(
+                                                    onClick = { navigator.navigate(ForumPageDestination(forum.data)) },
+                                                    label = { Text(forum.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                                    leadingIcon = {
+                                                        Avatar(data = forum.avatar, contentDescription = null, size = 20.dp)
+                                                    },
+                                                )
                                             }
                                         }
                                     }
@@ -557,6 +426,7 @@ fun HomePage(
                             }
                             items(
                                 items = topForums,
+                                contentType = { "forum" },
                                 key = { "Top${it.forumId}" }
                             ) { item ->
                                 ForumItem(
@@ -590,6 +460,7 @@ fun HomePage(
                         }
                         items(
                             items = forums,
+                            contentType = { "forum" },
                             key = { it.forumId }
                         ) { item ->
                             ForumItem(
@@ -618,56 +489,6 @@ fun HomePage(
 }
 
 @Composable
-private fun HomePageSkeletonScreen(
-    listSingle: Boolean,
-    gridCells: GridCells
-) {
-    MyLazyVerticalGrid(
-        columns = gridCells,
-        contentPadding = PaddingValues(bottom = 12.dp),
-        modifier = Modifier
-            .fillMaxSize(),
-    ) {
-        item(key = "TopForumHeaderPlaceholder", span = { GridItemSpan(maxLineSpan) }) {
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp)
-            ) {
-                Header(
-                    text = stringResource(id = R.string.title_top_forum),
-                    modifier = Modifier.loadingPlaceholder(visible = true),
-                    invert = true
-                )
-            }
-        }
-        items(6, key = { "TopPlaceholder$it" }) {
-            ForumItemPlaceholder(listSingle)
-        }
-        item(
-            key = "Spacer",
-            span = { GridItemSpan(maxLineSpan) }) {
-            Spacer(
-                modifier = Modifier.height(
-                    16.dp
-                )
-            )
-        }
-        item(key = "ForumHeaderPlaceholder", span = { GridItemSpan(maxLineSpan) }) {
-            Column {
-                Header(
-                    text = stringResource(id = R.string.forum_list_title),
-                    modifier = Modifier.loadingPlaceholder(visible = true),
-                    invert = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-        items(12, key = { "Placeholder$it" }) {
-            ForumItemPlaceholder(listSingle)
-        }
-    }
-}
-
-@Composable
 fun EmptyScreen(
     loggedIn: Boolean,
     canOpenExplore: Boolean,
@@ -690,7 +511,7 @@ fun EmptyScreen(
                 Box(
                     modifier = Modifier
                         .size(124.dp)
-                        .clip(RoundedCornerShape(38.dp))
+                        .clip(MaterialTheme.shapes.extraLarge)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -722,7 +543,6 @@ fun EmptyScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Text(text = stringResource(id = R.string.button_login))
                 }
@@ -732,8 +552,7 @@ fun EmptyScreen(
                     onClick = onOpenExplore,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp),
-                    shape = RoundedCornerShape(18.dp),
+                        .height(48.dp),
                 ) {
                     Text(text = stringResource(id = R.string.button_go_to_explore))
                 }

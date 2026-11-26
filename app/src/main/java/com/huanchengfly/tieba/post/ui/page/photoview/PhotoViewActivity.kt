@@ -1,26 +1,24 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.photoview
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.LoadingIndicator
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.view.MotionEvent
 import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -37,11 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.panpf.sketch.compose.rememberAsyncImageState
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.zoomimage.SketchZoomAsyncImage
@@ -68,8 +64,10 @@ private fun ViewPhoto(
         val state = rememberAsyncImageState()
         val progress by remember {
             derivedStateOf {
-                (state.progress?.completedLength?.toFloat() ?: 0f) / (state.progress?.totalLength
-                    ?: 1)
+                state.progress?.let { transfer ->
+                    if (transfer.totalLength > 0) (transfer.completedLength.toFloat() / transfer.totalLength).coerceIn(0f, 1f)
+                    else null
+                }
             }
         }
         val showProgress by remember {
@@ -85,20 +83,19 @@ private fun ViewPhoto(
             imageState = state,
         )
         if (showProgress) {
-            Box(
-                contentAlignment = Alignment.Center
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                CircularProgressIndicator(
-                    progress = { progress },
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(48.dp)
-                )
-                Text(
-                    text = "${(progress * 100).roundToInt()}%",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp
-                )
+                Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                    val fraction = progress
+                    if (fraction == null) {
+                        LoadingIndicator()
+                    } else {
+                        CircularWavyProgressIndicator(progress = { fraction }, modifier = Modifier.size(56.dp))
+                        Text(text = "${(fraction * 100).roundToInt()}%", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
         }
     }
@@ -171,81 +168,59 @@ class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
                             },
                         )
                     }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
+                    HorizontalFloatingToolbar(
+                        expanded = true,
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides Color.White) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                Color.Black.copy(alpha = 0.0f),
-                                                Color.Black.copy(alpha = 0.5f)
-                                            )
-                                        )
-                                    )
-                                    .padding(horizontal = 16.dp)
-                                    .navigationBarsPadding(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val index = pagerState.currentPage
-                                if (totalAmount > 1) {
-                                    val picIndex = items[index].overallIndex
-                                    Text(
-                                        text = "$picIndex / $totalAmount",
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                                IconButton(onClick = {
-                                    toastShort(R.string.toast_preparing_share_pic)
-                                    ImageUtil.download(
-                                        this@PhotoViewActivity,
-                                        items[index].originUrl,
-                                        true
-                                    ) { uri: Uri ->
-                                        val chooser = Intent(Intent.ACTION_SEND).apply {
-                                            type = Intent.normalizeMimeType("image/jpeg")
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            } else {
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                            }
-                                        }.let {
-                                            Intent.createChooser(
-                                                it,
-                                                getString(R.string.title_share_pic)
-                                            )
-                                        }
-                                        runCatching {
-                                            startActivity(chooser)
-                                        }
+                        val index = pagerState.currentPage
+                        if (totalAmount > 1) {
+                            Text(
+                                text = "${items[index].overallIndex} / $totalAmount",
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                        IconButton(onClick = {
+                            toastShort(R.string.toast_preparing_share_pic)
+                            ImageUtil.download(
+                                this@PhotoViewActivity,
+                                items[index].originUrl,
+                                true
+                            ) { uri: Uri ->
+                                val chooser = Intent(Intent.ACTION_SEND).apply {
+                                    type = Intent.normalizeMimeType("image/jpeg")
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    } else {
+                                        putExtra(Intent.EXTRA_STREAM, uri)
                                     }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Share,
-                                        contentDescription = stringResource(id = R.string.title_share_pic)
+                                }.let {
+                                    Intent.createChooser(
+                                        it,
+                                        getString(R.string.title_share_pic)
                                     )
                                 }
-                                IconButton(onClick = {
-                                    ImageUtil.download(
-                                        this@PhotoViewActivity,
-                                        items[index].originUrl
-                                    )
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Download,
-                                        contentDescription = stringResource(id = R.string.desc_download_pic)
-                                    )
+                                runCatching {
+                                    startActivity(chooser)
                                 }
                             }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Share,
+                                contentDescription = stringResource(id = R.string.title_share_pic)
+                            )
+                        }
+                        IconButton(onClick = {
+                            ImageUtil.download(
+                                this@PhotoViewActivity,
+                                items[index].originUrl
+                            )
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Download,
+                                contentDescription = stringResource(id = R.string.desc_download_pic)
+                            )
                         }
                     }
                 }

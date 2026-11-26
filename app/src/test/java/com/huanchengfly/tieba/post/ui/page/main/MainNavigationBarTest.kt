@@ -4,6 +4,12 @@ package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.activity.BackEventCompat
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.MonotonicFrameClock
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import android.app.Application
@@ -96,6 +102,7 @@ class MainNavigationBarTest {
     private val requests = mutableListOf<Int>()
     private val backTargets = mutableListOf<Int>()
     private val pageFocus = mutableMapOf<Int, Boolean>()
+    private val pageX = mutableMapOf<Int, Float>()
     private val focusRequests = mutableMapOf<Int, FocusRequester>()
     private lateinit var tabSelection: MainTabSelection
     private val tabLifecycles = mutableMapOf<Int, LifecycleOwner>()
@@ -110,7 +117,8 @@ class MainNavigationBarTest {
     private val rowLabels = listOf("帖子", "动态", "消息", "收藏")
 
     @OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalFoundationApi::class)
-    private fun show(layoutDirection: LayoutDirection = LayoutDirection.Ltr, compareOriginalViewport: Boolean = false) {
+    private fun show(layoutDirection: LayoutDirection = LayoutDirection.Ltr, compareOriginalViewport: Boolean = false,
+                     backProgress: () -> Float = { 0f }) {
         compose.setContent {
             val currentView = LocalView.current
             SideEffect { view = currentView }
@@ -179,6 +187,7 @@ class MainNavigationBarTest {
                                 selectedId = selection.id,
                                 navigationItems = items,
                                 modifier = Modifier.fillMaxSize().mainTabViewport(padding, scroll),
+                                backProgress = backProgress,
                             )
                         }
                     }
@@ -207,7 +216,8 @@ class MainNavigationBarTest {
             measures[index] = measures.getOrDefault(index, 0) + 1
             val child = measurable.measure(constraints)
             layout(child.width, child.height) { child.place(0, 0) }
-        }.testTag("page-$index").focusRequester(requester)
+        }.onGloballyPositioned { pageX[index] = it.positionInRoot().x }
+            .testTag("page-$index").focusRequester(requester)
             .onFocusChanged { pageFocus[index] = it.isFocused }.focusable()) {
             FeedRows(index, tag = "feed")
         }
@@ -316,19 +326,54 @@ class MainNavigationBarTest {
         compose.onNodeWithText("帖子 50").assertIsDisplayed()
     }
 
-    @Test fun reducedMotionDoesNotTransformThePageAndConfirmNeverScalesTheDestination() = runBlocking {
-        for (animate in listOf(true, false)) {
-            val preview = Animatable(0f)
-            var confirmations = 0
-            val events = flow {
-                emit(BackEventCompat(0f, 0f, 0.75f, BackEventCompat.EDGE_LEFT))
-                assertEquals(if (animate) 0.75f else 0f, preview.value)
+    @Test fun backFromEitherEdgeRevealsTheRealHomeWithoutActivatingIt() {
+        var progress by mutableFloatStateOf(0f)
+        show(backProgress = { progress })
+        compose.runOnIdle { tabSelection.select("3") }
+        val width = compose.onNodeWithTag("page-3").fetchSemanticsNode().size.width
+        for (fraction in listOf(.5f, -.5f)) {
+            compose.runOnIdle { progress = fraction }
+            compose.runOnIdle {
+                assertEquals(fraction * width, pageX.getValue(3), 1f)
+                assertEquals(-fraction * width, pageX.getValue(0), 1f)
+                assertEquals(Lifecycle.State.CREATED, tabLifecycles.getValue(0).lifecycle.currentState)
+                assertEquals("3", tabSelection.id)
             }
-            handleMainTabBack(events, preview, animate) {
-                assertEquals(0f, preview.value)
-                confirmations++
+        }
+        compose.runOnIdle { progress = 0f }
+        compose.runOnIdle { assertEquals(0f, pageX.getValue(3), 0f) }
+    }
+
+    @Test fun predictiveBackSettlesToTheGestureEdgeOrRestoresTheSamePageOnCancel() {
+        val frames = object : MonotonicFrameClock {
+            var nanos = 0L
+            override suspend fun <R> withFrameNanos(onFrame: (Long) -> R): R {
+                nanos += 16_000_000
+                return onFrame(nanos)
             }
-            assertEquals(1, confirmations)
+        }
+        runBlocking(frames) {
+            for (edge in listOf(BackEventCompat.EDGE_LEFT, BackEventCompat.EDGE_RIGHT)) {
+                val sign = if (edge == BackEventCompat.EDGE_LEFT) 1f else -1f
+                for (animate in listOf(true, false)) for (cancel in listOf(true, false)) {
+                    val preview = Animatable(0f)
+                    var confirmations = 0
+                    val events = flow {
+                        emit(BackEventCompat(0f, 0f, 0.75f, edge))
+                        assertEquals(if (animate) sign * .75f else 0f, preview.value)
+                        if (cancel) throw CancellationException("Gesture cancelled")
+                    }
+                    val result = runCatching {
+                        handleMainTabBack(events, preview, animate, tween(120)) {
+                            assertEquals(if (animate) sign else 0f, preview.value)
+                            confirmations++
+                        }
+                    }
+                    if (cancel) assertTrue(result.exceptionOrNull() is CancellationException) else result.getOrThrow()
+                    assertEquals(if (cancel) 0 else 1, confirmations)
+                    assertEquals(0f, preview.value)
+                }
+            }
         }
     }
 

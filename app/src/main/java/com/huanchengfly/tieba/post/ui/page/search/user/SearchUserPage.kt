@@ -5,16 +5,16 @@ package com.huanchengfly.tieba.post.ui.page.search.user
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -146,39 +146,13 @@ private fun SearchUserItem(
     item: SearchUserBean.UserBean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Avatar(
-            data = StringUtil.getAvatarUrl(item.portrait),
-            size = Sizes.Medium,
-            contentDescription = item.name
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = StringUtil.getUsernameAnnotatedString(
-                    LocalContext.current,
-                    item.name.orEmpty(),
-                    item.showNickname
-                ),
-                style = MaterialTheme.typography.titleMedium
-            )
-            if (!item.intro.isNullOrEmpty()) {
-                Text(
-                    text = item.intro,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-            }
-        }
-    }
+    val description = item.intro
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        leadingContent = { Avatar(data = StringUtil.getAvatarUrl(item.portrait), size = Sizes.Medium, contentDescription = null) },
+        headlineContent = { Text(StringUtil.getUsernameAnnotatedString(LocalContext.current, item.name.orEmpty(), item.showNickname), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = description?.takeIf { it.isNotBlank() }?.let {
+            { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
+    )
 }

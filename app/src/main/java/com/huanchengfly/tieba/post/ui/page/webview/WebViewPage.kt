@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.webview
 
 import android.annotation.SuppressLint
@@ -14,7 +16,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -174,8 +175,6 @@ private fun AccountWebView(
         }
     }
 
-    val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
-
     MyScaffold(
         topBar = {
             Toolbar(
@@ -270,8 +269,8 @@ private fun AccountWebView(
             )
 
             if (isLoading) {
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
+                LinearWavyProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

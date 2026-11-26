@@ -35,7 +35,7 @@ fun ProgressIndicator(
                 PlayerSurface(
                     modifier = Modifier
                         .height(48.dp)
-                        .width(48.dp * videoSize.first / videoSize.second)
+                        .width(48.dp * ((videoSize.first / videoSize.second).takeIf { it.isFinite() && it > 0f } ?: 1f))
                         .background(Color.DarkGray)
                 ) {
                     controller.previewPlayerViewAvailable(it)

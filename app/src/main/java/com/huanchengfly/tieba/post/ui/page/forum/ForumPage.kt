@@ -53,7 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,7 +70,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.constrainHeight
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -92,7 +95,6 @@ import com.huanchengfly.tieba.post.arch.emitGlobalEventSuspend
 import com.huanchengfly.tieba.post.arch.onEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.dataStore
-import com.huanchengfly.tieba.post.getInt
 import com.huanchengfly.tieba.post.models.ForumHistoryExtra
 import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.toastShort
@@ -125,12 +127,14 @@ import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
-import com.huanchengfly.tieba.post.utils.appPreferences
 import com.huanchengfly.tieba.post.utils.requestPinShortcut
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -141,12 +145,15 @@ import kotlin.math.min
 
 private val LoadDistance = 70.dp
 
-fun getSortType(
+internal fun forumSortPreference(
     context: Context,
     forumName: String,
-): Int {
-    val defaultSortType = context.appPreferences.defaultSortType?.toIntOrNull() ?: 0
-    return context.dataStore.getInt("${forumName}_sort_type", defaultSortType)
+): Flow<Int> {
+    val key = intPreferencesKey("${forumName}_sort_type")
+    val defaultSortKey = stringPreferencesKey("default_sort_type")
+    return context.dataStore.data.map { prefs ->
+        prefs[key] ?: prefs[defaultSortKey]?.toIntOrNull() ?: 0
+    }.distinctUntilChanged()
 }
 
 suspend fun setSortType(
@@ -363,8 +370,14 @@ fun ForumPage(
     navigator: DestinationsNavigator
 ) {
     val context = LocalContext.current
+    val savedSort = remember(context, forumName) { forumSortPreference(context, forumName) }.collectAsState(initial = null)
+    val currentSortType = savedSort.value
+    if (currentSortType == null) {
+        LoadingPlaceholder(forumName)
+        return
+    }
     LazyLoad(loaded = viewModel.initialized) {
-        viewModel.send(ForumUiIntent.Load(forumName, getSortType(context, forumName)))
+        viewModel.send(ForumUiIntent.Load(forumName, currentSortType))
         viewModel.initialized = true
     }
 
@@ -508,7 +521,7 @@ fun ForumPage(
                 viewModel.send(
                     ForumUiIntent.Load(
                         forumName,
-                        getSortType(context, forumName)
+                        currentSortType
                     )
                 )
             },
@@ -596,10 +609,7 @@ fun ForumPage(
                                             emitGlobalEventSuspend(
                                                 ForumThreadListUiEvent.Refresh(
                                                     currentPage == 1,
-                                                    getSortType(
-                                                        context,
-                                                        forumName
-                                                    )
+                                                    currentSortType
                                                 )
                                             )
                                         }
@@ -649,10 +659,7 @@ fun ForumPage(
                         coroutineScope.emitGlobalEvent(
                             ForumThreadListUiEvent.Refresh(
                                 currentPage == 1,
-                                getSortType(
-                                    context,
-                                    forumName
-                                )
+                                currentSortType
                             )
                         )
                     }
@@ -666,9 +673,7 @@ fun ForumPage(
                                 if (available.y < 0) {
                                     val prevHeightOffset = heightOffset
                                     heightOffset = max(heightOffset + available.y, -headerHeight)
-                                    if (prevHeightOffset != heightOffset) {
-                                        return available.copy(x = 0f)
-                                    }
+                                    return Offset(0f, heightOffset - prevHeightOffset)
                                 }
 
                                 return Offset.Zero
@@ -684,9 +689,7 @@ fun ForumPage(
                                     // recorded as available delta Y in the pre-scroll.
                                     val prevHeightOffset = heightOffset
                                     heightOffset = min(heightOffset + available.y, 0f)
-                                    if (prevHeightOffset != heightOffset) {
-                                        return available.copy(x = 0f)
-                                    }
+                                    return Offset(0f, heightOffset - prevHeightOffset)
                                 }
 
                                 return Offset.Zero
@@ -700,17 +703,16 @@ fun ForumPage(
                             .nestedScroll(headerNestedScrollConnection)
                     ) {
                         Column {
-                            val containerHeight by remember {
-                                derivedStateOf {
-                                    with(density) {
-                                        (headerHeight + heightOffset).toDp()
-                                    }
-                                }
-                            }
                             Box(
                                 modifier = Modifier
-                                    .height(containerHeight)
                                     .clipToBounds()
+                                    .layout { measurable, constraints ->
+                                        val header = measurable.measure(constraints.copy(minHeight = 0))
+                                        val visibleHeight = constraints.constrainHeight((header.height + heightOffset).roundToInt())
+                                        layout(header.width, visibleHeight) {
+                                            header.placeRelative(0, visibleHeight - header.height)
+                                        }
+                                    }
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -720,6 +722,7 @@ fun ForumPage(
                                         )
                                         .onSizeChanged {
                                             headerHeight = it.height.toFloat()
+                                            heightOffset = heightOffset.coerceIn(-headerHeight, 0f)
                                         }
                                 ) {
                                     forumInfo?.let { holder ->
@@ -777,14 +780,6 @@ fun ForumPage(
                                     .wrapContentWidth(align = Alignment.Start)
                                     .align(Alignment.Start)
                             ) {
-                                var currentSortType by remember {
-                                    mutableIntStateOf(
-                                        getSortType(
-                                            context,
-                                            forumName
-                                        )
-                                    )
-                                }
                                 TabClickMenu(
                                     selected = currentPage == 0,
                                     onClick = {
@@ -806,7 +801,6 @@ fun ForumPage(
                                             selectedPosition = currentSortType,
                                             onItemSelected = { _, _, value, changed ->
                                                 if (changed) {
-                                                    currentSortType = value
                                                     coroutineScope.launch {
                                                         setSortType(context, forumName, value)
                                                         emitGlobalEvent(
@@ -858,6 +852,7 @@ fun ForumPage(
                                         forumId = forumInfo!!.get { id },
                                         forumName = forumInfo!!.get { name },
                                         isGood = tab == 1,
+                                        sortType = currentSortType,
                                         onRefreshingChanged = { refreshingTabs[tab == 1] = it },
                                     )
                                 }

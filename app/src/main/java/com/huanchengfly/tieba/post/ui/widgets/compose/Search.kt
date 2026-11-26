@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.compose.foundation.background
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon as M3Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
@@ -424,12 +427,12 @@ fun SearchBox(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 appendIcon()
                 if (keyword.isNotEmpty() && focused) {
-                    IconButton(onClick = { onKeywordChange("") }) {
+                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordChange("") }) {
                         M3Icon(Icons.Rounded.Clear, stringResource(R.string.button_clear))
                     }
                 }
                 if (keyword.isNotBlank()) {
-                    IconButton(onClick = { onKeywordSubmit(keyword) }) {
+                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordSubmit(keyword) }) {
                         M3Icon(Icons.Rounded.Search, stringResource(R.string.button_search))
                     }
                 }

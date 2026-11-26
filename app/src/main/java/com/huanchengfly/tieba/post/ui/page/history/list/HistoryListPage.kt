@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.history.list
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -15,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -87,7 +89,7 @@ internal fun HistoryListPage(
     }
     when {
         state.isRefreshing || state.query != query -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
         }
         state.todayHistoryData.isEmpty() && state.beforeHistoryData.isEmpty() -> {
             Column(
@@ -102,7 +104,7 @@ internal fun HistoryListPage(
                     }
                     state.hasMore -> {
                         LaunchedEffect(viewModel, query, state.hasMore) { viewModel.loadMore() }
-                        CircularProgressIndicator()
+                        LoadingIndicator()
                     }
                     query.isNotEmpty() -> {
                         Text(stringResource(R.string.history_no_matches))

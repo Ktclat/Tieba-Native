@@ -128,13 +128,6 @@ libraries:
     wire-runtime:
       alias: wire-runtime
       version-ref: wire
-  com.airbnb.android:
-    lottie:
-      alias: airbnb-lottie
-      version: 6.3.0
-    lottie-compose:
-      alias: airbnb-lottie-compose
-      version-ref: airbnb-lottie
   org.jetbrains.kotlinx:
     kotlinx-serialization-json:
       alias: kotlinx-serialization-json
@@ -165,7 +158,7 @@ libraries:
   androidx.navigation:
     navigation-compose:
       alias: androidx-navigation-compose
-      version: 2.8.0
+      version: 2.8.9
   com.google.dagger:
     hilt-android:
       alias: hilt-android
@@ -186,9 +179,6 @@ libraries:
       version-ref: accompanist
     accompanist-systemuicontroller:
       alias: accompanist-systemuicontroller
-      version-ref: accompanist
-    accompanist-placeholder:
-      alias: accompanist-placeholder
       version-ref: accompanist
   io.github.panpf.sketch3:
     sketch:
@@ -238,7 +228,7 @@ libraries:
   androidx.activity:
     activity-ktx:
       alias: androidx-activity
-      version: 1.8.2
+      version: 1.9.3
     activity-compose:
       alias: androidx-activity-compose
       version-ref: androidx-activity

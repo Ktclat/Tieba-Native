@@ -4,13 +4,10 @@
 
     <com.google.android.material.appbar.CollapsingToolbarLayout
         android:id="@+id/collapsing_toolbar"
+        style="@style/Widget.Material3Expressive.CollapsingToolbar.Medium"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
-        app:collapsedTitleTextAppearance="@style/Toolbar.Title"
-        app:expandedTitleMarginBottom="16dp"
-        app:expandedTitleMarginStart="16dp"
-        app:expandedTitleTextAppearance="@style/Toolbar.Title.Expanded"
         app:layout_scrollFlags="scroll|exitUntilCollapsed"
         app:statusBarScrim="@color/transparent"
         app:collapsedTitleTextColor="?attr/colorOnSurface"

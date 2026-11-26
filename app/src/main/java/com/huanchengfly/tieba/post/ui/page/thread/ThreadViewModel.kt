@@ -915,21 +915,18 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                 Start -> oldState.copy(isLoadingLatestReply = true)
                 is Success -> {
                     val continuous = isContinuous || page == oldState.currentPageMax
-                    val replacePostIndexes = oldState.data.mapIndexedNotNull { index, item ->
-                        val replaceItemIndex =
-                            posts.indexOfFirst { it.post.get { id } == item.post.get { id } }
-                        if (replaceItemIndex != -1) index to replaceItemIndex else null
+                    val refreshedById = HashMap<Long, PostItemData>(posts.size)
+                    for (post in posts) refreshedById.putIfAbsent(post.post.get { id }, post)
+                    val existingIds = HashSet<Long>(oldState.data.size)
+                    val newPost = oldState.data.map { oldItem ->
+                        val id = oldItem.post.get { id }
+                        existingIds.add(id)
+                        refreshedById[id] ?: oldItem
                     }
-                    val newPost = oldState.data.mapIndexed { index, oldItem ->
-                        val replaceIndex = replacePostIndexes.firstOrNull { it.first == index }
-                        if (replaceIndex != null) posts[replaceIndex.second] else oldItem
-                    }
-                    val addPosts = posts.filter {
-                        !newPost.any { item -> item.post.get { id } == it.post.get { id } }
-                    }
+                    val addPosts = posts.filter { it.post.get { id } !in existingIds }
                     val updated = when {
                         updatedParentId != null -> {
-                            val parent = posts.firstOrNull { it.post.get { id } == updatedParentId }
+                            val parent = refreshedById[updatedParentId]
                             oldState.copy(
                                 isLoadingLatestReply = false,
                                 data = newPost.toImmutableList(),

@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,7 +69,6 @@ import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.launch
 
 internal enum class SearchTab(val title: Int) {
     Forum(R.string.title_search_forum),
@@ -147,7 +145,6 @@ fun SearchPage(
 
     var sortType by rememberSaveable { mutableIntStateOf(SearchThreadSortType.SORT_TYPE_NEWEST) }
     val pagerState = rememberPagerState { SearchTab.entries.size }
-    val scope = rememberCoroutineScope()
     MyScaffold(
         topBar = {
             TopAppBarContainer(
@@ -172,7 +169,7 @@ fun SearchPage(
                     SearchTabs(
                         current = SearchTab.entries[pagerState.currentPage],
                         sortType = sortType,
-                        onTabSelected = { scope.launch { pagerState.animateScrollToPage(it.ordinal) } },
+                        onTabSelected = { pagerState.requestScrollToPage(it.ordinal) },
                         onSortSelected = { sortType = it },
                     )
                 }

@@ -32,6 +32,11 @@ wire {
 
 android {
     compileSdk = 35
+    sourceSets {
+        getByName("test").java.srcDir("src/sharedTest/java")
+        getByName("androidTest").java.srcDir("src/sharedTest/java")
+        getByName("androidTest").assets.srcDir("src/test/resources/discussion")
+    }
     defaultConfig {
         applicationId = "com.huanchengfly.tieba.post"
         minSdk = 26
@@ -101,8 +106,6 @@ android {
 }
 
 dependencies {
-    implementation(airbnb.lottie)
-    implementation(airbnb.lottie.compose)
     implementation(kotlinx.serialization.json)
     implementation(kotlinx.collections.immutable)
     implementation(androidx.media3.exoplayer)
@@ -117,7 +120,6 @@ dependencies {
     kapt(androidx.hilt.compiler)
     implementation(accompanist.drawablepainter)
     implementation(accompanist.systemuicontroller)
-    implementation(accompanist.placeholder)
     implementation(sketch.core)
     implementation(sketch.compose)
     implementation(sketch.ext.compose)

@@ -18,10 +18,13 @@ import com.huanchengfly.tieba.post.components.ClipBoardThreadLink
 import com.huanchengfly.tieba.post.interfaces.CommonCallback
 import com.huanchengfly.tieba.post.repository.FrsPageRepository
 import com.huanchengfly.tieba.post.repository.PbPageRepository
-import com.huanchengfly.tieba.post.ui.page.forum.getSortType
+import com.huanchengfly.tieba.post.ui.page.forum.forumSortPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import retrofit2.Call
@@ -177,8 +180,10 @@ object QuickPreviewUtil {
         link: ClipBoardForumLink,
         lifeCycle: Lifecycle? = null,
     ): Flow<PreviewInfo> =
-        FrsPageRepository.frsPage(link.forumName, 1, 1, getSortType(context, link.forumName))
-            .map {
+        flow {
+            val sort = forumSortPreference(context, link.forumName).first()
+            emitAll(FrsPageRepository.frsPage(link.forumName, 1, 1, sort))
+        }.map {
                 PreviewInfo(
                     clipBoardLink = link,
                     url = link.url,

@@ -1,19 +1,24 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.ColorDrawable
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -24,7 +29,6 @@ import com.github.panpf.sketch.compose.AsyncImage
 import com.github.panpf.sketch.fetch.newResourceUri
 import com.github.panpf.sketch.request.DisplayRequest
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.huanchengfly.tieba.post.utils.ImageUtil
 
 object Sizes {
     val Tiny = 24.dp
@@ -85,16 +89,7 @@ fun AvatarPlaceholder(
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Avatar(
-        data = ImageUtil.getPlaceHolder(LocalContext.current, 0),
-        size = size,
-        contentDescription = null,
-        modifier = modifier.loadingPlaceholder(
-            visible = true,
-
-            shape = CircleShape
-        )
-    )
+    Spacer(modifier.size(size).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape))
 }
 
 @Composable
@@ -121,12 +116,12 @@ fun Avatar(
     shape: Shape = CircleShape,
 ) {
     val context = LocalContext.current
-
+    val placeholderColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val request = remember(context, data, placeholderColor) {
+        DisplayRequest(context, data) { placeholder(ColorDrawable(placeholderColor.toArgb())) }
+    }
     AsyncImage(
-        request = DisplayRequest(LocalContext.current, data) {
-            placeholder(ImageUtil.getPlaceHolder(context, 0))
-            crossfade()
-        },
+        request = request,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         modifier = modifier.clip(shape),
@@ -140,19 +135,7 @@ fun Avatar(
     contentDescription: String?,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-
-    AsyncImage(
-        request = DisplayRequest(LocalContext.current, newResourceUri(data)) {
-            placeholder(ImageUtil.getPlaceHolder(context, 0))
-            crossfade()
-        },
-        contentDescription = contentDescription,
-        contentScale = ContentScale.Crop,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape),
-    )
+    Avatar(data = remember(data) { newResourceUri(data) }, size = size, contentDescription = contentDescription, modifier = modifier)
 }
 
 @Composable

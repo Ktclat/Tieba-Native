@@ -1,30 +1,38 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.PersonOutline
+import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.Surface
+import androidx.compose.material3.toShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.retrofit.exception.NoConnectivityException
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
@@ -64,16 +72,15 @@ fun TipScreen(
                 image()
             }
             ProvideTextStyle(
-                value = MaterialTheme.typography.titleLarge.copy(
+                value = MaterialTheme.typography.titleMediumEmphasized.copy(
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
             ) {
                 title()
             }
             ProvideTextStyle(
-                value = MaterialTheme.typography.bodyLarge.copy(
+                value = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
@@ -81,6 +88,21 @@ fun TipScreen(
                 message()
             }
             actions()
+        }
+    }
+}
+
+@Composable
+fun StateIllustration(icon: ImageVector) {
+    val shape = MaterialShapes.Cookie6Sided.toShape()
+    Surface(
+        modifier = Modifier.size(64.dp),
+        shape = shape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -105,7 +127,7 @@ fun StateScreenScope.ErrorScreen(
             modifier = modifier,
             actions = {
                 if (showReload && canReload) {
-                    Button(onClick = { reload() }) {
+                    Button(shapes = ButtonDefaults.shapes(), onClick = { reload() }) {
                         Text(text = stringResource(id = R.string.btn_reload))
                     }
                 }
@@ -170,49 +192,14 @@ fun ErrorTipScreen(
         },
         modifier = modifier,
         image = {
-            when (errorType) {
-                ErrorType.NETWORK -> {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_no_internet))
-                    LottieAnimation(
-                        composition = composition,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f)
-                    )
+            StateIllustration(
+                when (errorType) {
+                    ErrorType.NETWORK -> Icons.Rounded.WifiOff
+                    ErrorType.SERVER -> Icons.Rounded.CloudOff
+                    ErrorType.NOT_LOGGED_IN -> Icons.Rounded.PersonOutline
+                    ErrorType.UNKNOWN -> Icons.Rounded.ErrorOutline
                 }
-
-                ErrorType.SERVER -> {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_error))
-                    LottieAnimation(
-                        composition = composition,
-                        iterations = LottieConstants.IterateForever,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f)
-                    )
-                }
-
-                ErrorType.UNKNOWN -> {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_bug_hunting))
-                    LottieAnimation(
-                        composition = composition,
-                        iterations = LottieConstants.IterateForever,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f)
-                    )
-                }
-
-                ErrorType.NOT_LOGGED_IN -> {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_astronaut))
-                    LottieAnimation(
-                        composition = composition,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f)
-                    )
-                }
-            }
+            )
         },
         message = {
             Column(

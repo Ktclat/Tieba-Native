@@ -26,28 +26,15 @@
         <item name="android:windowAnimationStyle">@style/Animation.Fade</item>
     </style>
 
-    <style name="Toolbar.Title" parent="TextAppearance.Material3.TitleLarge" />
-
-    <style name="Toolbar.Title.Expanded" parent="TextAppearance.Material3.HeadlineLarge" />
-
     <style name="TextAppearance.ListTitle" parent="TextAppearance.Material3.TitleSmall" />
 
     <style name="TextAppearance.Bold">
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Title">
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">20sp</item>
-    </style>
-
-    <style name="TextAppearance.Subtitle">
-        <item name="android:textSize">15sp</item>
-    </style>
-
     <style name="TextAppearance" />
 
-    <style name="Toolbar" parent="Widget.Material3.Toolbar" />
+    <style name="Toolbar" parent="Widget.Material3Expressive.Toolbar" />
 
     <style name="Toolbar.Dark" parent="Toolbar" />
 

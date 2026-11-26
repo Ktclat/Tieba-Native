@@ -76,25 +76,11 @@ fun <T> rememberPreferenceAsMutableState(
 fun <T> rememberPreferenceAsState(
     key: Preferences.Key<T>,
     defaultValue: T
-): State<T> {
-    val dataStore = LocalContext.current.dataStore
-    val state = remember { mutableStateOf(defaultValue) }
-
-    LaunchedEffect(Unit) {
-        dataStore.data.map { it[key] ?: defaultValue }.distinctUntilChanged()
-            .collect { state.value = it }
-    }
-
-    LaunchedEffect(state.value) {
-        dataStore.edit { it[key] = state.value }
-    }
-
-    return state
-}
+): State<T> = LocalContext.current.dataStore.collectPreferenceAsState(key, defaultValue)
 
 @Composable
 fun <T> DataStore<Preferences>.collectPreferenceAsState(
-    key: Preferences.Key<T>,
+    key: Preferences.Key<out T>,
     defaultValue: T,
     initialValue: T = defaultValue,
 ): State<T> {

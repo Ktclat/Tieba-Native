@@ -1,6 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.notifications.list
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,8 +59,8 @@ fun NotificationsListPage(
     val currentPage by viewModel.uiState.collectPartialAsState(NotificationsListUiState::currentPage)
     val rowKeys = remember(data) { notificationKeys(data) }
     val lazyListState = rememberLazyListState()
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
+    PullToRefreshLayout(
+        refreshing = isRefreshing,
         onRefresh = { viewModel.send(NotificationsListUiIntent.Refresh) },
     ) {
         LoadMoreLayout(

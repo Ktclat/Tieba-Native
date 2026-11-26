@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -112,9 +113,8 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.math.absoluteValue
-import kotlin.math.max
-import kotlin.math.min
 
 @Destination
 @Composable
@@ -366,38 +366,17 @@ private fun UserProfileContentNormal(
         ) {
             val headerNestedScrollConnection = remember {
                 object : NestedScrollConnection {
-                    override fun onPreScroll(
-                        available: Offset,
-                        source: NestedScrollSource,
-                    ): Offset {
-                        if (available.y < 0) {
-                            val prevHeightOffset = heightOffset
-                            heightOffset = max(heightOffset + available.y, -headerHeight)
-                            if (prevHeightOffset != heightOffset) {
-                                return available.copy(x = 0f)
-                            }
-                        }
-
-                        return Offset.Zero
+                    fun moveHeader(delta: Float): Offset {
+                        val previous = heightOffset
+                        heightOffset = (previous + delta).coerceIn(-headerHeight, 0f)
+                        return Offset(0f, heightOffset - previous)
                     }
 
-                    override fun onPostScroll(
-                        consumed: Offset,
-                        available: Offset,
-                        source: NestedScrollSource,
-                    ): Offset {
-                        if (available.y > 0f) {
-                            // Adjust the height offset in case the consumed delta Y is less than what was
-                            // recorded as available delta Y in the pre-scroll.
-                            val prevHeightOffset = heightOffset
-                            heightOffset = min(heightOffset + available.y, 0f)
-                            if (prevHeightOffset != heightOffset) {
-                                return available.copy(x = 0f)
-                            }
-                        }
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                        moveHeader(available.y.coerceAtMost(0f))
 
-                        return Offset.Zero
-                    }
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+                        moveHeader(available.y.coerceAtLeast(0f))
                 }
             }
 
@@ -407,7 +386,7 @@ private fun UserProfileContentNormal(
                         .padding(paddingValues)
                         .nestedScroll(headerNestedScrollConnection)
                 ) {
-                    val pages = remember {
+                    val pages = remember(isSelf) {
                         listOfNotNull(
                             UserProfilePageData(
                                 id = "threads",
@@ -460,18 +439,17 @@ private fun UserProfileContentNormal(
                     }
                     val pagerState = rememberPagerState { pages.size }
 
-                    val containerHeight by remember {
-                        derivedStateOf {
-                            with(density) {
-                                (headerHeight + heightOffset).toDp()
-                            }
-                        }
-                    }
-
                     Box(
                         modifier = Modifier
-                            .height(containerHeight)
                             .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val header = measurable.measure(constraints.copy(minHeight = 0))
+                                val visible = (header.height + heightOffset).roundToInt()
+                                    .coerceIn(0, header.height).coerceIn(constraints.minHeight, constraints.maxHeight)
+                                layout(header.width, visible) {
+                                    header.placeRelative(0, visible - header.height)
+                                }
+                            }
                     ) {
                         Box(
                             modifier = Modifier
@@ -481,6 +459,7 @@ private fun UserProfileContentNormal(
                                 )
                                 .onSizeChanged {
                                     headerHeight = it.height.toFloat()
+                                    heightOffset = heightOffset.coerceIn(-headerHeight, 0f)
                                 }
                         ) {
                             UserProfileDetail(
@@ -568,7 +547,7 @@ private fun UserProfileContentExpanded(
                         .align(Alignment.TopCenter),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val pages = remember {
+                    val pages = remember(isSelf) {
                         listOfNotNull(
                             UserProfilePageData(
                                 id = "threads",

@@ -11,9 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 
 object ClientUtils {
@@ -39,19 +37,11 @@ object ClientUtils {
     fun init(context: Context) {
         contextWeakReference = WeakReference(context)
         CoroutineScope(Dispatchers.IO).launch {
-            clientId = withContext(Dispatchers.IO) {
-                context.dataStore.data.map { it[clientIdKey] }.firstOrNull()
-            }
-            sampleId = withContext(Dispatchers.IO) {
-                context.dataStore.data.map { it[sampleIdKey] }.firstOrNull()
-            }
-            baiduId = withContext(Dispatchers.IO) {
-                context.dataStore.data.map { it[baiduIdKey] }.firstOrNull()
-            }
-            activeTimestamp = withContext(Dispatchers.IO) {
-                context.dataStore.data.map { it[activeTimestampKey] }.firstOrNull()
-                    ?: System.currentTimeMillis()
-            }
+            val stored = context.dataStore.data.firstOrNull()
+            clientId = stored?.get(clientIdKey)
+            sampleId = stored?.get(sampleIdKey)
+            baiduId = stored?.get(baiduIdKey)
+            activeTimestamp = stored?.get(activeTimestampKey) ?: System.currentTimeMillis()
             sync(context)
         }
     }

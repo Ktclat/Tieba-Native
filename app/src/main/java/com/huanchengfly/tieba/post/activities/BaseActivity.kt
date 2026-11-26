@@ -18,7 +18,6 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.addCallback
 import androidx.annotation.CallSuper
 import androidx.annotation.ColorInt
 import androidx.annotation.Keep
@@ -32,7 +31,6 @@ import com.huanchengfly.tieba.post.App.Companion.INSTANCE
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.theme.interfaces.ExtraRefreshable
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
-import com.huanchengfly.tieba.post.ui.widgets.VoicePlayerView
 import com.huanchengfly.tieba.post.ui.widgets.theme.TintToolbar
 import com.huanchengfly.tieba.post.utils.AppPreferencesUtils
 import com.huanchengfly.tieba.post.utils.DialogUtil
@@ -96,32 +94,12 @@ abstract class BaseActivity : AppCompatActivity(), ExtraRefreshable, CoroutineSc
         return dialog
     }
 
-    override fun onStop() {
-        super.onStop()
-        VoicePlayerView.Manager.release()
-    }
-
     open val isNeedImmersionBar: Boolean = true
     open val isNeedFixBg: Boolean = true
     open val isNeedSetTheme: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Native Compose screens delegate back to AndroidX, allowing Android's
-        // system and Navigation Compose to handle predictive back normally.
-        // Only legacy View/Fragment pages need the old fragment-back fallback.
-        if (this !is com.huanchengfly.tieba.post.arch.BaseComposeActivity) {
-            onBackPressedDispatcher.addCallback(this) {
-                if (!HandleBackUtil.handleBackPress(this@BaseActivity)) {
-                    isEnabled = false
-                    try {
-                        onBackPressedDispatcher.onBackPressed()
-                    } finally {
-                        isEnabled = true
-                    }
-                }
-            }
-        }
         if (isNeedFixBg) fixBackground()
         getDeviceDensity()
         INSTANCE.addActivity(this)

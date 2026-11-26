@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -13,10 +14,12 @@ import androidx.compose.ui.Modifier
 fun PullToRefreshLayout(
     refreshing: Boolean,
     onRefresh: () -> Unit,
-    content: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val state = rememberPullToRefreshState()
     PullToRefreshBox(
+        modifier = modifier,
         isRefreshing = refreshing,
         onRefresh = onRefresh,
         state = state,
@@ -27,5 +30,6 @@ fun PullToRefreshLayout(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         },
-    ) { content() }
+        content = content,
+    )
 }

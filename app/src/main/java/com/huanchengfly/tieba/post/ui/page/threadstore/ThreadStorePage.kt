@@ -2,7 +2,6 @@
 
 package com.huanchengfly.tieba.post.ui.page.threadstore
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
@@ -31,23 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.ThreadStoreBean
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
-import com.huanchengfly.tieba.post.dpToPxFloat
-import com.huanchengfly.tieba.post.pxToSp
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadPageFrom
@@ -71,8 +59,6 @@ import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-
-private val UpdateTipTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 10.sp)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTextApi::class)
 @Destination(
@@ -233,7 +219,6 @@ private fun StoreItem(
 ) {
     val hasUpdate = remember(info) { info.count != "0" && info.postNo != "0" }
     val isDeleted = remember(info) { info.isDeleted == "1" }
-    val textMeasurer = rememberTextMeasurer()
     LongClickMenu(
         menuContent = {
             DropdownMenuItem(
@@ -267,65 +252,25 @@ private fun StoreItem(
                     )
                 },
                 onClick = onUserClick,
-            )
-            val title = remember(info, hasUpdate) {
-                buildAnnotatedString {
-                    append(info.title)
-                    if (hasUpdate) {
-                        append(" ")
-                        appendInlineContent("Update", info.postNo)
+                content = if (hasUpdate) {
+                    {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) { Text(stringResource(R.string.tip_thread_store_update, info.postNo)) }
                     }
-                }
-            }
-            val updateTip = stringResource(
-                id = R.string.tip_thread_store_update,
-                info.postNo
+                } else null,
             )
-            val result = remember {
-                textMeasurer.measure(
-                    AnnotatedString(updateTip),
-                    style = UpdateTipTextStyle
-                ).size
-            }
-            val width = result.width.pxToSp() + 12F.dpToPxFloat().pxToSp() * 2 + 1
-            val height = result.height.pxToSp() + 4F.dpToPxFloat().pxToSp() * 2
             Text(
-                text = title,
-                fontSize = 15.sp,
-                color = if (isDeleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface,
-                inlineContent = mapOf(
-                    "Update" to InlineTextContent(
-                        placeholder = Placeholder(
-                            width = width.sp,
-                            height = height.sp,
-                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
-                        ),
-                        children = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        shape = RoundedCornerShape(3.dp)
-                                    )
-                                    .padding(vertical = 4.dp, horizontal = 12.dp)
-                            ) {
-                                Text(
-                                    text = updateTip,
-                                    style = UpdateTipTextStyle,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
-                        }
-                    )
-                )
+                text = info.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isDeleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             )
             if (isDeleted) {
                 Text(
                     text = stringResource(id = R.string.tip_thread_store_deleted),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

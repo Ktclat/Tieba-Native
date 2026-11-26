@@ -1,5 +1,8 @@
 package com.huanchengfly.tieba.post.ui.page.user.edit
 
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import android.app.Activity
 import android.graphics.Bitmap
@@ -14,10 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,8 +57,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -75,7 +74,6 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BaseTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.CounterTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
@@ -319,148 +317,44 @@ fun EditProfileCard(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            ConstraintLayout(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val (
-                    nameTitle,
-                    nameContent,
-                    nickNameTitle,
-                    nickNameContent,
-                    sexTitle,
-                    sexContent,
-                    introTitle,
-                    introContent,
-                ) = createRefs()
-
-                val titleEndBarrier = createEndBarrier(
-                    nameTitle,
-                    nickNameTitle,
-                    sexTitle,
-                    introTitle,
-                    margin = 24.dp
-                )
-
-                Text(
-                    text = stringResource(id = R.string.title_username),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(nameTitle) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(nameContent.bottom)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Text(
-                    text = name,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier
-                        .constrainAs(nameContent) {
-                            top.linkTo(nameTitle.top)
-                            bottom.linkTo(nameTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading)
-                )
-
-                Text(
-                    text = stringResource(id = R.string.title_nickname),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(nickNameTitle) {
-                        top.linkTo(nameTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Row(
-                    modifier = Modifier
-                        .constrainAs(nickNameContent) {
-                            top.linkTo(nickNameTitle.top)
-                            bottom.linkTo(nickNameTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading)
-                ) {
-                    BaseTextField(
-                        value = nickName,
-                        onValueChange = { onNickNameChange?.invoke(it) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        maxLines = 1,
-                    )
-                }
-
-                Text(
-                    text = stringResource(id = R.string.profile_sex),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(sexTitle) {
-                        top.linkTo(nickNameTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Row(
-                    modifier = Modifier
-                        .constrainAs(sexContent) {
-                            top.linkTo(sexTitle.top)
-                            bottom.linkTo(sexTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onModifySex?.invoke() }
-                        .loadingPlaceholder(visible = loading)
-                ) {
-                    Text(
-                        text = stringResource(
-                            id = when (sex) {
-                                1 -> R.string.profile_sex_male
-                                2 -> R.string.profile_sex_female
-                                else -> R.string.profile_sex_unset
-                            }
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_round_chevron_right),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .align(Alignment.CenterVertically)
-                    )
-                }
-
-                Text(
-                    text = stringResource(id = R.string.title_intro),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(introTitle) {
-                        top.linkTo(sexTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                CounterTextField(
-                    value = intro,
-                    onValueChange = { onIntroChange?.invoke(it) },
-                    maxLength = 500,
-                    countWhitespace = false,
-                    onLengthBeyondRestrict = { context.toastShort(R.string.toast_intro_length_beyond_restrict) },
-                    placeholder = { Text(text = stringResource(id = R.string.tip_no_intro)) },
-                    modifier = Modifier
-                        .constrainAs(introContent) {
-                            top.linkTo(introTitle.top)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading),
-                )
-            }
+            val rowColors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ListItem(
+                headlineContent = { Text(name, modifier = Modifier.loadingPlaceholder(visible = loading)) },
+                overlineContent = { Text(stringResource(R.string.title_username)) },
+                colors = rowColors,
+            )
+            OutlinedTextField(
+                value = nickName,
+                onValueChange = { onNickNameChange?.invoke(it) },
+                label = { Text(stringResource(R.string.title_nickname)) },
+                singleLine = true,
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ListItem(
+                modifier = Modifier.clickable(enabled = !loading) { onModifySex?.invoke() },
+                overlineContent = { Text(stringResource(R.string.profile_sex)) },
+                headlineContent = {
+                    Text(stringResource(when (sex) {
+                        1 -> R.string.profile_sex_male
+                        2 -> R.string.profile_sex_female
+                        else -> R.string.profile_sex_unset
+                    }))
+                },
+                trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ic_round_chevron_right), null) },
+                colors = rowColors,
+            )
+            CounterTextField(
+                value = intro,
+                onValueChange = { onIntroChange?.invoke(it) },
+                maxLength = 500,
+                countWhitespace = false,
+                enabled = !loading,
+                onLengthBeyondRestrict = { context.toastShort(R.string.toast_intro_length_beyond_restrict) },
+                label = { Text(stringResource(R.string.title_intro)) },
+                placeholder = { Text(stringResource(R.string.tip_no_intro)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

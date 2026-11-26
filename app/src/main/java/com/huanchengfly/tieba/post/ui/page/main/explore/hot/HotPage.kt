@@ -1,7 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.hot
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.background
@@ -79,8 +79,8 @@ fun HotPage(
     val tabList by viewModel.uiState.collectPartialAsState(HotUiState::tabList)
     val currentTabCode by viewModel.uiState.collectPartialAsState(HotUiState::currentTabCode)
     val isLoadingThreadList by viewModel.uiState.collectPartialAsState(HotUiState::isLoadingThreadList)
-    PullToRefreshBox(
-        isRefreshing = isLoading,
+    PullToRefreshLayout(
+        refreshing = isLoading,
         onRefresh = { viewModel.send(HotUiIntent.Load) },
     ) {
         MyLazyColumn(

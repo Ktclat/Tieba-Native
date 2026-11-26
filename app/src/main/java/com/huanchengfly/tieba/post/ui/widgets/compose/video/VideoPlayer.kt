@@ -1,10 +1,10 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.widgets.compose.video
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,9 +22,9 @@ import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -175,7 +174,7 @@ fun VideoPlayer(
                         )
                     }
 
-                    IconButton(onClick = { videoPlayerController.play() }) {
+                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { videoPlayerController.play() }) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(id = R.string.btn_play),
@@ -192,12 +191,12 @@ fun VideoPlayer(
 fun BoxScope.MediaController() {
     val videoPlayerController = LocalVideoPlayerController.current
 
+    MediaControlGestures(modifier = Modifier.matchParentSize())
     MediaControlButtons(
         modifier = Modifier.matchParentSize()
     )
 
     val controlsVisible by videoPlayerController.collect { controlsVisible }
-    val isFullScreen by videoPlayerController.collect { isFullScreen }
 
     if (controlsVisible) {
         Column(
@@ -206,11 +205,7 @@ fun BoxScope.MediaController() {
                 .padding(vertical = 8.dp)
                 .align(Alignment.BottomCenter),
         ) {
-            if (isFullScreen) {
-                ProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            ProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -224,19 +219,10 @@ fun BoxScope.MediaController() {
             }
         }
     }
-    if (!isFullScreen || !controlsVisible) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = 12.dp)
-        ) {
-            ProgressIndicator(
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+    if (!controlsVisible) {
+        ProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter))
     }
 
-    MediaControlGestures(modifier = Modifier.matchParentSize())
 }
 
 @Composable
@@ -273,19 +259,10 @@ private fun FullScreenButton() {
     } else {
         Icons.Rounded.Fullscreen
     }
-    Box(
-        modifier = Modifier
-            .padding(8.dp)
-            .clickable(
-                indication = ripple(bounded = true),
-                interactionSource = remember { MutableInteractionSource() }
-            ) {
-                videoPlayerController.toggleFullScreen()
-            }
+    IconButton(
+        onClick = videoPlayerController::toggleFullScreen,
+        shapes = IconButtonDefaults.shapes(),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = stringResource(id = R.string.btn_full_screen)
-        )
+        Icon(imageVector = icon, contentDescription = stringResource(id = R.string.btn_full_screen))
     }
 }

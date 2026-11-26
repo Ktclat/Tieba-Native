@@ -1,6 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.concern
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.items
@@ -51,8 +51,8 @@ fun ConcernPage(
         }
     }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
+    PullToRefreshLayout(
+        refreshing = isRefreshing,
         onRefresh = { viewModel.send(ConcernUiIntent.Refresh) },
     ) {
         LoadMoreLayout(

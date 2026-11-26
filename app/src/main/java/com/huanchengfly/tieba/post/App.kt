@@ -1,18 +1,15 @@
 package com.huanchengfly.tieba.post
 
 import android.app.Activity
-import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.os.Build
-import android.os.Process
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.annotation.Keep
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.graphics.toArgb
 import com.github.gzuliyujiang.oaid.DeviceID
@@ -49,33 +46,14 @@ import kotlin.concurrent.thread
 class App : Application(), SketchFactory {
     private val mActivityList: MutableList<Activity> = mutableListOf()
 
-    @RequiresApi(api = 28)
-    private fun setWebViewPath(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val processName = getProcessName(context)
-            if (applicationContext.packageName != processName) { //判断不等于默认进程名称
-                WebView.setDataDirectorySuffix(processName!!)
-            }
-        }
-    }
-
-    private fun getProcessName(context: Context): String? {
-        val manager = context.getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        for (processInfo in manager.runningAppProcesses) {
-            if (processInfo.pid == Process.myPid()) {
-                return processInfo.processName
-            }
-        }
-        return null
-    }
-
     override fun onCreate() {
         INSTANCE = this
         super.onCreate()
-        ClientUtils.init(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            setWebViewPath(this)
+            val process = Application.getProcessName()
+            if (packageName != process) WebView.setDataDirectorySuffix(process)
         }
+        ClientUtils.init(this)
         LitePal.initialize(this)
         AccountUtil.init(this)
         Config.init(this)
@@ -147,7 +125,14 @@ class App : Application(), SketchFactory {
         var oaid: String = ""
         var encodedOAID: String = ""
         var isTrackLimited: Boolean = false
-        var userAgent: String? = null
+        // Native screens can render before a web request needs the WebView provider.
+        val userAgent: String? by lazy {
+            try {
+                WebSettings.getDefaultUserAgent(INSTANCE)
+            } catch (_: RuntimeException) {
+                null
+            }
+        }
         var appFirstInstallTime: Long = 0L
         var appLastUpdateTime: Long = 0L
 
@@ -160,9 +145,9 @@ class App : Application(), SketchFactory {
                     statusCode = -200
                     isTrackLimited = false
                 }
-                userAgent = WebSettings.getDefaultUserAgent(context)
-                appFirstInstallTime = context.packageInfo.firstInstallTime
-                appLastUpdateTime = context.packageInfo.lastUpdateTime
+                val installed = context.packageInfo
+                appFirstInstallTime = installed.firstInstallTime
+                appLastUpdateTime = installed.lastUpdateTime
                 inited = true
             }
         }

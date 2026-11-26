@@ -61,6 +61,7 @@ fun CounterTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
+    label: @Composable (() -> Unit)? = null,
 ) {
     fun counted(c: Char) = countWhitespace || !c.isWhitespace()
     OutlinedTextField(
@@ -78,6 +79,7 @@ fun CounterTextField(
         readOnly = readOnly,
         textStyle = textStyle,
         placeholder = placeholder,
+        label = label,
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,

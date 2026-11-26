@@ -5,16 +5,16 @@ package com.huanchengfly.tieba.post.ui.page.search.forum
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -138,35 +138,13 @@ private fun SearchForumItem(
     item: SearchForumBean.ForumInfoBean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Avatar(
-            data = item.avatar,
-            size = Sizes.Medium,
-            contentDescription = item.forumNameShow
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(id = R.string.title_forum, item.forumNameShow.orEmpty()),
-                style = MaterialTheme.typography.titleMedium
-            )
-            if (!item.intro.isNullOrEmpty()) {
-                Text(
-                    text = item.slogan.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-            }
-        }
-    }
+    val description = item.slogan?.takeIf { it.isNotBlank() } ?: item.intro
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        leadingContent = { Avatar(data = item.avatar, size = Sizes.Medium, contentDescription = null) },
+        headlineContent = { Text(stringResource(R.string.title_forum, item.forumNameShow.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = description?.takeIf { it.isNotBlank() }?.let {
+            { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
+    )
 }

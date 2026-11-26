@@ -81,6 +81,15 @@ jobs:
           path: ${{ steps.pack.outputs.apk }}
           if-no-files-found: error
           retention-days: 7
+      - name: Build device review instrumentation
+        run: ./gradlew :app:assembleDebugAndroidTest --stacktrace
+      - name: Upload device review instrumentation
+        uses: actions/upload-artifact@v6
+        with:
+          name: Tieba-Native-Device-Tests
+          path: app/build/outputs/apk/androidTest/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Run JVM and Compose regression tests
         if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
         env:
@@ -114,6 +123,10 @@ jobs:
         with:
           name: Tieba-Native-Debug
           path: review-apk
+      - uses: actions/download-artifact@v5
+        with:
+          name: Tieba-Native-Device-Tests
+          path: review-tests
       - name: Locate a comparable APK from the base commit
         id: baseline
         uses: actions/github-script@v8
@@ -150,19 +163,32 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Select the Pixel phone profile
+        id: phone
+        run: |
+          devices=$("$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list device)
+          if [[ "$devices" == *'"pixel_9"'* ]]; then
+            echo "profile=pixel_9" >> "$GITHUB_OUTPUT"
+          else
+            # Older SDK images still use the same Pixel 9 viewport set by configure_phone().
+            echo "profile=pixel_5" >> "$GITHUB_OUTPUT"
+          fi
       - name: Exercise the installed app and capture Android screens
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
-          profile: pixel_5
+          profile: ${{ steps.phone.outputs.profile }}
           # Use SwiftShader GLES for WebView on a headless runner without a Vulkan GPU.
           emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
+          disable-animations: false
           script: |
-            python3 tools/capture_android_ui.py review-apk/*.apk build/reports/device-screenshots
-            python3 tools/profile_android_ui.py review-apk/*.apk build/reports/device-frames --baseline-dir baseline-apk --baseline-sha "${{ steps.baseline.outputs.sha }}" --candidate-sha "${{ github.event.pull_request.head.sha || github.sha }}" --reset-emulator-app-data
+            if ls baseline-apk/*.apk >/dev/null 2>&1; then python3 tools/capture_android_ui.py --baseline baseline-apk/*.apk build/reports/device-screenshots/baseline || touch "$RUNNER_TEMP/phone-review-failed"; adb uninstall com.huanchengfly.tieba.post || true; fi
+            python3 tools/capture_android_ui.py review-apk/*.apk build/reports/device-screenshots || touch "$RUNNER_TEMP/phone-review-failed"
+            python3 tools/review_android_phone.py review-tests/*.apk build/reports/device-screenshots || touch "$RUNNER_TEMP/phone-review-failed"
+            python3 tools/profile_android_ui.py review-apk/*.apk build/reports/device-frames --baseline-dir baseline-apk --baseline-sha "${{ steps.baseline.outputs.sha }}" --candidate-sha "${{ github.event.pull_request.head.sha || github.sha }}" --reset-emulator-app-data || touch "$RUNNER_TEMP/phone-review-failed"
+            test ! -e "$RUNNER_TEMP/phone-review-failed"
       - name: Record host diagnostics if the emulator exits
         if: failure()
         run: |

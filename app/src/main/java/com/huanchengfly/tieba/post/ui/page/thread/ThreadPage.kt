@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,7 +35,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonGroupDefaults
@@ -57,6 +59,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
 import androidx.compose.material.icons.automirrored.rounded.ChromeReaderMode
 import androidx.compose.material.icons.automirrored.rounded.Sort
@@ -106,10 +109,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.booleanToString
@@ -164,6 +163,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.OriginThreadCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
+import com.huanchengfly.tieba.post.ui.widgets.compose.StateIllustration
 import com.huanchengfly.tieba.post.ui.widgets.compose.TextWithMinWidth
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
@@ -292,9 +292,8 @@ private fun ThreadLoadMoreIndicator(
             ProvideTextStyle(value = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             modifier = Modifier.size(24.dp),
-                            strokeWidth = 3.dp,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -891,7 +890,7 @@ fun ThreadPage(
             MyScaffold(
                 snackbarHostState = snackbarHostState,
                 topBar = {
-                    TopBar(
+                    ThreadTopBar(
                         forum = forum,
                         onBack = ::leaveThread,
                         onForumClick = {
@@ -1263,16 +1262,7 @@ fun ThreadPage(
                                         TipScreen(
                                             title = { Text(text = stringResource(id = R.string.title_empty)) },
                                             image = {
-                                                val composition by rememberLottieComposition(
-                                                    LottieCompositionSpec.RawRes(R.raw.lottie_empty_box)
-                                                )
-                                                LottieAnimation(
-                                                    composition = composition,
-                                                    iterations = LottieConstants.IterateForever,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .aspectRatio(2f)
-                                                )
+                                                StateIllustration(Icons.AutoMirrored.Rounded.Chat)
                                             },
                                             actions = {
                                                 if (canReload) {
@@ -1307,7 +1297,7 @@ fun ThreadPage(
 }
 
 @Composable
-private fun TopBar(
+internal fun ThreadTopBar(
     forum: ImmutableHolder<SimpleForum>?,
     onBack: () -> Unit,
     onForumClick: () -> Unit,
@@ -1317,32 +1307,24 @@ private fun TopBar(
         title = {
             forum?.let {
                 if (forum.get { name }.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .height(IntrinsicSize.Min)
-                            .clip(RoundedCornerShape(100))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable(onClick = onForumClick)
-                            .padding(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Avatar(
-                            data = forum.get { avatar },
-                            contentDescription = it.get { name },
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .aspectRatio(1f)
-                        )
-
-                        Text(
-                            text = stringResource(id = R.string.title_forum, it.get { name }),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    AssistChip(
+                        onClick = onForumClick,
+                        label = {
+                            Text(
+                                stringResource(R.string.title_forum, it.get { name }),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        leadingIcon = {
+                            Avatar(
+                                data = it.get { avatar }, contentDescription = null,
+                                modifier = Modifier.size(AssistChipDefaults.IconSize),
+                            )
+                        },
+                        shape = MaterialTheme.shapes.large,
+                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        border = null,
+                    )
                 }
             }
         },
@@ -1359,14 +1341,14 @@ internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange
     val scheme = MaterialTheme.colorScheme
     Surface(color = scheme.surface) {
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = stringResource(R.string.title_thread_header, replyCount.toString()),
                 modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
             )
             Row(
                 modifier = Modifier.selectableGroup(),
@@ -1379,13 +1361,20 @@ internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange
                         onCheckedChange = { if (it) onFilterChange(onlyAuthor) },
                         shapes = if (onlyAuthor) ButtonGroupDefaults.connectedTrailingButtonShapes()
                             else ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.semantics {
-                            role = Role.RadioButton
-                            selected = isSelected
-                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.minimumInteractiveComponentSize()
+                            .height(ButtonDefaults.ExtraSmallContainerHeight)
+                            .sizeIn(minWidth = 48.dp)
+                            .semantics {
+                                role = Role.RadioButton
+                                selected = isSelected
+                            },
                     ) {
-                        Text(stringResource(if (onlyAuthor) R.string.title_see_lz else R.string.text_all))
+                        Text(
+                            stringResource(if (onlyAuthor) R.string.title_see_lz else R.string.text_all),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                        )
                     }
                 }
             }
@@ -1412,23 +1401,7 @@ internal fun ThreadBottomBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (!LocalContext.current.appPreferences.hideReply) {
-                    FilledTonalButton(
-                        onClick = onClickReply,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        if (signedIn) {
-                            Avatar(
-                                data = StringUtil.getAvatarUrl(user.get { displayPortrait }),
-                                size = Sizes.Tiny, contentDescription = null,
-                            )
-                        }
-                        Text(
-                            text = stringResource(if (signedIn) R.string.tip_reply_thread else R.string.login_to_reply),
-                            modifier = Modifier.weight(1f).padding(start = 8.dp),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    ReplyPrompt(signedIn, user.get { displayPortrait }, onClickReply, Modifier.weight(1f))
                 } else Spacer(Modifier.weight(1f))
                 PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
                 IconButton(onClick = onClickMore) {
@@ -1440,6 +1413,24 @@ internal fun ThreadBottomBar(
                     .windowInsetsBottomHeight(WindowInsets.navigationBars)
             )
         }
+    }
+}
+
+@Composable
+internal fun ReplyPrompt(signedIn: Boolean, portrait: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        if (signedIn) {
+            Avatar(data = StringUtil.getAvatarUrl(portrait.orEmpty()), size = Sizes.Tiny, contentDescription = null)
+        }
+        Text(
+            text = stringResource(if (signedIn) R.string.tip_reply_thread else R.string.login_to_reply),
+            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -1481,7 +1472,7 @@ internal fun ThreadReadingMarkDialog(
                     onLeave()
                 }
             }) {
-                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                if (saving) LoadingIndicator(Modifier.size(20.dp))
                 else Text(stringResource(R.string.save_reading_mark_and_return))
             }
         },

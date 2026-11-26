@@ -6,8 +6,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -27,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -42,6 +42,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import com.huanchengfly.tieba.post.LocalDevicePosture
+import com.huanchengfly.tieba.post.LocalDestination
 import com.huanchengfly.tieba.post.LocalNotificationCountFlow
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
@@ -54,6 +55,7 @@ import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowHeightSizeClass
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
+import com.huanchengfly.tieba.post.ui.page.destinations.MainPageDestination
 import com.huanchengfly.tieba.post.ui.page.main.explore.ExplorePage
 import com.huanchengfly.tieba.post.ui.page.main.home.HomePage
 import com.huanchengfly.tieba.post.ui.page.main.notifications.NotificationsPage
@@ -93,7 +95,7 @@ internal fun NavigationWrapper(
     }
 }
 
-@OptIn(ExperimentalAnimationGraphicsApi::class)
+@OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @RootNavGraph(start = true)
 @Destination
 @Composable
@@ -236,6 +238,11 @@ fun MainPage(
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
     val navScroll = remember(selectedId, navigationType, navScrollRangePx) { MainNavigationScrollState(navScrollRangePx) }
     val predictiveProgress = remember(selectedId) { Animatable(0f) }
+    val settle = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
+    val canReturnToHome = selectedIndex != 0 && LocalDestination.current == MainPageDestination
+    val confirmTabBack by rememberUpdatedState {
+        if (canReturnToHome && selection.id == selectedId) selection.select("home")
+    }
     val predictTabBack by context.dataStore.collectPreferenceAsState(
         key = booleanPreferencesKey("enablePredictiveTabBack"),
         defaultValue = true,
@@ -274,14 +281,10 @@ fun MainPage(
                     MainTabHost(
                         selectedId = selectedId,
                         navigationItems = navigationItems,
+                        backProgress = { predictiveProgress.value },
                         modifier = Modifier.fillMaxSize().then(
                             if (compact) Modifier.mainTabViewport(paddingValues, navScroll) else Modifier.padding(paddingValues)
-                        ).graphicsLayer {
-                            val preview = predictiveProgress.value
-                            scaleX = 1f - preview * 0.055f
-                            scaleY = 1f - preview * 0.045f
-                            translationX = preview * 12.dp.toPx()
-                        },
+                        ),
                     )
                 }
             }
@@ -289,33 +292,38 @@ fun MainPage(
     }
     // Only tabs intercept predictive back. Root activity can still use the
     // system's native predictive back-to-home animation.
-    PredictiveBackHandler(enabled = selectedIndex != 0 && predictTabBack) { progress ->
-        handleMainTabBack(progress, predictiveProgress, ValueAnimator.areAnimatorsEnabled()) {
-            selection.select("home")
+    PredictiveBackHandler(enabled = canReturnToHome && predictTabBack) { progress ->
+        handleMainTabBack(progress, predictiveProgress, ValueAnimator.areAnimatorsEnabled(), settle) {
+            confirmTabBack()
         }
     }
-    BackHandler(enabled = selectedIndex != 0 && !predictTabBack) {
-        selection.select("home")
-    }
+    BackHandler(enabled = canReturnToHome && !predictTabBack) { confirmTabBack() }
 }
 
-/** A confirmed back switches immediately. Only a cancelled gesture animates the old page back. */
+/** Only a progressed gesture needs settling. A button back or reduced motion switches immediately. */
 internal suspend fun handleMainTabBack(
     events: Flow<BackEventCompat>,
     preview: Animatable<Float, AnimationVector1D>,
     animationsEnabled: Boolean,
+    settle: FiniteAnimationSpec<Float>,
     onConfirmed: () -> Unit,
 ) {
     try {
         events.collect { event ->
-            if (animationsEnabled) preview.snapTo(event.progress.coerceIn(0f, 1f))
+            if (animationsEnabled) {
+                val progress = event.progress.coerceIn(0f, 1f)
+                preview.snapTo(if (event.swipeEdge == BackEventCompat.EDGE_RIGHT) -progress else progress)
+            }
         }
-        preview.snapTo(0f)
+        if (animationsEnabled && preview.value != 0f) {
+            preview.animateTo(if (preview.value > 0f) 1f else -1f, settle)
+        }
         onConfirmed()
+        preview.snapTo(0f)
     } catch (cancelled: CancellationException) {
         withContext(NonCancellable) {
             if (animationsEnabled && preview.value != 0f) {
-                preview.animateTo(0f, spring(stiffness = Spring.StiffnessMedium))
+                preview.animateTo(0f, settle)
             } else preview.snapTo(0f)
         }
         throw cancelled

@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -59,9 +59,8 @@ fun EditTextPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val value = prefs?.get(selectionKey) ?: defaultValue
+    val loadedValue by datastore.collectPreferenceAsState<String?>(selectionKey, defaultValue, initialValue = null)
+    val value = loadedValue ?: defaultValue
 
     fun edit(valueToSave: String) {
         scope.launch {
@@ -89,7 +88,7 @@ fun EditTextPref(
         onClick = { dialogState.show() },
     )
 
-    if (dialogState.show && prefs != null) {
+    if (dialogState.show && loadedValue != null) {
         PromptDialog(
             onConfirm = {
                 onValueChange(it)

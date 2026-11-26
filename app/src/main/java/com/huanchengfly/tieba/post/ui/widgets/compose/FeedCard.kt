@@ -34,11 +34,12 @@ import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
 import androidx.compose.material.icons.rounded.SwapCalls
+import androidx.compose.material3.Card as MaterialCard
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface as Material3Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -201,35 +202,24 @@ fun Card(
     onClick: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    val cardModifier = if (onClick != null) {
-        Modifier.clickable(onClick = onClick)
-    } else Modifier
-
-    val paddingModifier = if (action != null) Modifier.padding(top = 14.dp)
-    else Modifier.padding(vertical = 14.dp)
-
-    Material3Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        shape = Material3Theme.shapes.medium,
-        color = Material3Theme.colorScheme.surfaceContainerLow,
-        contentColor = Material3Theme.colorScheme.onSurface,
-    ) {
-        Column(
-            modifier = cardModifier
-                .then(paddingModifier)
-                .padding(contentPadding),
-        ) {
+    val cardModifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+    val colors = CardDefaults.cardColors(containerColor = Material3Theme.colorScheme.surfaceContainerLow)
+    val body: @Composable ColumnScope.() -> Unit = {
+        val verticalPadding = if (action == null) Modifier.padding(vertical = 14.dp) else Modifier.padding(top = 14.dp)
+        Column(verticalPadding.padding(contentPadding)) {
             header()
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                content()
-            }
+                modifier = Modifier.padding(top = 8.dp),
+                content = content,
+            )
             action?.invoke(this)
         }
+    }
+    if (onClick == null) {
+        MaterialCard(modifier = cardModifier, colors = colors, content = body)
+    } else {
+        MaterialCard(onClick = onClick, modifier = cardModifier, colors = colors, content = body)
     }
 }
 
