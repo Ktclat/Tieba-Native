@@ -9,12 +9,11 @@ import math
 from pathlib import Path
 import re
 import sqlite3
-import subprocess
 import tempfile
 import time
 from xml.etree import ElementTree
 
-from capture_android_ui import PACKAGE, PHONE_HEIGHT, PHONE_WIDTH, adb, configure_phone, find_label, hierarchy, tap
+from capture_android_ui import PACKAGE, PHONE_HEIGHT, PHONE_WIDTH, adb, configure_phone, find_label, hierarchy, save_diagnostic, tap
 
 
 def frame_rows(dump):
@@ -95,12 +94,34 @@ def seed_history():
                            [(f"滚动测试 {i:03}", str(900000 + i), now - 60_000 * i, "离线示例")
                             for i in range(180)])
             db.commit()
-            db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if db.execute("PRAGMA journal_mode=DELETE").fetchone()[0] != "delete":
+                raise RuntimeError("History fixture still depends on a separate write-ahead log")
         db.close()
-        adb("shell", *prefix, "rm", "-f", data + "-wal", data + "-shm", data + "-journal")
-        # exec-in avoids a PTY and writes only to this test app's private database.
-        subprocess.run(["adb", "exec-in", *prefix, "tee", data], input=path.read_bytes(),
-                       stdout=subprocess.DEVNULL, check=True, timeout=30)
+        remote = "/data/local/tmp/tieba-profile-history.db"
+        private = "databases/benchmark-history.tmp"
+        original = path.read_bytes()
+        try:
+            adb("push", str(path), remote)
+            # The shell UID can read the pushed file. run-as owns the destination in app storage.
+            # Wait for the full write and verify it before swapping the stopped app's database.
+            adb("shell", f"cat {remote} | run-as {PACKAGE} sh -c 'cat > {private}'")
+            staged = adb("exec-out", *prefix, "cat", private)
+            if staged != original:
+                raise RuntimeError(f"Transferred history DB differs: {len(staged)} / {len(original)} bytes")
+            adb("shell", *prefix, "rm", "-f", data + "-wal", data + "-shm", data + "-journal")
+            adb("shell", *prefix, "mv", private, data)
+            check = Path(folder) / "installed.db"
+            check.write_bytes(adb("exec-out", *prefix, "cat", data))
+            with sqlite3.connect(check) as db:
+                count = db.execute("SELECT COUNT(*) FROM history WHERE type=2 AND title LIKE '滚动测试 %'").fetchone()[0]
+                integrity = db.execute("PRAGMA quick_check").fetchone()[0]
+            if check.read_bytes() != original or count != 180 or integrity != "ok":
+                raise RuntimeError(f"Installed history DB failed verification: count={count}, integrity={integrity}")
+            print(f"Verified all {count} rows in the installed app's DB", flush=True)
+        finally:
+            adb("shell", "rm", "-f", remote)
+
 
 
 def visible_history(output):
@@ -120,7 +141,7 @@ def visible_history(output):
     return min(rows)
 
 
-def run_block(apk, directory):
+def run_block(apk, directory, readings):
     directory.mkdir(parents=True, exist_ok=True)
     if "package:" + PACKAGE in adb("shell", "pm", "list", "packages", PACKAGE).decode().splitlines():
         adb("uninstall", PACKAGE, timeout=60)
@@ -145,10 +166,11 @@ def run_block(apk, directory):
 
     for _ in range(3):
         switch_tabs()
-    readings = {"switch_tabs": [], "history_scroll": []}
-    for repetition in range(1, 4):
+    # An immediate page switch draws only a handful of frames; repeat to sample its tail.
+    for repetition in range(1, 13):
         readings["switch_tabs"].append(measure(directory, "switch_tabs", repetition, switch_tabs))
     find_label("随便看看")
+    (directory / "switch-tabs.json").write_text(json.dumps([summarize(batch) for batch in readings["switch_tabs"]]))
 
     seed_history()
     launch()
@@ -172,8 +194,6 @@ def run_block(apk, directory):
         up = measure(directory, "history_scroll_up", repetition, lambda: swipe(False))
         down = measure(directory, "history_scroll_down", repetition, lambda: swipe(True))
         readings["history_scroll"].append(up + down)
-    match = re.search(r"^TotalTime:\s*(\d+)", launch_report, re.MULTILINE)
-    return readings, int(match.group(1)) if match else None
 
 
 def main():
@@ -215,32 +235,40 @@ def main():
         "blocks": [],
     }
     combined = {version: {"switch_tabs": [], "history_scroll": []} for version in apks}
+    errors = []
     for index, version in enumerate(order):
         directory = args.output / f"{index + 1}-{version}"
         print(f"Profiling {directory.name}", flush=True)
+        readings = {"switch_tabs": [], "history_scroll": []}
+        block = {"version": version}
         try:
-            readings, cold_start = run_block(apks[version], directory)
-        except Exception:
+            run_block(apks[version], directory, readings)
+        except Exception as error:
+            block["error"] = str(error)
+            errors.append(f"{directory.name}: {error}")
+            print(f"Measurement failed: {errors[-1]}", flush=True)
             for filename, command in {
                 "failure.png": ["exec-out", "screencap", "-p"],
                 "last-window.xml": ["exec-out", "cat", "/sdcard/window.xml"],
                 "gfxinfo.txt": ["shell", "dumpsys", "gfxinfo", PACKAGE, "framestats"],
             }.items():
-                diagnostic = subprocess.run(["adb", *command], capture_output=True, timeout=30)
-                if diagnostic.returncode == 0:
-                    (directory / filename).write_bytes(diagnostic.stdout)
-            raise
-        block = {"version": version, "cold_start_to_initial_display_ms": cold_start}
+                save_diagnostic(directory, filename, *command)
+        launch_file = directory / "cold-start.txt"
+        if launch_file.exists():
+            match = re.search(r"^TotalTime:\s*(\d+)", launch_file.read_text(), re.MULTILINE)
+            block["cold_start_to_initial_display_ms"] = int(match.group(1)) if match else None
         for scenario, batches in readings.items():
             block[scenario] = [summarize(batch) for batch in batches]
             for batch in batches:
                 combined[version][scenario].extend(batch)
         result["blocks"].append(block)
         (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
-    result["summary"] = {version: {scenario: summarize(rows) for scenario, rows in readings.items()}
+    result["summary"] = {version: {scenario: summarize(rows) for scenario, rows in readings.items() if rows}
                          for version, readings in combined.items()}
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result["summary"], indent=2), flush=True)
+    if errors:
+        raise RuntimeError(" | ".join(errors))
 
 
 if __name__ == "__main__":

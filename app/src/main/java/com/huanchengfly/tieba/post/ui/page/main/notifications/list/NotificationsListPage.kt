@@ -42,9 +42,10 @@ import com.ramcosta.composedestinations.spec.Direction
 @Composable
 fun NotificationsListPage(
     type: NotificationsType,
+    accountId: String,
     viewModel: NotificationsListViewModel = when (type) {
-        NotificationsType.ReplyMe -> pageViewModel<NotificationsListUiIntent, ReplyMeListViewModel>()
-        NotificationsType.AtMe -> pageViewModel<NotificationsListUiIntent, AtMeListViewModel>()
+        NotificationsType.ReplyMe -> pageViewModel<NotificationsListUiIntent, ReplyMeListViewModel>(key = "ReplyMeListViewModel:$accountId")
+        NotificationsType.AtMe -> pageViewModel<NotificationsListUiIntent, AtMeListViewModel>(key = "AtMeListViewModel:$accountId")
     }
 ) {
     LazyLoad(loaded = viewModel.initialized) {

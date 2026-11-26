@@ -1,10 +1,7 @@
 package com.huanchengfly.tieba.post
 
 import android.annotation.SuppressLint
-import android.app.job.JobInfo
-import android.app.job.JobScheduler
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
@@ -16,6 +13,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,7 +85,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.ClientUtils
-import com.huanchengfly.tieba.post.utils.JobServiceUtil
 import com.huanchengfly.tieba.post.utils.PermissionUtils
 import com.huanchengfly.tieba.post.utils.PickMediasRequest
 import com.huanchengfly.tieba.post.utils.QuickPreviewUtil
@@ -162,6 +159,7 @@ class MainActivityV2 : BaseComposeActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val newMessageReceiver: BroadcastReceiver = NewMessageReceiver()
+    private var messageReceiverRegistered = false
 
     private val notificationCountFlow: MutableSharedFlow<Int> =
         MutableSharedFlow(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -288,27 +286,29 @@ class MainActivityV2 : BaseComposeActivity() {
 
     override fun onStart() {
         super.onStart()
-        runCatching {
-            ContextCompat.registerReceiver(
-                this,
-                newMessageReceiver,
-                newIntentFilter(NotifyJobService.ACTION_NEW_MESSAGE),
-                ContextCompat.RECEIVER_NOT_EXPORTED
-            )
-            startService(Intent(this, NotifyJobService::class.java))
-            val builder = JobInfo.Builder(
-                JobServiceUtil.getJobId(this),
-                ComponentName(this, NotifyJobService::class.java)
-            )
-                .setPersisted(true)
-                .setPeriodic(30 * 60 * 1000L)
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-            val jobScheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-            jobScheduler.schedule(builder.build())
-        }
+        ContextCompat.registerReceiver(
+            this,
+            newMessageReceiver,
+            newIntentFilter(NotifyJobService.ACTION_NEW_MESSAGE).apply { addAction(AccountUtil.ACTION_SWITCH_ACCOUNT) },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        messageReceiverRegistered = true
+        updateNotificationJob()
         handler.postDelayed({
             requestNotificationPermission()
         }, 100)
+    }
+
+    override fun onStop() {
+        if (messageReceiverRegistered) {
+            unregisterReceiver(newMessageReceiver)
+            messageReceiverRegistered = false
+        }
+        super.onStop()
+    }
+
+    private fun updateNotificationJob() {
+        NotifyJobService.updateSchedule(this, AccountUtil.currentAccount?.uid)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -471,15 +471,18 @@ class MainActivityV2 : BaseComposeActivity() {
                 ) {
                     val motion = MaterialTheme.motionScheme.fastEffectsSpec<IntOffset>()
                     val transitions = remember(motion) {
+                        // NavHost seeks by play time while the finger is down. A spring spends
+                        // much of that time settling, pushing the page off screen too early.
+                        val backSlide = tween<IntOffset>(durationMillis = 220, easing = LinearEasing)
                         RootNavGraphDefaultAnimations(
                             enterTransition = { slideIntoContainer(SlideDirection.Start, motion) },
                             exitTransition = { slideOutOfContainer(SlideDirection.Start, motion) },
                             popEnterTransition = {
-                                backSlideDirection?.let { slideIntoContainer(it, motion) }
+                                backSlideDirection?.let { slideIntoContainer(it, backSlide) }
                                     ?: fadeIn(tween(140, delayMillis = 70))
                             },
                             popExitTransition = {
-                                backSlideDirection?.let { slideOutOfContainer(it, motion) }
+                                backSlideDirection?.let { slideOutOfContainer(it, backSlide) }
                                     ?: fadeOut(tween(70))
                             },
                         )
@@ -537,6 +540,11 @@ class MainActivityV2 : BaseComposeActivity() {
     private inner class NewMessageReceiver : BroadcastReceiver() {
         @SuppressLint("RestrictedApi")
         override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == AccountUtil.ACTION_SWITCH_ACCOUNT) {
+                notificationCountFlow.tryEmit(0)
+                updateNotificationJob()
+                return
+            }
             if (intent.action == NotifyJobService.ACTION_NEW_MESSAGE) {
                 val channel = intent.getStringExtra("channel")
                 val count = intent.getIntExtra("count", 0)

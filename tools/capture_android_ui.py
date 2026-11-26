@@ -300,9 +300,11 @@ def run(apk, output, baseline):
     find_label("随便看看", recover_launcher=True)
     capture(output, "01-home", "随便看看")
     tap("动态")
+    find_label("热榜")
+    time.sleep(3.5)  # Let the transient network toast clear before reviewing the persistent error state.
     capture(output, "01-explore-offline", "热榜")
     tap("消息")
-    capture(output, "01-notifications", "回复我的")
+    capture(output, "01-notifications", "回复我的" if baseline else "登录后查看消息")
     tap("首页")
     if baseline:
         tap("我")

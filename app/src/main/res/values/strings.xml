@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">贴吧 Native</string>
+    <string name="notification_guest_title">登录后查看消息</string>
+    <string name="notification_guest_summary">回复和提到你的消息会显示在这里。</string>
     <string name="title_notifications">消息</string>
     <string name="title_explore">动态</string>
     <string name="title_user">我</string>

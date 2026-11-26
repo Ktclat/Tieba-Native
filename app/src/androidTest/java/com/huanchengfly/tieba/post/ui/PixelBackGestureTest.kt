@@ -168,6 +168,10 @@ class PixelBackGestureTest {
             val settled = changedFraction(before, after)
             assertTrue("$name produced no content preview ($preview)", preview > 0.005f)
             val offset = outgoingOffset(before, during, left, name)
+            // A finger held at 39% of the viewport should leave both destinations visible.
+            val fraction = abs(offset).toFloat() / before.width
+            assertTrue("$name preview moved $fraction of the viewport for a 39% drag",
+                fraction in 0.16f..0.67f)
             val metrics = File(context.filesDir, "phone-review/gestures.tsv")
             if (!metrics.exists()) metrics.writeText("gesture\toutgoing_offset_px\tdrag_changed_fraction\tsettled_changed_fraction\n")
             metrics.appendText("$name\t$offset\t$preview\t$settled\n")

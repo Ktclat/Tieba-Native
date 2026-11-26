@@ -1,5 +1,10 @@
 package com.huanchengfly.tieba.post.services
 
+import com.huanchengfly.tieba.post.utils.JobServiceUtil
+import android.os.PersistableBundle
+import android.content.ComponentName
+import android.app.job.JobScheduler
+import android.app.job.JobInfo
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
@@ -14,6 +19,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.MsgBean
 import com.huanchengfly.tieba.post.pendingIntentFlagImmutable
@@ -37,6 +43,8 @@ class NotifyJobService : JobService() {
     }
 
     override fun onStartJob(params: JobParameters): Boolean {
+        val accountId = AccountUtil.currentAccount?.uid ?: return false
+        if (params.extras.getString(ACCOUNT)?.let { it != accountId } == true) return false
         Log.i(TAG, "onStartJob")
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (notificationManager != null) {
@@ -52,11 +60,15 @@ class NotifyJobService : JobService() {
         }
         TiebaApi.getInstance().msg().enqueue(object : Callback<MsgBean> {
             override fun onFailure(call: Call<MsgBean>, t: Throwable) {
-                jobFinished(params, true)
+                jobFinished(params, AccountUtil.currentAccount?.uid == accountId)
             }
 
             override fun onResponse(call: Call<MsgBean>, response: Response<MsgBean>) {
-                val msgBean = response.body() ?: return
+                val msgBean = response.body()
+                if (msgBean == null || AccountUtil.currentAccount?.uid != accountId) {
+                    jobFinished(params, false)
+                    return
+                }
                 if (notificationManager != null) {
                     var total = 0
                     if ("0" != msgBean.message?.replyMe) {
@@ -149,6 +161,24 @@ class NotifyJobService : JobService() {
     }
 
     companion object {
+        private const val ACCOUNT = "notification_account"
+        internal fun updateSchedule(context: Context, accountId: String?) {
+            val scheduler = context.getSystemService(JobScheduler::class.java) ?: return
+            val id = JobServiceUtil.getJobId(context)
+            val pending = scheduler.getPendingJob(id)
+            if (accountId == null) {
+                if (pending != null) scheduler.cancel(id)
+            } else if (pending?.extras?.getString(ACCOUNT) != accountId) {
+                val job = JobInfo.Builder(id, ComponentName(context, NotifyJobService::class.java))
+                    .setExtras(PersistableBundle().apply { putString(ACCOUNT, accountId) })
+                    .setPersisted(true)
+                    .setPeriodic(30 * 60 * 1000L)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .build()
+                scheduler.schedule(job)
+            }
+        }
+
         val TAG = NotifyJobService::class.java.simpleName
         const val ACTION_NEW_MESSAGE = "com.huanchengfly.tieba.post.action.NEW_MESSAGE"
         const val CHANNEL_GROUP = "20"
