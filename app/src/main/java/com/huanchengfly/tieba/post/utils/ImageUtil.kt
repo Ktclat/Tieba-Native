@@ -318,8 +318,14 @@ object ImageUtil {
         open().use { BitmapFactory.decodeStream(it, null, bounds) }
         val mimeType = bounds.outMimeType?.takeIf { it.startsWith("image/") && bounds.outWidth > 0 && bounds.outHeight > 0 }
             ?: throw IOException("Unsupported image")
-        val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-            ?: throw IOException("Unknown image format: $mimeType")
+        val extension = when (mimeType) {
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            else -> MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                ?: throw IOException("Unknown image format: $mimeType")
+        }
         val stem = File(uri.lastPathSegment.orEmpty()).nameWithoutExtension
             .filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == ' ' }
             .take(48).trim().ifEmpty { "tieba" }

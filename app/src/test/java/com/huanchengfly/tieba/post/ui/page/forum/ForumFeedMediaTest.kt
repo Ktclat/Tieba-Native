@@ -11,6 +11,8 @@ import com.huanchengfly.tieba.post.api.models.protos.VideoInfo
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.AppContextRule
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
+import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideShouldLoad
 import org.junit.Rule
@@ -31,7 +33,9 @@ class ForumFeedMediaTest {
         compose.setContent {
             TiebaLiteTheme {
                 ProvideShouldLoad(false) {
-                    FeedCard(thread.wrapImmutable(), onClick = {}, onAgree = {})
+                    ProvideNavigator(EmptyDestinationsNavigator) {
+                        FeedCard(thread.wrapImmutable(), onClick = {}, onAgree = {})
+                    }
                 }
             }
         }
