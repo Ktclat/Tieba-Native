@@ -84,7 +84,9 @@ def labelled_nodes(tree, label):
                 yield node
 
 
-def find_label(label, timeout=45, recover_launcher=False):
+def find_label(label, timeout=45, recover_launcher=False, *, alternate_labels=()):
+    labels = (label, *alternate_labels)
+
     def position(tree):
         nonlocal recover_launcher
         if recover_launcher:
@@ -98,9 +100,9 @@ def find_label(label, timeout=45, recover_launcher=False):
                 adb("shell", "input", "tap", *(str(v) for v in close))
                 adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
                 return None
-        return next((center(node) for node in labelled_nodes(tree, label)), None)
+        return next((center(node) for candidate in labels for node in labelled_nodes(tree, candidate)), None)
 
-    return wait_for_match(repr(label), position, timeout)
+    return wait_for_match(" or ".join(map(repr, labels)), position, timeout)
 
 
 def reveal(label):
@@ -150,8 +152,8 @@ def back_to(label):
     find_label(label)
 
 
-def capture(output, name, label):
-    find_label(label)
+def capture(output, name, label, *, alternate_labels=()):
+    find_label(label, alternate_labels=alternate_labels)
     image = adb("exec-out", "screencap", "-p")
     if not image.startswith(b"\x89PNG\r\n\x1a\n"):
         raise RuntimeError("screencap returned invalid PNG bytes")
@@ -318,7 +320,7 @@ def run(apk, output, baseline):
         tap("返回")
         find_label("热榜")
     tap("消息")
-    capture(output, "01-notifications", "回复我的" if baseline else "登录后查看消息")
+    capture(output, "01-notifications", "登录后查看消息", alternate_labels=("回复我的",) if baseline else ())
     tap("首页")
     if baseline:
         tap("我")
