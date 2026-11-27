@@ -3,9 +3,13 @@ package com.huanchengfly.tieba.post.utils
 import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.utils.extension.findFlow
 import java.util.concurrent.Executors
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import org.litepal.LitePal
 import org.litepal.crud.async.FindMultiExecutor
 import org.litepal.extension.deleteAll
@@ -25,17 +29,22 @@ object HistoryUtil {
     // Clearing history must also clear visits that were already queued when the user confirmed.
     private val writer = Executors.newSingleThreadExecutor()
     private val clears = MutableStateFlow(0L)
+    private val threadChanges = MutableStateFlow(0L)
     val clearVersion = clears.asStateFlow()
 
     fun deleteAll() {
         writer.submit {
             LitePal.deleteAll<History>()
             clears.value += 1L
+            threadChanges.value += 1L
         }.get()
     }
 
     internal fun delete(type: Int, id: Long) {
-        writer.submit { LitePal.deleteAll<History>("type = ? AND id = ?", type.toString(), id.toString()) }.get()
+        writer.submit {
+            val removed = LitePal.deleteAll<History>("type = ? AND id = ?", type.toString(), id.toString())
+            if (removed > 0 && type == TYPE_THREAD) threadChanges.value += 1L
+        }.get()
     }
 
     @JvmOverloads
@@ -48,9 +57,25 @@ object HistoryUtil {
                 count = (existing?.count ?: 0) + 1,
             )
             if (existing == null) visit.saveThrows() else visit.update(existing.id)
+            if (visit.type == TYPE_THREAD && visit.extras != existing?.extras) threadChanges.value += 1L
         }
         if (!async) write.get()
     }
+
+    internal fun threadVisits(ids: List<String>): Flow<List<History>> =
+        threadChanges.map { queryThreadVisits(ids) }.flowOn(Dispatchers.IO)
+
+    // Wait behind history saves already queued by the thread screen before navigating back in.
+    internal suspend fun latestThreadVisit(threadId: String): History? = withContext(Dispatchers.IO) {
+        writer.submit<History?> { queryThreadVisits(listOf(threadId)).firstOrNull() }.get()
+    }
+
+    private fun queryThreadVisits(ids: List<String>): List<History> =
+        ids.distinct().chunked(500).flatMap { chunk ->
+            val placeholders = chunk.joinToString(",") { "?" }
+            LitePal.where("type = ? AND data IN ($placeholders)", TYPE_THREAD.toString(), *chunk.toTypedArray())
+                .select("data", "extras").order(ORDER).find<History>()
+        }
 
     val all: List<History>
         get() = LitePal.order(ORDER).limit(PAGE_SIZE).find<History>()

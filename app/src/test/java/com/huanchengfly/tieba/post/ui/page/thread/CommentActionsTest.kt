@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -33,8 +34,10 @@ import com.huanchengfly.tieba.post.api.models.protos.subPosts
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.ui.AppContextRule
+import com.huanchengfly.tieba.post.ui.InTestDialogWindow
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
@@ -56,11 +59,17 @@ class CommentActionsTest {
 
     @Test
     fun authorLikeAndReplyTargetsRemainIndependent() {
+        ThemeUtils.init(App.ThemeDelegate)
+        val replyBody = "昨天下午拍的。"
         val reply = SubPostList(
             id = 81,
             agree = Agree(diffAgreeNum = 7, hasAgree = 1),
             author = User(id = 20, name = "竹影"),
-            content = listOf(PbContent(text = "昨天下午拍的。")),
+            content = listOf(
+                PbContent(text = "回复 "),
+                PbContent(type = 4, uid = 32, text = "@山月"),
+                PbContent(text = "：$replyBody"),
+            ),
         )
         val post = Post(
             id = 45,
@@ -73,20 +82,22 @@ class CommentActionsTest {
         )
         val actions = mutableListOf<String>()
         compose.setContent {
-            TiebaLiteTheme {
-                ProvideNavigator(EmptyDestinationsNavigator) {
-                    PostCard(
-                        postHolder = post.wrapImmutable(),
-                        contentRenders = persistentListOf(TextContentRender(post.content.single().text)),
-                        subPosts = post.subPosts,
-                        onUserClick = { actions += "user-${it.id}" },
-                        onAgree = { actions += "like-${post.id}" },
-                        onSubPostAgree = { actions += "like-${it.id}" },
-                        onReplyClick = { actions += "reply-${it.id}" },
-                        onOpenSubPosts = { actions += "open-$it" },
-                        onSubPostReplyClick = { parent, child -> actions += "reply-${parent.id}-${child.id}" },
-                        onMenuCopyClick = { actions += it },
-                    )
+            InTestDialogWindow {
+                TiebaLiteTheme {
+                    ProvideNavigator(EmptyDestinationsNavigator) {
+                        PostCard(
+                            postHolder = post.wrapImmutable(),
+                            contentRenders = persistentListOf(TextContentRender(post.content.single().text)),
+                            subPosts = post.subPosts,
+                            onUserClick = { actions += "user-${it.id}" },
+                            onAgree = { actions += "like-${post.id}" },
+                            onSubPostAgree = { actions += "like-${it.id}" },
+                            onReplyClick = { actions += "reply-${it.id}" },
+                            onOpenSubPosts = { actions += "open-$it" },
+                            onSubPostReplyClick = { parent, child -> actions += "reply-${parent.id}-${child.id}" },
+                            onMenuCopyClick = { actions += it },
+                        )
+                    }
                 }
             }
         }
@@ -100,16 +111,21 @@ class CommentActionsTest {
         compose.onNode(like and hasText("19")).assertIsNotSelected().performTouchInput { click() }
         compose.onNode(like and hasText("7")).assertIsSelected().performTouchInput { click() }
         tapText(post.content.single().text)
-        val previewBody = compose.onNodeWithText(reply.content.single().text, useUnmergedTree = true)
+        val previewBody = compose.onNodeWithText(replyBody, useUnmergedTree = true)
         previewBody.performTouchInput { click() }
         previewBody.performTouchInput { longClick() }
         compose.onNodeWithText("回复").performClick()
         previewBody.performTouchInput { longClick() }
         compose.onNodeWithText("复制").performClick()
+        previewBody.performTouchInput { longClick() }
+        compose.onNodeWithText("选词屏蔽").performClick()
+        val selection = compose.onNodeWithTag("comment-phrase-selection").fetchSemanticsNode()
+        assertEquals(replyBody, selection.config[SemanticsProperties.EditableText].text)
+        compose.onNodeWithText("取消").performClick()
 
         compose.runOnIdle {
             assertEquals(listOf("user-10", "user-20", "like-45", "like-81", "reply-45", "open-81", "reply-45-81",
-                reply.content.single().text), actions)
+                "回复 @山月：$replyBody"), actions)
         }
     }
 

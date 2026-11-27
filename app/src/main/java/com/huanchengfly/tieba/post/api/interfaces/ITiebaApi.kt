@@ -576,7 +576,9 @@ interface ITiebaApi {
     fun threadStoreFlow(
         page: Int = 0,
         pageSize: Int = 20
-    ): Flow<ThreadStoreBean>
+    ): Flow<ThreadStoreBean> = threadStoreAtOffsetFlow(page * pageSize, pageSize)
+
+    fun threadStoreAtOffsetFlow(offset: Int, pageSize: Int = 20): Flow<ThreadStoreBean>
 
     /**
      * 移除收藏

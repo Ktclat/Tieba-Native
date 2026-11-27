@@ -21,9 +21,11 @@ fun git(vararg args: String): String = providers.exec {
 }.standardOutput.asText.get().trim()
 
 val (shallow, sourceCommit) = git("rev-parse", "--is-shallow-repository", "HEAD").lines()
-check(shallow == "false") { "Computing Android versionCode requires the full history. Run git fetch --unshallow." }
-val applicationVersionName = "${property.versionName}+${sourceCommit.take(12)}"
-val applicationVersionCode = Math.addExact(property.versionCodeBase, git("rev-list", "--count", sourceCommit).toInt())
+check(shallow == "false") { "Computing Android versions requires the full history. Run git fetch --unshallow." }
+val commitCount = git("rev-list", "--count", sourceCommit).toInt()
+val patchVersion = 1 + (commitCount - property.versionPatchBaseCount).coerceAtLeast(0)
+val applicationVersionName = "0.0.${patchVersion}+${sourceCommit.take(12)}"
+val applicationVersionCode = Math.addExact(property.versionCodeBase, commitCount)
 
 wire {
     sourcePath { srcDir("src/main/protos") }

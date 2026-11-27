@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -31,6 +33,37 @@ class LocalBlockRuleStoreTest {
 
     private fun store(scope: CoroutineScope) = PreferenceDataStoreFactory.create(scope = scope) {
         File(directory.root, "settings.preferences_pb")
+    }
+
+    @Test fun selectedCommentPhrasesAreLiteralAndAppendAtomically() = runBlocking {
+        val writer = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val data = store(writer)
+            LocalBlockRuleStore.save(data, BlockRuleTarget.FORUM, "测试吧")
+            LocalBlockRuleStore.save(data, BlockRuleTarget.USER, "^推广")
+            LocalBlockRuleStore.save(data, BlockRuleTarget.COMMENT, "旧规则|广告\r\n")
+
+            val phrase = "C++.\r\n路径\\x|[1]"
+            val results = coroutineScope {
+                listOf(phrase, phrase, "(促销)").map { async { LocalBlockRuleStore.appendCommentLiteral(data, it) } }.awaitAll()
+            }
+            assertEquals(2, results.count { it })
+            val rules = LocalBlockRuleStore.rules(data).first()
+            assertEquals(3, rules.count(BlockRuleTarget.COMMENT))
+            assertTrue(rules.text(BlockRuleTarget.COMMENT).startsWith("旧规则|广告\r\n"))
+            assertTrue(rules.blocksComment("这条仍是广告"))
+            assertTrue(rules.blocksComment("前缀 c++.\r\n路径\\x|[1] 后缀"))
+            assertTrue(rules.blocksComment("(促销)"))
+            assertFalse(rules.blocksComment("促销"))
+            assertFalse(rules.blocksComment("C++!"))
+            assertFalse(rules.blocksComment("路径\\x|[1]"))
+            assertTrue(rules.blocksForum("测试吧"))
+            assertTrue(rules.blocksUser("推广号"))
+            assertTrue(runCatching { LocalBlockRuleStore.appendCommentLiteral(data, "\n  ") }.exceptionOrNull() is IllegalArgumentException)
+            assertEquals(rules.text(BlockRuleTarget.COMMENT), LocalBlockRuleStore.rules(data).first().text(BlockRuleTarget.COMMENT))
+        } finally {
+            writer.coroutineContext[Job]!!.cancelAndJoin()
+        }
     }
 
     @Test fun atomicIndependentEditsSurviveReopeningAndRejectInvalidReplacements() = runBlocking {

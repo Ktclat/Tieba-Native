@@ -60,11 +60,12 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           ./gradlew :app:assembleDebug --stacktrace
-          base_name=$(sed -n 's/^versionName=//p' application.properties)
+          base_count=$(sed -n 's/^versionPatchBaseCount=//p' application.properties)
           base_code=$(sed -n 's/^versionCodeBase=//p' application.properties)
-          version_name="${base_name}+${SOURCE_SHA:0:12}"
-          [[ "$base_code" =~ ^[0-9]+$ ]]
+          [[ "$base_count" =~ ^[0-9]+$ && "$base_code" =~ ^[0-9]+$ ]]
           commit_count=$(git rev-list --count "$SOURCE_SHA")
+          patch=$((1 + (commit_count > base_count ? commit_count - base_count : 0)))
+          version_name="0.0.${patch}+${SOURCE_SHA:0:12}"
           version_code=$((base_code + commit_count))
           apk="app/build/outputs/apk/debug/Tieba-Native-${version_name}-debug.apk"
           badging=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")

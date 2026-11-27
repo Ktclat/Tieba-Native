@@ -63,6 +63,7 @@ import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
+import com.huanchengfly.tieba.post.ui.page.thread.CommentLongClickMenu
 import com.huanchengfly.tieba.post.ui.page.thread.CommentMetadata
 import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
 import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
@@ -83,7 +84,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
@@ -539,7 +539,8 @@ internal fun SubPostItem(
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },
         modifier = rowPadding,
     ) {
-        LongClickMenu(
+        CommentLongClickMenu(
+            phraseSource = { contentRenders.visibleReplyBody() },
             modifier = Modifier.fillMaxWidth(),
             menuState = menuState,
             indication = null,

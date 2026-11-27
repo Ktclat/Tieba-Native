@@ -34,6 +34,12 @@ class LocalBlockRules private constructor(private val groups: Map<BlockRuleTarge
     companion object {
         val Empty = LocalBlockRules(emptyMap())
 
+        /** Encode a selection as one literal rule, including any physical line breaks. */
+        fun commentLiteralPattern(selection: String): String {
+            require(selection.isNotBlank())
+            return Pattern.quote(selection).replace("\r", "\\r").replace("\n", "\\n")
+        }
+
         fun validate(text: String): BlockRuleError? = compileGroup(text).firstError
 
         fun fromText(forum: String = "", user: String = "", comment: String = ""): LocalBlockRules {

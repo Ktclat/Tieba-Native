@@ -1,11 +1,13 @@
 package com.huanchengfly.tieba.post.ui.page.subposts
 
 import android.app.Application
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -16,6 +18,7 @@ import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.renders
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.AppContextRule
+import com.huanchengfly.tieba.post.ui.InTestDialogWindow
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
@@ -52,9 +55,11 @@ class SubPostRecipientActionsTest {
         val opened = mutableListOf<Long>()
         val copied = mutableListOf<String>()
         compose.setContent {
-            TiebaLiteTheme {
-                ProvideNavigator(EmptyDestinationsNavigator) {
-                    SubPostItem(item, onReplyClick = { opened += it.id }, onMenuCopyClick = { copied += it })
+            InTestDialogWindow {
+                TiebaLiteTheme {
+                    ProvideNavigator(EmptyDestinationsNavigator) {
+                        SubPostItem(item, onReplyClick = { opened += it.id }, onMenuCopyClick = { copied += it })
+                    }
                 }
             }
         }
@@ -63,6 +68,11 @@ class SubPostRecipientActionsTest {
         compose.onNodeWithText("补一条记录。", useUnmergedTree = true).performTouchInput { click() }
         compose.onNodeWithText("傍晚再试试。", useUnmergedTree = true).performTouchInput { longClick() }
         compose.onNodeWithText("复制").performClick()
+        compose.onNodeWithText("补一条记录。", useUnmergedTree = true).performTouchInput { longClick() }
+        compose.onNodeWithText("选词屏蔽").performClick()
+        val selection = compose.onNodeWithTag("comment-phrase-selection").fetchSemanticsNode()
+        assertEquals("傍晚再试试。补一条记录。", selection.config[SemanticsProperties.EditableText].text)
+        compose.onNodeWithText("取消").performClick()
         compose.runOnIdle {
             assertEquals(listOf(71L), opened)
             assertEquals(listOf("回复 @山月：傍晚再试试。\n补一条记录。"), copied)

@@ -144,7 +144,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -1571,8 +1570,11 @@ internal fun PostCard(
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
-        LongClickMenu(
+        CommentLongClickMenu(
             menuState = menuState,
+            phraseSource = if (discussionRole == DiscussionRole.Topic || post.floor == 1) null else {
+                { contentRenders.joinToString("") }
+            },
             indication = null,
             onClick = {
                 onReplyClick(post)
@@ -1732,8 +1734,9 @@ internal fun SubPostItem(
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val menuState = rememberMenuState()
-    LongClickMenu(
+    CommentLongClickMenu(
         menuState = menuState,
+        phraseSource = { subPostContent.visibleReplyBody() },
         menuContent = {
             if (!context.appPreferences.hideReply && onReplyClick != null) {
                 DropdownMenuItem(
@@ -1763,7 +1766,6 @@ internal fun SubPostItem(
                 }
             )
         },
-        shape = RoundedCornerShape(0),
         onClick = {
             onOpenSubPosts(subPostList.get { id })
         }

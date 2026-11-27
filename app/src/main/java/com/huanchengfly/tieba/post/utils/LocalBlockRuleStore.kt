@@ -27,6 +27,23 @@ object LocalBlockRuleStore {
             LocalBlockRules.fromText(forum, user, comment)
         }.flowOn(Dispatchers.Default)
 
+    suspend fun appendCommentLiteral(context: Context, selection: String): Boolean =
+        appendCommentLiteral(context.dataStore, selection)
+
+    internal suspend fun appendCommentLiteral(store: DataStore<Preferences>, selection: String): Boolean {
+        val pattern = LocalBlockRules.commentLiteralPattern(selection)
+        var added = false
+        store.edit { preferences ->
+            val existing = preferences[commentKey].orEmpty()
+            if (existing.lineSequence().none { it == pattern }) {
+                val needsSeparator = existing.isNotEmpty() && !existing.endsWith('\n') && !existing.endsWith('\r')
+                preferences[commentKey] = if (needsSeparator) "$existing\n$pattern" else existing + pattern
+                added = true
+            }
+        }
+        return added
+    }
+
     suspend fun save(context: Context, target: BlockRuleTarget, text: String) =
         save(context.dataStore, target, text)
 

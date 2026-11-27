@@ -1,0 +1,7 @@
+<resources>
+    <string name="comment_select_phrase">选词屏蔽</string>
+    <string name="comment_phrase_body">评论正文</string>
+    <string name="comment_phrase_instructions">长按文字并拖动手柄，选择想要屏蔽的片段。</string>
+    <string name="comment_phrase_preview">将屏蔽含有「%1$s」的评论。</string>
+    <string name="comment_phrase_confirm">加入屏蔽</string>
+</resources>
