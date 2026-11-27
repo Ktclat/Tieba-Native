@@ -97,7 +97,6 @@ import com.huanchengfly.tieba.post.utils.requestPermission
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.defaults.RootNavGraphDefaultAnimations
 import com.ramcosta.composedestinations.rememberNavHostEngine
-import com.ramcosta.composedestinations.navigation.navigate
 import com.ramcosta.composedestinations.spec.DestinationSpec
 import com.ramcosta.composedestinations.spec.Direction
 import com.ramcosta.composedestinations.utils.currentDestinationAsState
@@ -183,7 +182,7 @@ class MainActivityV2 : BaseComposeActivity() {
                         .take(1)
                         .collect {
                             if (waitingNavCollectorToNavigate.get() && direction != null) {
-                                value.navigate(direction!!)
+                                value.navigate(direction!!.route)
                                 waitingNavCollectorToNavigate.set(false)
                                 direction = null
                             }
@@ -197,7 +196,7 @@ class MainActivityV2 : BaseComposeActivity() {
             waitingNavCollectorToNavigate.set(true)
             this.direction = direction
         } else {
-            myNavController?.navigate(direction)
+            myNavController?.navigate(direction.route)
         }
     }
 
