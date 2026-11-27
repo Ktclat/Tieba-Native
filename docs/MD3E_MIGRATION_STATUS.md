@@ -18,6 +18,6 @@
 
 Android CI 上传 APK、JUnit 报告及生产组件的离线渲染截图。`Tieba-Native-UI-Regression` 包含主导航、搜索、字号设置、讨论串等场景。讨论串覆盖 360dp 浅色与 320dp 深色大字号、定向回复、点赞、复制、筛选和用户跳转。
 
-在 Actions 的 Android CI 页面可以手动运行设备检查。模拟器使用 Android 15、Pixel 9 尺寸（1080 × 2424）、默认字号和 1 倍系统动画。`Tieba-Native-Android-Screens` 包含主要页面、固定示例讨论串，以及从左右边缘拖动、取消和完成预测性返回的分步截图。
+在 Actions 的 Android CI 页面可以手动运行设备检查。模拟器使用 Android 15、Pixel 9 尺寸（1080 × 2424）、默认字号和 1 倍系统动画。`Tieba-Native-Android-Screens` 包含主要页面、固定示例讨论串，以及左右边缘返回手势的分步截图。应用关闭了预测性返回。手指拖动或取消时留在当前页面，完成手势才执行返回。
 
 `Tieba-Native-Frame-Timings` 保存切换底部导航和滚动 180 条本地浏览记录时的逐帧数据。拉取请求会自动查找基准提交的安装包。手动运行时可以在 `baseline_commit` 填写保有成功 APK 产物的完整提交 SHA。找到基准包后，同一台模拟器依次运行旧版、新版、新版、旧版，结果汇总在 `measurements.json`。

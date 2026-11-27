@@ -2,6 +2,7 @@
 
 package com.huanchengfly.tieba.post.ui.page.thread
 
+import com.huanchengfly.tieba.post.api.models.protos.openableThreadId
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -1159,6 +1160,7 @@ fun ThreadPage(
                                             thread?.getNullableImmutable { origin_thread_info }
                                                 .takeIf { thread?.get { is_share_thread } == 1 }
                                                 ?.let {
+                                                    val originId = it.get { openableThreadId }
                                                     OriginThreadCard(
                                                         originThreadInfo = it,
                                                         modifier = Modifier
@@ -1166,14 +1168,9 @@ fun ThreadPage(
                                                             .padding(bottom = 16.dp)
                                                             .clip(RoundedCornerShape(6.dp))
                                                             .background(MaterialTheme.colorScheme.surfaceContainer)
-                                                            .clickable {
-                                                                navigator.navigate(
-                                                                    ThreadPageDestination(
-                                                                        threadId = it.get { tid.toLong() },
-                                                                        forumId = it.get { fid },
-                                                                    )
-                                                                )
-                                                            }
+                                                            .then(if (originId != null) Modifier.clickable {
+                                                                navigator.navigate(ThreadPageDestination(originId, forumId = it.get { fid }))
+                                                            } else Modifier)
                                                             .padding(16.dp)
                                                     )
                                                 }

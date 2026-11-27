@@ -12,6 +12,7 @@ import androidx.compose.ui.text.withStyle
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.wrapImmutable
+import com.huanchengfly.tieba.post.models.PicItem
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
 import com.huanchengfly.tieba.post.ui.common.PicContentRender
 import com.huanchengfly.tieba.post.ui.common.TextContentRender.Companion.appendText
@@ -237,13 +238,15 @@ val List<PbContent>.renders: ImmutableList<PbContentRender>
 
                 3 -> {
                     val (width, height) = it.mediaSize()
+                    val thumbnail = it.picUrl
+                    val fullSize = it.originSrc.ifBlank { it.bigCdnSrc.ifBlank { it.bigSrc.ifBlank { thumbnail } } }
                     renders.add(
                         PicContentRender(
-                            picUrl = it.picUrl,
-                            originUrl = it.originSrc,
+                            picUrl = thumbnail,
+                            originUrl = fullSize,
                             showOriginBtn = it.showOriginalBtn == 1,
                             originSize = it.originSize,
-                            picId = ImageUtil.getPicId(it.originSrc),
+                            picId = ImageUtil.getPicId(fullSize),
                             width = width,
                             height = height
                         )
@@ -332,20 +335,26 @@ val List<PbContent>.renders: ImmutableList<PbContentRender>
 val Post.contentRenders: ImmutableList<PbContentRender>
     get() {
         val renders = content.renders
-
-        return renders.map {
-            if (it is PicContentRender) {
-                it.copy(
-                    photoViewData = getPhotoViewData(
-                        this,
-                        it.picId,
-                        it.picUrl,
-                        it.originUrl,
-                        it.showOriginBtn,
-                        it.originSize
-                    )
-                )
-            } else it
+        val pictures = buildList {
+            for (image in renders) {
+                if (image !is PicContentRender || image.originUrl.isBlank()) continue
+                add(PicItem(
+                    picId = image.picId,
+                    picIndex = size + 1,
+                    url = image.picUrl,
+                    originUrl = image.originUrl,
+                    showOriginBtn = image.showOriginBtn,
+                    originSize = image.originSize,
+                    postId = id,
+                ))
+            }
+        }
+        if (pictures.isEmpty()) return renders
+        var index = 0
+        return renders.map { render ->
+            if (render is PicContentRender && render.originUrl.isNotBlank()) {
+                render.copy(photoViewData = getPhotoViewData(this, pictures, index++))
+            } else render
         }.toImmutableList()
     }
 
@@ -403,3 +412,7 @@ fun SubPostList.getContentText(threadAuthorId: Long? = null): AnnotatedString {
         append(previewBody)
     }
 }
+
+/** Deleted and partial quotes may still carry displayable text and media without a navigable post. */
+val OriginThreadInfo.openableThreadId: Long?
+    get() = if (is_deleted == 1) null else tid.toLongOrNull()?.takeIf { it > 0L }

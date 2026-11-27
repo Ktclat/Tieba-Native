@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Rect
 import android.os.SystemClock
 import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
@@ -91,56 +92,6 @@ class PixelBackGestureTest {
         return changed.toFloat() / samples
     }
 
-    private fun outgoingOffset(before: Bitmap, during: Bitmap, left: Boolean, name: String): Int {
-        // Match outgoing text/icon edges in the app content. System bars, gesture arrows, flat
-        // backgrounds and the shared bottom bar cannot satisfy the translation assertion.
-        val w = before.width / 4
-        val h = before.height / 4
-        fun luminance(frame: Bitmap): IntArray {
-            val scaled = Bitmap.createScaledBitmap(frame, w, h, true)
-            val pixels = IntArray(w * h)
-            scaled.getPixels(pixels, 0, w, 0, 0, w, h)
-            scaled.recycle()
-            return IntArray(pixels.size) { i ->
-                val c = pixels[i]
-                (Color.red(c) + 2 * Color.green(c) + Color.blue(c)) / 4
-            }
-        }
-        val source = luminance(before)
-        val drag = luminance(during)
-        val anchors = ArrayList<Int>()
-        for (y in h / 12 until h * 4 / 5 step 2) {
-            for (x in 3 until w - 3) {
-                val i = y * w + x
-                if (maxOf(source[i - 2], source[i + 2], source[i - 2 * w], source[i + 2 * w]) - source[i] > 40) {
-                    anchors += i
-                }
-            }
-        }
-        fun best(sign: Int): Pair<Float, Int> {
-            var best = 0f to 0
-            for (offset in w / 30..w * 9 / 10) {
-                val dx = offset * sign
-                var samples = 0
-                var matches = 0
-                for (i in anchors) {
-                    if (i % w + dx !in 3 until w - 3) continue
-                    samples++
-                    if (abs(source[i] - drag[i + dx]) < 34) matches++
-                }
-                if (samples >= 45 && matches.toFloat() / samples > best.first) {
-                    best = matches.toFloat() / samples to dx
-                }
-            }
-            return best
-        }
-        val expected = best(if (left) 1 else -1)
-        val opposite = best(if (left) -1 else 1)
-        assertTrue("$name outgoing content direction: expected=$expected, opposite=$opposite",
-            expected.first > 0.42f && expected.first > opposite.first + 0.04f)
-        return expected.second * 4
-    }
-
     private fun gesture(name: String, left: Boolean, cancel: Boolean, source: String, destination: String) {
         awaitLabel(source)
         SystemClock.sleep(500)
@@ -164,18 +115,18 @@ class PixelBackGestureTest {
         SystemClock.sleep(650)
         val after = capture("$name-settled")
         try {
-            val preview = changedFraction(before, during)
+            val duringChange = changedFraction(before, during)
             val settled = changedFraction(before, after)
-            assertTrue("$name produced no content preview ($preview)", preview > 0.005f)
-            val offset = outgoingOffset(before, during, left, name)
-            // A finger held at 39% of the viewport should leave both destinations visible.
-            val fraction = abs(offset).toFloat() / before.width
-            assertTrue("$name preview moved $fraction of the viewport for a 39% drag",
-                fraction in 0.16f..0.67f)
             val metrics = File(context.filesDir, "phone-review/gestures.tsv")
-            if (!metrics.exists()) metrics.writeText("gesture\toutgoing_offset_px\tdrag_changed_fraction\tsettled_changed_fraction\n")
-            metrics.appendText("$name\t$offset\t$preview\t$settled\n")
-            if (cancel) assertTrue("$name did not restore original content ($settled)", settled < 0.02f)
+            if (!metrics.exists()) metrics.writeText("gesture\tdrag_changed_fraction\tsettled_changed_fraction\n")
+            metrics.appendText("$name\t$duringChange\t$settled\n")
+            // SystemUI draws its own edge arrow, but the sampled page must stay in place until release.
+            assertTrue("$name moved content while held ($duringChange)", duringChange < 0.001f)
+            if (cancel) {
+                assertTrue("$name changed content on cancellation ($settled)", settled < 0.001f)
+            } else {
+                assertTrue("$name did not change destination on release ($settled)", settled > 0.005f)
+            }
         } finally {
             before.recycle()
             during.recycle()
@@ -194,7 +145,14 @@ class PixelBackGestureTest {
             tap("个性化")
             gesture("page-right-cancel", left = false, cancel = true, source = "字体大小", destination = "使用习惯")
             gesture("page-left-commit", left = true, cancel = false, source = "字体大小", destination = "使用习惯")
-            tap("返回")
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLabel("请先登录")
+            tap("主题选择")
+            tap("自定义颜色")
+            awaitLabel("设置自定义主题")
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLabel("跟随系统壁纸")
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             awaitLabel("请先登录")
         }
     }

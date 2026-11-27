@@ -92,7 +92,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.frsPage.ForumInfo
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
-import com.huanchengfly.tieba.post.arch.collectPartialAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.emitGlobalEventSuspend
 import com.huanchengfly.tieba.post.arch.onEvent
@@ -338,7 +338,7 @@ private fun ForumHeader(
 private fun shareForum(context: Context, forumName: String) {
     TiebaUtil.shareText(
         context,
-        "https://tieba.baidu.com/f?kw=$forumName",
+        Uri.parse("https://tieba.baidu.com/f").buildUpon().appendQueryParameter("kw", forumName).toString(),
         context.getString(R.string.title_forum, forumName)
     )
 }
@@ -354,7 +354,7 @@ private suspend fun sendToDesktop(
         "forum_${forum.id}",
         forum.avatar,
         context.getString(R.string.title_forum, forum.name),
-        Intent(Intent.ACTION_VIEW).setData(Uri.parse("tblite://forum/${forum.name}")),
+        Intent(Intent.ACTION_VIEW, Uri.parse("tblite://forum").buildUpon().appendPath(forum.name).build()),
         onSuccess = onSuccess,
         onFailure = onFailure
     )
@@ -373,15 +373,13 @@ fun ForumPage(
     navigator: DestinationsNavigator
 ) {
     val context = LocalContext.current
-    val savedSort = remember(context, forumName) { forumSortPreference(context, forumName) }.collectAsState(initial = null)
-    val currentSortType = savedSort.value
-    if (currentSortType == null) {
-        LoadingPlaceholder(forumName)
-        return
-    }
-    LazyLoad(loaded = viewModel.initialized) {
-        viewModel.send(ForumUiIntent.Load(forumName, currentSortType))
-        viewModel.initialized = true
+    val sortPreference = remember(context, forumName) { forumSortPreference(context, forumName) }
+    val currentSortType = sortPreference.collectAsState(initial = null).value
+    if (currentSortType != null) {
+        LazyLoad(loaded = viewModel.initialized) {
+            viewModel.send(ForumUiIntent.Load(forumName, currentSortType))
+            viewModel.initialized = true
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -434,20 +432,22 @@ fun ForumPage(
         )
     }
 
-    val isLoading by viewModel.uiState.collectPartialAsState(
-        prop1 = ForumUiState::isLoading,
-        initial = false
-    )
-    val isError by viewModel.uiState.collectPartialAsState(
-        prop1 = ForumUiState::isError,
-        initial = false
-    )
-    val forumInfo by viewModel.uiState.collectPartialAsState(
-        prop1 = ForumUiState::forum,
-        initial = null
-    )
-    val tbs by viewModel.uiState.collectPartialAsState(prop1 = ForumUiState::tbs, initial = null)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    ForumContent(forumName, currentSortType, state, navigator, viewModel::send, snackbarHostState)
+}
 
+@Composable
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+internal fun ForumContent(
+    forumName: String,
+    currentSortType: Int?,
+    state: ForumUiState,
+    navigator: DestinationsNavigator,
+    onIntent: (ForumUiIntent) -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    val context = LocalContext.current
+    val forumInfo = state.forum
     val account = LocalAccount.current
     val pagerState = rememberPagerState { 2 }
 
@@ -480,7 +480,7 @@ fun ForumPage(
 
     LaunchedEffect(forumInfo) {
         if (forumInfo != null) {
-            val (forum) = forumInfo as ImmutableHolder<ForumInfo>
+            val (forum) = forumInfo
             HistoryUtil.saveHistory(
                 History(
                     title = context.getString(R.string.title_forum, forum.name),
@@ -499,8 +499,8 @@ fun ForumPage(
         ConfirmDialog(
             dialogState = unlikeDialogState,
             onConfirm = {
-                viewModel.send(
-                    ForumUiIntent.Unlike(forumInfo!!.get { id }, forumName, tbs ?: account.tbs)
+                onIntent(
+                    ForumUiIntent.Unlike(forumInfo.get { id }, forumName, state.tbs ?: account.tbs)
                 )
             },
             title = {
@@ -515,22 +515,38 @@ fun ForumPage(
     }
 
     ProvideNavigator(navigator = navigator) {
+        if (currentSortType == null) {
+            LoadingPlaceholder(forumName)
+            return@ProvideNavigator
+        }
         StateScreen(
             modifier = Modifier.fillMaxSize(),
             isEmpty = forumInfo == null,
-            isError = isError,
-            isLoading = isLoading,
+            isError = state.isError,
+            isLoading = state.isLoading,
             onReload = {
-                viewModel.send(
+                onIntent(
                     ForumUiIntent.Load(
                         forumName,
                         currentSortType
                     )
                 )
             },
-            loadingScreen = {
-                LoadingPlaceholder(forumName)
-            }
+            loadingScreen = { LoadingPlaceholder(forumName) },
+            errorScreen = {
+                MyScaffold(topBar = { ForumToolbar(forumName, showTitle = true) }) { padding ->
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                    ) {
+                        Text(stringResource(R.string.text_load_failed))
+                        Button(onClick = ::reload, shapes = ButtonDefaults.shapes()) {
+                            Text(stringResource(R.string.button_retry))
+                        }
+                    }
+                }
+            },
         ) {
             MyScaffold(
                 snackbarHostState = snackbarHostState,
@@ -552,7 +568,7 @@ fun ForumPage(
                                 text = { Text(text = stringResource(id = R.string.title_send_to_desktop)) },
                                 onClick = {
                                     if (forumInfo != null) {
-                                        val (forum) = forumInfo!!
+                                        val (forum) = forumInfo
                                         coroutineScope.launch {
                                             sendToDesktop(
                                                 context,
@@ -740,20 +756,20 @@ fun ForumPage(
                                             onBtnClick = {
                                                 val (forum) = holder
                                                 when {
-                                                    forum.is_like != 1 -> viewModel.send(
+                                                    forum.is_like != 1 -> onIntent(
                                                         ForumUiIntent.Like(
                                                             forum.id,
                                                             forum.name,
-                                                            tbs ?: account!!.tbs
+                                                            state.tbs ?: account!!.tbs
                                                         )
                                                     )
 
                                                     forum.sign_in_info?.user_info?.is_sign_in != 1 -> {
-                                                        viewModel.send(
+                                                        onIntent(
                                                             ForumUiIntent.SignIn(
                                                                 forum.id,
                                                                 forum.name,
-                                                                tbs ?: account!!.tbs
+                                                                state.tbs ?: account!!.tbs
                                                             )
                                                         )
                                                     }
@@ -852,8 +868,8 @@ fun ForumPage(
                                     userScrollEnabled = true,
                                 ) { tab ->
                                     ForumThreadListPage(
-                                        forumId = forumInfo!!.get { id },
-                                        forumName = forumInfo!!.get { name },
+                                        forumId = forumInfo.get { id },
+                                        forumName = forumInfo.get { name },
                                         isGood = tab == 1,
                                         sortType = currentSortType,
                                         onRefreshingChanged = { refreshingTabs[tab == 1] = it },

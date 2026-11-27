@@ -25,7 +25,7 @@ def configure_phone():
         adb("shell", "settings", "put", "global", setting, "1")
     for setting in ("min_refresh_rate", "peak_refresh_rate"):
         adb("shell", "settings", "put", "system", setting, "60.0")
-    # Android 15 dispatches predictive callbacks when the application opts in.
+    # Leave system back animations enabled so the device verifies the app’s own opt-out.
     adb("shell", "settings", "put", "global", "enable_back_animation", "1")
     if "[x] " + overlay not in adb("shell", "cmd", "overlay", "list").decode():
         raise RuntimeError("Gesture navigation overlay did not become active")

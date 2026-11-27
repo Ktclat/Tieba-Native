@@ -10,10 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.KeyEvent
-import android.view.MotionEvent
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,8 +43,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -131,32 +126,6 @@ val LocalDestination = compositionLocalOf<DestinationSpec<*>?> { null }
 
 @AndroidEntryPoint
 class MainActivityV2 : BaseComposeActivity() {
-    private var backSlideDirection: SlideDirection? = null
-
-    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        // Android sends the original down to the window, then cancels its touch stream when it
-        // takes the edge gesture. Navigation Compose owns all back progress and stack changes.
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                val decor = window.decorView
-                val edges = ViewCompat.getRootWindowInsets(decor)?.getInsets(WindowInsetsCompat.Type.systemGestures())
-                backSlideDirection = when {
-                    edges == null -> null
-                    edges.left > 0 && event.x <= edges.left -> SlideDirection.Right
-                    edges.right > 0 && event.x >= decor.width - edges.right -> SlideDirection.Left
-                    else -> null
-                }
-            }
-            MotionEvent.ACTION_UP -> backSlideDirection = null
-        }
-        return super.dispatchTouchEvent(event)
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) backSlideDirection = null
-        return super.onKeyDown(keyCode, event)
-    }
-
     private val handler = Handler(Looper.getMainLooper())
     private val newMessageReceiver: BroadcastReceiver = NewMessageReceiver()
     private var messageReceiverRegistered = false
@@ -335,7 +304,7 @@ class MainActivityV2 : BaseComposeActivity() {
             }
 
             is ClipBoardForumLink -> {
-                myNavController?.navigate(Uri.parse("tblite://forum/${link.forumName}"))
+                navigate(ForumPageDestination(link.forumName))
             }
 
             else -> {
@@ -471,20 +440,11 @@ class MainActivityV2 : BaseComposeActivity() {
                 ) {
                     val motion = MaterialTheme.motionScheme.fastEffectsSpec<IntOffset>()
                     val transitions = remember(motion) {
-                        // NavHost seeks by play time while the finger is down. A spring spends
-                        // much of that time settling, pushing the page off screen too early.
-                        val backSlide = tween<IntOffset>(durationMillis = 220, easing = LinearEasing)
                         RootNavGraphDefaultAnimations(
                             enterTransition = { slideIntoContainer(SlideDirection.Start, motion) },
                             exitTransition = { slideOutOfContainer(SlideDirection.Start, motion) },
-                            popEnterTransition = {
-                                backSlideDirection?.let { slideIntoContainer(it, backSlide) }
-                                    ?: fadeIn(tween(140, delayMillis = 70))
-                            },
-                            popExitTransition = {
-                                backSlideDirection?.let { slideOutOfContainer(it, backSlide) }
-                                    ?: fadeOut(tween(70))
-                            },
+                            popEnterTransition = { fadeIn(tween(140, delayMillis = 70)) },
+                            popExitTransition = { fadeOut(tween(70)) },
                         )
                     }
                     DestinationsNavHost(

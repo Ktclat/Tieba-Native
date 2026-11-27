@@ -2,6 +2,7 @@
 
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
+import com.huanchengfly.tieba.post.api.models.protos.openableThreadId
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.pm.ActivityInfo
 import android.util.Log
@@ -417,7 +418,7 @@ private fun MediaPlaceholder(
 private fun ThreadMedia(
     forumId: Long,
     forumName: String,
-    threadId: Long,
+    threadId: Long?,
     modifier: Modifier = Modifier,
     medias: ImmutableList<ImmutableHolder<Media>> = persistentListOf(),
     videoInfo: ImmutableHolder<VideoInfo>? = null,
@@ -458,12 +459,11 @@ private fun ThreadMedia(
                 )
             } else {
                 val aspectRatio = remember(videoInfo) {
-                    max(
-                        videoInfo
-                            .get { thumbnailWidth }
-                            .toFloat() / videoInfo.get { thumbnailHeight },
-                        16f / 9
-                    )
+                    videoInfo.get {
+                        if (thumbnailWidth > 0 && thumbnailHeight > 0) {
+                            max(thumbnailWidth.toFloat() / thumbnailHeight, 16f / 9)
+                        } else 16f / 9
+                    }
                 }
                 VideoPlayer(
                     videoUrl = videoInfo.get { videoUrl },
@@ -603,7 +603,7 @@ fun OriginThreadCard(
         ThreadMedia(
             forumId = originThreadInfo.get { fid },
             forumName = originThreadInfo.get { fname },
-            threadId = originThreadInfo.get { tid.toLong() },
+            threadId = originThreadInfo.get { openableThreadId },
             medias = originThreadInfo.getImmutableList { media },
             videoInfo = originThreadInfo.get { video_info }?.wrapImmutable()
         )
@@ -611,15 +611,16 @@ fun OriginThreadCard(
 }
 
 @Composable
-private fun QuotedThread(thread: ImmutableHolder<OriginThreadInfo>, onOpen: ((OriginThreadInfo) -> Unit)?) {
+private fun QuotedThread(thread: ImmutableHolder<OriginThreadInfo>, onOpen: ((threadId: Long, forumId: Long) -> Unit)?) {
     val colors = CardDefaults.cardColors(containerColor = Material3Theme.colorScheme.surfaceContainer)
     val body: @Composable ColumnScope.() -> Unit = {
         OriginThreadCard(thread, modifier = Modifier.padding(16.dp))
     }
-    if (onOpen == null) {
+    val originId = thread.get { openableThreadId }
+    if (onOpen == null || originId == null) {
         MaterialCard(shape = Material3Theme.shapes.small, colors = colors, content = body)
     } else {
-        MaterialCard(onClick = { onOpen(thread.get()) }, shape = Material3Theme.shapes.small, colors = colors, content = body)
+        MaterialCard(onClick = { onOpen(originId, thread.get { fid }) }, shape = Material3Theme.shapes.small, colors = colors, content = body)
     }
 }
 
@@ -747,7 +748,7 @@ fun FeedCard(
     onClickReply: ((ThreadInfo) -> Unit)? = null,
     onClickUser: (User) -> Unit = {},
     onClickForum: (SimpleForum) -> Unit = {},
-    onClickOriginThread: ((OriginThreadInfo) -> Unit)? = null,
+    onClickOriginThread: ((threadId: Long, forumId: Long) -> Unit)? = null,
     dislikeAction: @Composable () -> Unit = {},
 ) {
     Card(
@@ -819,7 +820,7 @@ fun FeedCard(
     onClickReply: ((PostInfoList) -> Unit)? = null,
     onClickUser: (id: Long) -> Unit = {},
     onClickForum: (name: String) -> Unit = {},
-    onClickOriginThread: ((OriginThreadInfo) -> Unit)? = null,
+    onClickOriginThread: ((threadId: Long, forumId: Long) -> Unit)? = null,
 ) {
     Card(
         header = {

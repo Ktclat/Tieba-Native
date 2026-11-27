@@ -7,42 +7,30 @@ import com.huanchengfly.tieba.post.models.LoadPicPageData
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.models.PicItem
 import com.huanchengfly.tieba.post.utils.ImageUtil
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 fun getPhotoViewData(
     post: Post,
-    picId: String,
-    picUrl: String,
-    originUrl: String,
-    showOriginBtn: Boolean,
-    originSize: Int,
-    seeLz: Boolean = false
-): PhotoViewData? {
-    if (post.from_forum == null) return null
+    pictures: List<PicItem>,
+    index: Int,
+): PhotoViewData {
+    val selected = pictures[index]
     return PhotoViewData(
-        data = LoadPicPageData(
-            forumId = post.from_forum.id,
-            forumName = post.from_forum.name,
-            threadId = post.tid,
-            postId = post.id,
-            objType = "pb",
-            picId = picId,
-            picIndex = 1,
-            seeLz = seeLz,
-            originUrl = originUrl,
-        ),
-        picItems = persistentListOf(
-            PicItem(
-                picId = picId,
+        data = post.from_forum?.let { forum ->
+            LoadPicPageData(
+                forumId = forum.id,
+                forumName = forum.name,
+                threadId = post.tid,
+                postId = post.id,
+                objType = "pb",
+                picId = selected.picId,
                 picIndex = 1,
-                url = picUrl,
-                originUrl = originUrl,
-                showOriginBtn = showOriginBtn,
-                originSize = originSize,
-                postId = post.id
+                seeLz = false,
+                originUrl = selected.originUrl,
             )
-        )
+        },
+        picItems = pictures,
+        index = index,
     )
 }
 
@@ -63,33 +51,39 @@ fun getPhotoViewData(
     medias: List<Media>,
     forumId: Long,
     forumName: String,
-    threadId: Long,
+    threadId: Long?,
     index: Int
 ): PhotoViewData {
-    val media = medias[index]
-    return PhotoViewData(
-        data = LoadPicPageData(
-            forumId = forumId,
-            forumName = forumName,
-            threadId = threadId,
+    val pictures = medias.mapIndexed { mediaIndex, media ->
+        val fullSizeUrl = media.originPic.ifBlank {
+            media.bigPic.ifBlank { media.dynamicPic.ifBlank { media.srcPic } }
+        }
+        PicItem(
+            picId = ImageUtil.getPicId(fullSizeUrl),
+            picIndex = mediaIndex + 1,
+            url = media.bigPic.ifBlank { fullSizeUrl },
+            originUrl = fullSizeUrl,
+            showOriginBtn = media.showOriginalBtn == 1,
+            originSize = media.originSize,
             postId = media.postId,
-            seeLz = false,
-            objType = "index",
-            picId = ImageUtil.getPicId(media.originPic),
-            picIndex = index + 1,
-            originUrl = media.originPic
-        ),
-        picItems = medias.mapIndexed { mediaIndex, mediaItem ->
-            PicItem(
-                picId = ImageUtil.getPicId(mediaItem.originPic),
-                picIndex = mediaIndex + 1,
-                url = mediaItem.bigPic,
-                originUrl = mediaItem.originPic,
-                showOriginBtn = mediaItem.showOriginalBtn == 1,
-                originSize = mediaItem.originSize,
-                postId = mediaItem.postId
+        )
+    }.toImmutableList()
+    val selected = pictures[index]
+    return PhotoViewData(
+        data = threadId?.let { id ->
+            LoadPicPageData(
+                forumId = forumId,
+                forumName = forumName,
+                threadId = id,
+                postId = medias[index].postId,
+                seeLz = false,
+                objType = "index",
+                picId = selected.picId,
+                picIndex = index + 1,
+                originUrl = selected.originUrl,
             )
-        }.toImmutableList(),
+        },
+        picItems = pictures,
         index = index
     )
 }

@@ -23,8 +23,6 @@
     <string name="title_about">关于</string>
     <string name="my_info_settings">设置</string>
     <string name="title_settings">设置</string>
-    <string name="title_predictive_tab_back">预测性返回预览</string>
-    <string name="summary_predictive_tab_back">从其他主标签返回首页时，跟随侧滑手势预览并平滑返回</string>
     <string name="settings_section_account">账户与安全</string>
     <string name="settings_section_appearance">外观与阅读</string>
     <string name="settings_section_tools">功能与工具</string>
@@ -176,6 +174,8 @@
     <string name="title_dialog_unfollow_forum">确定要取消关注%s吧吗？</string>
     <string name="menu_save_audio">保存语音</string>
     <string name="title_hot_message_list">话题榜</string>
+    <string name="toast_photo_share_failed">图片分享失败，请重试</string>
+    <string name="toast_photo_save_failed">图片保存失败，请重试</string>
     <string name="toast_photo_saved">图片保存在 %1$s</string>
     <string name="title_settings_default_sort_type">吧默认排序方式</string>
     <string name="toast_load_failed">加载失败</string>

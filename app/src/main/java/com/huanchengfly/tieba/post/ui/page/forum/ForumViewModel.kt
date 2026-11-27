@@ -170,7 +170,7 @@ sealed interface ForumUiIntent : UiIntent {
 sealed interface ForumPartialChange : PartialChange<ForumUiState> {
     sealed class Load : ForumPartialChange {
         override fun reduce(oldState: ForumUiState): ForumUiState = when (this) {
-            Start -> oldState.copy(isLoading = true)
+            Start -> oldState.copy(isLoading = true, isError = false)
             is Success -> oldState.copy(
                 isLoading = false,
                 isError = false,
@@ -272,7 +272,7 @@ sealed interface ForumPartialChange : PartialChange<ForumUiState> {
 }
 
 data class ForumUiState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val isError: Boolean = false,
     val forum: ImmutableHolder<ForumInfo>? = null,
     val tbs: String? = null,

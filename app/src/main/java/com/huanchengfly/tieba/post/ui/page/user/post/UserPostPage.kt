@@ -312,7 +312,7 @@ fun UserPostItem(
             onClickReply = onClickReply,
             onClickUser = onClickUser,
             onClickForum = onClickForum,
-            onClickOriginThread = { onClickOriginThread(it.tid.toLong()) },
+            onClickOriginThread = { threadId, _ -> onClickOriginThread(threadId) },
         )
     } else {
         Card(

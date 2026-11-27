@@ -93,7 +93,7 @@ fun SearchForumPage(
                         SearchForumItem(
                             item = exactMatchForum,
                             onClick = {
-                                navigator.navigate(ForumPageDestination(exactMatchForum.forumName.orEmpty()))
+                                navigator.navigate(ForumPageDestination(it))
                             }
                         )
                     }
@@ -116,7 +116,7 @@ fun SearchForumPage(
                         SearchForumItem(
                             item = it,
                             onClick = {
-                                navigator.navigate(ForumPageDestination(it.forumName.orEmpty()))
+                                navigator.navigate(ForumPageDestination(it))
                             }
                         )
                     }
@@ -136,13 +136,14 @@ fun SearchForumPage(
 @Composable
 private fun SearchForumItem(
     item: SearchForumBean.ForumInfoBean,
-    onClick: () -> Unit,
+    onClick: (String) -> Unit,
 ) {
+    val name = item.forumName?.takeIf { it.isNotBlank() } ?: item.forumNameShow?.takeIf { it.isNotBlank() }
     val description = item.slogan?.takeIf { it.isNotBlank() } ?: item.intro
     ListItem(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = name != null) { name?.let(onClick) },
         leadingContent = { Avatar(data = item.avatar, size = Sizes.Medium, contentDescription = null) },
-        headlineContent = { Text(stringResource(R.string.title_forum, item.forumNameShow.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        headlineContent = { Text(stringResource(R.string.title_forum, item.forumNameShow?.takeIf { it.isNotBlank() } ?: name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = description?.takeIf { it.isNotBlank() }?.let {
             { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         },

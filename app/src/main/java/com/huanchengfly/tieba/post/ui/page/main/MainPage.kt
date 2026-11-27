@@ -1,14 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
-import android.animation.ValueAnimator
-import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -36,11 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import com.huanchengfly.tieba.post.LocalDevicePosture
 import com.huanchengfly.tieba.post.LocalDestination
 import com.huanchengfly.tieba.post.LocalNotificationCountFlow
@@ -237,16 +225,9 @@ fun MainPage(
     val compact = navigationType == MainNavigationType.BOTTOM_NAVIGATION
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
     val navScroll = remember(selectedId, navigationType, navScrollRangePx) { MainNavigationScrollState(navScrollRangePx) }
-    val predictiveProgress = remember(selectedId) { Animatable(0f) }
-    val settle = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
-    val canReturnToHome = selectedIndex != 0 && LocalDestination.current == MainPageDestination
-    val confirmTabBack by rememberUpdatedState {
-        if (canReturnToHome && selection.id == selectedId) selection.select("home")
+    BackHandler(enabled = selectedIndex != 0 && LocalDestination.current == MainPageDestination) {
+        selection.select("home")
     }
-    val predictTabBack by context.dataStore.collectPreferenceAsState(
-        key = booleanPreferencesKey("enablePredictiveTabBack"),
-        defaultValue = true,
-    )
     val onSelect: (Int) -> Unit = { index ->
         navigationItems.getOrNull(index)?.let { item ->
             selection.activate(item) {
@@ -281,7 +262,6 @@ fun MainPage(
                     MainTabHost(
                         selectedId = selectedId,
                         navigationItems = navigationItems,
-                        backProgress = { predictiveProgress.value },
                         modifier = Modifier.fillMaxSize().then(
                             if (compact) Modifier.mainTabViewport(paddingValues, navScroll) else Modifier.padding(paddingValues)
                         ),
@@ -289,43 +269,5 @@ fun MainPage(
                 }
             }
         }
-    }
-    // Only tabs intercept predictive back. Root activity can still use the
-    // system's native predictive back-to-home animation.
-    PredictiveBackHandler(enabled = canReturnToHome && predictTabBack) { progress ->
-        handleMainTabBack(progress, predictiveProgress, ValueAnimator.areAnimatorsEnabled(), settle) {
-            confirmTabBack()
-        }
-    }
-    BackHandler(enabled = canReturnToHome && !predictTabBack) { confirmTabBack() }
-}
-
-/** Only a progressed gesture needs settling. A button back or reduced motion switches immediately. */
-internal suspend fun handleMainTabBack(
-    events: Flow<BackEventCompat>,
-    preview: Animatable<Float, AnimationVector1D>,
-    animationsEnabled: Boolean,
-    settle: FiniteAnimationSpec<Float>,
-    onConfirmed: () -> Unit,
-) {
-    try {
-        events.collect { event ->
-            if (animationsEnabled) {
-                val progress = event.progress.coerceIn(0f, 1f)
-                preview.snapTo(if (event.swipeEdge == BackEventCompat.EDGE_RIGHT) -progress else progress)
-            }
-        }
-        if (animationsEnabled && preview.value != 0f) {
-            preview.animateTo(if (preview.value > 0f) 1f else -1f, settle)
-        }
-        onConfirmed()
-        preview.snapTo(0f)
-    } catch (cancelled: CancellationException) {
-        withContext(NonCancellable) {
-            if (animationsEnabled && preview.value != 0f) {
-                preview.animateTo(0f, settle)
-            } else preview.snapTo(0f)
-        }
-        throw cancelled
     }
 }

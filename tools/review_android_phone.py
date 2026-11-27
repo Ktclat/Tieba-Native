@@ -1,10 +1,10 @@
-"""Run the installed app's Pixel 9 gesture and discussion checks and collect their screenshots."""
+"""Run the installed app's Pixel 9 gesture, discussion, forum and gallery checks and collect their screenshots."""
 
 import argparse
 from pathlib import Path
 from subprocess import CalledProcessError
 
-from capture_android_ui import PACKAGE, adb, configure_phone
+from capture_android_ui import PACKAGE, adb, configure_phone, disconnect_emulator
 
 
 def run(test_apk, output):
@@ -12,25 +12,29 @@ def run(test_apk, output):
     if adb("shell", "getprop", "ro.kernel.qemu").strip() != b"1":
         raise RuntimeError("This review requires a disposable emulator")
     configure_phone()
+    disconnect_emulator()
     adb("shell", "pm", "clear", PACKAGE)
     adb("install", "-r", "-g", str(test_apk), timeout=120)
-    classes = [PACKAGE + ".ui.PixelBackGestureTest", PACKAGE + ".ui.page.thread.PixelDiscussionReviewTest"]
+    classes = [PACKAGE + ".ui.PixelBackGestureTest", PACKAGE + ".ui.page.thread.PixelDiscussionReviewTest",
+               PACKAGE + ".ui.PixelForumGalleryTest"]
     report = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", ",".join(classes),
-                 PACKAGE + ".test/androidx.test.runner.AndroidJUnitRunner", timeout=300).decode()
+                 PACKAGE + ".test/androidx.test.runner.AndroidJUnitRunner", timeout=360).decode()
     (output / "on-device-tests.txt").write_text(report)
     directory = "files/phone-review"
-    # Preserve all completed gesture stages even when a later device assertion fails.
+    # Preserve completed screenshots and the failing window even if a later assertion fails.
     try:
         files = adb("shell", "run-as", PACKAGE, "ls", directory).decode().splitlines()
     except CalledProcessError:
         files = []
     for name in files:
-        if Path(name).name == name and (name.endswith(".png") or name == "gestures.tsv"):
+        if Path(name).name == name and (name.endswith(".png") or name in {"gestures.tsv", "gallery-controls.tsv"}):
             (output / name).write_bytes(adb("exec-out", "run-as", PACKAGE, "cat", directory + "/" + name))
     print(report, flush=True)
-    if "OK (2 tests)" not in report:
-        raise RuntimeError("Android gesture/discussion instrumentation failed")
-    expected = {"discussion-topic.png", "discussion-preview.png", "discussion-expanded.png", "gestures.tsv"}
+    if "OK (4 tests)" not in report:
+        raise RuntimeError("Android phone review instrumentation failed")
+    expected = {"discussion-topic.png", "discussion-preview.png", "discussion-expanded.png", "gestures.tsv",
+                "gallery-first.png", "gallery-second.png", "gallery-share.png", "gallery-controls.tsv",
+                "forum-normal.png", "forum-missing.png"}
     expected.update(f"{name}-{stage}.png" for name in
                     ("tab-left-cancel", "tab-right-commit", "page-right-cancel", "page-left-commit")
                     for stage in ("before", "drag", "settled"))
