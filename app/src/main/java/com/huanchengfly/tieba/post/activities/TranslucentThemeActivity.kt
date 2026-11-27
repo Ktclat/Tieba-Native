@@ -29,7 +29,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.slider.Slider
-import com.huanchengfly.tieba.post.components.dialogs.showThemeColorPicker
 import com.gyf.immersionbar.ImmersionBar
 import com.huanchengfly.tieba.post.*
 import com.huanchengfly.tieba.post.App.Companion.translucentBackground
@@ -38,6 +37,7 @@ import com.huanchengfly.tieba.post.adapters.WallpaperAdapter
 import com.huanchengfly.tieba.post.api.LiteApi
 import com.huanchengfly.tieba.post.api.retrofit.doIfSuccess
 import com.huanchengfly.tieba.post.components.MyLinearLayoutManager
+import com.huanchengfly.tieba.post.components.dialogs.showThemeColorPicker
 import com.huanchengfly.tieba.post.components.dividers.HorizontalSpacesDecoration
 import com.huanchengfly.tieba.post.components.transformations.SketchBlurTransformation
 import com.huanchengfly.tieba.post.interfaces.OnItemClickListener
@@ -46,13 +46,13 @@ import com.huanchengfly.tieba.post.utils.*
 import com.huanchengfly.tieba.post.utils.ThemeUtil.TRANSLUCENT_THEME_DARK
 import com.huanchengfly.tieba.post.utils.ThemeUtil.TRANSLUCENT_THEME_LIGHT
 import com.yalantis.ucrop.UCrop
-import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Job
-import kotlin.math.roundToInt
 import java.io.File
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TranslucentThemeActivity : BaseActivity(), View.OnClickListener {
     private var previewJob: Job? = null
@@ -538,9 +538,9 @@ internal fun applyWallpaperAccent(root: View, seed: Int) {
 internal fun MaterialButtonToggleGroup.bindThemeMode(dark: Boolean, onChange: (Boolean) -> Unit) {
     val selected = if (dark) R.id.dark_color else R.id.light_color
     check(selected)
-    findViewById<MaterialButton>(selected).setIconResource(R.drawable.ic_round_check)
+    findViewById<MaterialButton>(selected).setIconResource(R.drawable.ms_check)
     addOnButtonCheckedListener { _, id, checked ->
-        findViewById<MaterialButton>(id).setIconResource(if (checked) R.drawable.ic_round_check else 0)
+        findViewById<MaterialButton>(id).setIconResource(if (checked) R.drawable.ms_check else 0)
         if (checked) onChange(id == R.id.dark_color)
     }
 }

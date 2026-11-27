@@ -2,13 +2,10 @@
 
 package com.huanchengfly.tieba.post.ui.page.user
 
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,27 +20,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.NoAccounts
-import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -59,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -67,6 +62,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -91,7 +88,6 @@ import com.huanchengfly.tieba.post.ui.page.user.likeforum.UserLikeForumPage
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
@@ -99,7 +95,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
-import androidx.compose.material3.PrimaryScrollableTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
@@ -111,12 +106,12 @@ import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-import kotlin.math.absoluteValue
 
 @Destination
 @Composable
@@ -299,7 +294,7 @@ private fun UserProfileToolbar(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.NoAccounts,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_no_accounts),
                             contentDescription = stringResource(id = R.string.btn_block)
                         )
                     }
@@ -778,10 +773,10 @@ private fun UserProfileDetail(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (isSelf) {
-                            Icon(imageVector = Icons.Rounded.Edit, contentDescription = null)
+                            Icon(imageVector = ImageVector.vectorResource(R.drawable.ms_edit), contentDescription = null)
                             Text(text = stringResource(id = R.string.menu_edit_info))
                         } else if (user.get { has_concerned } == 0) {
-                            Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
+                            Icon(imageVector = ImageVector.vectorResource(R.drawable.ms_add), contentDescription = null)
                             Text(text = stringResource(id = R.string.button_follow))
                         } else {
                             Text(text = stringResource(id = R.string.button_unfollow))
@@ -822,7 +817,7 @@ private fun UserProfileDetail(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                HorizontalDivider(modifier = Modifier.fillMaxHeight())
+                VerticalDivider(modifier = Modifier.fillMaxHeight())
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -837,7 +832,7 @@ private fun UserProfileDetail(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                HorizontalDivider(modifier = Modifier.fillMaxHeight())
+                VerticalDivider(modifier = Modifier.fillMaxHeight())
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -867,7 +862,7 @@ private fun UserProfileDetail(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Verified,
+                    imageVector = ImageVector.vectorResource(R.drawable.ms_verified),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary,
@@ -886,7 +881,7 @@ private fun UserProfileDetail(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Verified,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_verified),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary,
@@ -915,7 +910,7 @@ private fun UserProfileDetail(
                 ),
                 appendIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_content_copy),
                         contentDescription = null
                     )
                 },
@@ -937,14 +932,4 @@ private fun UserProfileDetail(
             )
         }
     }
-}
-
-@Composable
-private fun HorizontalDivider(modifier: Modifier = Modifier) {
-    Box(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.outlineVariant)
-            .width(1.dp)
-            .then(modifier)
-    )
 }

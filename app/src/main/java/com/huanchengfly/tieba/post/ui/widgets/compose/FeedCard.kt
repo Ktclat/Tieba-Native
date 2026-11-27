@@ -2,8 +2,6 @@
 
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import com.huanchengfly.tieba.post.api.models.protos.openableThreadId
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
@@ -26,27 +24,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.OndemandVideo
-import androidx.compose.material.icons.rounded.Photo
-import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
-import androidx.compose.material.icons.rounded.SwapCalls
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card as MaterialCard
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme as Material3Theme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
@@ -55,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -83,6 +73,8 @@ import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.VideoInfo
 import com.huanchengfly.tieba.post.api.models.protos.abstractText
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
+import com.huanchengfly.tieba.post.api.models.protos.openableThreadId
 import com.huanchengfly.tieba.post.api.models.protos.renders
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -102,10 +94,10 @@ import com.huanchengfly.tieba.post.utils.EmoticonUtil.emoticonString
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 private fun UserHeader(
@@ -231,29 +223,19 @@ fun Card(
 }
 
 @Composable
-fun Badge(
-    icon: ImageVector,
-    text: String,
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(100),
-    backgroundColor: Color = Color.Black.copy(0.5f),
-    contentColor: Color = Color.White,
-) {
-    Row(
-        modifier = modifier
-            .clip(shape)
-            .background(backgroundColor)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+internal fun MediaCountBadge(count: Int, modifier: Modifier = Modifier) {
+    Badge(
+        modifier = modifier,
+        containerColor = Material3Theme.colorScheme.inverseSurface,
+        contentColor = Material3Theme.colorScheme.inverseOnSurface,
     ) {
         Icon(
-            imageVector = icon,
+            imageVector = ImageVector.vectorResource(R.drawable.ms_image),
             contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(12.dp)
+            modifier = Modifier.size(12.dp),
         )
-        Text(text = text, fontSize = 12.sp, color = contentColor)
+        Spacer(Modifier.width(4.dp))
+        Text(count.toString(), style = Material3Theme.typography.labelSmall)
     }
 }
 
@@ -448,7 +430,7 @@ private fun ThreadMedia(
                 MediaPlaceholder(
                     icon = {
                         Icon(
-                            imageVector = Icons.Rounded.OndemandVideo,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_live_tv),
                             contentDescription = stringResource(id = R.string.desc_video)
                         )
                     },
@@ -496,7 +478,7 @@ private fun ThreadMedia(
                 MediaPlaceholder(
                     icon = {
                         Icon(
-                            imageVector = if (isSinglePhoto) Icons.Rounded.Photo else Icons.Rounded.PhotoLibrary,
+                            imageVector = ImageVector.vectorResource(if (isSinglePhoto) R.drawable.ms_photo else R.drawable.ms_photo_library),
                             contentDescription = stringResource(id = R.string.desc_photo)
                         )
                     },
@@ -556,12 +538,9 @@ private fun ThreadMedia(
                         }
                     }
                     if (hasMoreMedia) {
-                        Badge(
-                            icon = Icons.Rounded.PhotoSizeSelectActual,
-                            text = "${medias.size}",
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp)
+                        MediaCountBadge(
+                            count = medias.size,
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
                         )
                     }
                 }
@@ -586,7 +565,7 @@ private fun ThreadMedia(
 }
 
 @Composable
-fun OriginThreadCard(
+private fun OriginThreadCard(
     originThreadInfo: ImmutableHolder<OriginThreadInfo>,
     modifier: Modifier = Modifier,
 ) {
@@ -611,16 +590,26 @@ fun OriginThreadCard(
 }
 
 @Composable
-private fun QuotedThread(thread: ImmutableHolder<OriginThreadInfo>, onOpen: ((threadId: Long, forumId: Long) -> Unit)?) {
+internal fun QuotedThread(
+    thread: ImmutableHolder<OriginThreadInfo>,
+    onOpen: ((threadId: Long, forumId: Long) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val colors = CardDefaults.cardColors(containerColor = Material3Theme.colorScheme.surfaceContainer)
     val body: @Composable ColumnScope.() -> Unit = {
         OriginThreadCard(thread, modifier = Modifier.padding(16.dp))
     }
     val originId = thread.get { openableThreadId }
     if (onOpen == null || originId == null) {
-        MaterialCard(shape = Material3Theme.shapes.small, colors = colors, content = body)
+        MaterialCard(modifier = modifier, shape = Material3Theme.shapes.small, colors = colors, content = body)
     } else {
-        MaterialCard(onClick = { onOpen(originId, thread.get { fid }) }, shape = Material3Theme.shapes.small, colors = colors, content = body)
+        MaterialCard(
+            onClick = { onOpen(originId, thread.get { fid }) },
+            modifier = modifier,
+            shape = Material3Theme.shapes.small,
+            colors = colors,
+            content = body,
+        )
     }
 }
 
@@ -665,7 +654,7 @@ fun ThreadReplyBtn(
     ActionBtn(
         icon = {
             Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_comment_new),
+                imageVector = ImageVector.vectorResource(id = R.drawable.ms_chat_bubble),
                 contentDescription = stringResource(id = R.string.desc_comment),
             )
         },
@@ -696,7 +685,7 @@ fun ThreadAgreeBtn(
     ActionBtn(
         icon = {
             Icon(
-                imageVector = if (hasAgree) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                imageVector = ImageVector.vectorResource(if (hasAgree) R.drawable.ms_favorite_filled else R.drawable.ms_favorite),
                 contentDescription = stringResource(id = R.string.desc_like),
             )
         },
@@ -722,7 +711,7 @@ fun ThreadShareBtn(
     ActionBtn(
         icon = {
             Icon(
-                imageVector = Icons.Rounded.SwapCalls,
+                imageVector = ImageVector.vectorResource(R.drawable.ms_swap_calls),
                 contentDescription = stringResource(id = R.string.desc_share),
             )
         },

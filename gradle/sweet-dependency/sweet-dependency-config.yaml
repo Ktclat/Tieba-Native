@@ -207,13 +207,6 @@ libraries:
     animation-graphics:
       alias: compose-animation-graphics
       version: <no-spec>
-  androidx.compose.material:
-    material-icons-core:
-      alias: compose-material-icons-core
-      version: <no-spec>
-    material-icons-extended:
-      alias: compose-material-icons-extended
-      version: <no-spec>
   com.google.android.material:
     material:
       alias: google-material

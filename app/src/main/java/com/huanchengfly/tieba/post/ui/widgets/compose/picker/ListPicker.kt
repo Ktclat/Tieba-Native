@@ -3,8 +3,6 @@ package com.huanchengfly.tieba.post.ui.widgets.compose.picker
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -12,7 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
+import com.huanchengfly.tieba.post.R
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -27,7 +28,7 @@ fun <ItemValue> ListSinglePicker(
     itemIcons: ImmutableMap<ItemValue, @Composable () -> Unit> = persistentMapOf(),
     selectedIndicator: @Composable () -> Unit = {
         Icon(
-            imageVector = Icons.Rounded.Check,
+            imageVector = ImageVector.vectorResource(R.drawable.ms_check),
             contentDescription = null
         )
     },

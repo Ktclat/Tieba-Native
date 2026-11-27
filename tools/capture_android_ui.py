@@ -307,6 +307,12 @@ def run(apk, output, baseline):
     find_label("热榜")
     time.sleep(3.5)  # Let the transient network toast clear before reviewing the persistent error state.
     capture(output, "01-explore-offline", "热榜")
+    if baseline:
+        # Capture the old installed APK at its real top-right search entry.
+        tap("搜索")
+        capture(output, "search-empty", "返回")
+        tap("返回")
+        find_label("热榜")
     tap("消息")
     capture(output, "01-notifications", "回复我的" if baseline else "登录后查看消息")
     tap("首页")

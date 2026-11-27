@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,16 +23,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.ViewAgenda
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -59,9 +53,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -105,24 +99,27 @@ private val ShowHistoryForumKey = booleanPreferencesKey("homePageShowHistoryForu
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun SearchBox(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val focusManager = LocalFocusManager.current
     SearchBar(
         state = rememberSearchBarState(),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         inputField = {
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = SearchBarDefaults.InputFieldHeight)
-                    .clickable(role = Role.Button, onClick = onClick)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = CenterVertically,
-            ) {
-                Icon(Icons.Rounded.Search, contentDescription = null)
-                Text(
-                    stringResource(R.string.hint_search),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            SearchBarDefaults.InputField(
+                state = rememberTextFieldState(),
+                expanded = false,
+                onExpandedChange = { expanded ->
+                    if (expanded) {
+                        focusManager.clearFocus()
+                        onClick()
+                    }
+                },
+                onSearch = {},
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                placeholder = { Text(stringResource(R.string.hint_search), maxLines = 1) },
+                leadingIcon = { Icon(ImageVector.vectorResource(R.drawable.ms_search), contentDescription = null) },
+            )
         },
     )
 }
@@ -194,7 +191,7 @@ private fun ForumItemContent(
                 Text("Lv.${item.levelId}")
                 if (item.isSign) {
                     Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Rounded.Check, stringResource(R.string.tip_signed), Modifier.size(12.dp))
+                    Icon(ImageVector.vectorResource(R.drawable.ms_check), stringResource(R.string.tip_signed), Modifier.size(12.dp))
                 }
             }
         },
@@ -308,13 +305,13 @@ fun HomePage(
                 navigationIcon = accountNavIconIfCompact(),
                 actions = {
                     ActionItem(
-                        icon = ImageVector.vectorResource(id = R.drawable.ic_oksign),
+                        icon = ImageVector.vectorResource(id = R.drawable.ms_event_available),
                         contentDescription = stringResource(id = R.string.title_oksign)
                     ) {
                         TiebaUtil.startSign(context)
                     }
                     ActionItem(
-                        icon = Icons.Outlined.ViewAgenda,
+                        icon = ImageVector.vectorResource(R.drawable.ms_view_agenda),
                         contentDescription = stringResource(id = R.string.title_switch_list_single)
                     ) {
                         scope.launch {
@@ -378,7 +375,7 @@ fun HomePage(
                                         Text(stringResource(R.string.title_history_forum))
                                         Spacer(Modifier.width(4.dp))
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                            imageVector = ImageVector.vectorResource(R.drawable.ms_chevron_right),
                                             contentDescription = stringResource(
                                                 if (expandHistoryForum) R.string.button_expand_less_history
                                                 else R.string.button_expand_more_history
@@ -509,7 +506,7 @@ fun EmptyScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Forum,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_forum),
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.primary,

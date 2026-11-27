@@ -2,9 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -59,6 +56,17 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
+internal fun mainNavigationType(width: WindowWidthSizeClass, posture: DevicePosture): MainNavigationType =
+    when (width) {
+        WindowWidthSizeClass.Medium -> MainNavigationType.NAVIGATION_RAIL
+        WindowWidthSizeClass.Expanded -> if (posture is DevicePosture.BookPosture) {
+            MainNavigationType.NAVIGATION_RAIL
+        } else {
+            MainNavigationType.PERMANENT_NAVIGATION_DRAWER
+        }
+        else -> MainNavigationType.BOTTOM_NAVIGATION
+    }
+
 @Composable
 internal fun NavigationWrapper(
     currentPosition: Int,
@@ -83,7 +91,7 @@ internal fun NavigationWrapper(
     }
 }
 
-@OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @RootNavGraph(start = true)
 @Destination
 @Composable
@@ -92,8 +100,6 @@ fun MainPage(
     viewModel: MainViewModel = pageViewModel<MainUiIntent, MainViewModel>(emptyList()),
 ) {
     val windowSizeClass = LocalWindowSizeClass.current
-    val windowHeightSizeClass by rememberUpdatedState(newValue = windowSizeClass.heightSizeClass)
-    val windowWidthSizeClass by rememberUpdatedState(newValue = windowSizeClass.widthSizeClass)
     val foldingDevicePosture by LocalDevicePosture.current
 
     val messageCount by viewModel.uiState.collectPartialAsState(MainUiState::messageCount)
@@ -121,7 +127,8 @@ fun MainPage(
             listOfNotNull(
                 NavigationItem(
                     id = "home",
-                    icon = { AnimatedImageVector.animatedVectorResource(id = R.drawable.ic_animated_rounded_inventory_2) },
+                    icon = R.drawable.ms_home,
+                    selectedIcon = R.drawable.ms_home_filled,
                     title = { stringResource(id = R.string.title_main) },
                     content = {
                         HomePage(
@@ -134,9 +141,8 @@ fun MainPage(
                 if (hideExplore) null
                 else NavigationItem(
                     id = "explore",
-                    icon = {
-                        AnimatedImageVector.animatedVectorResource(id = R.drawable.ic_animated_toy_fans)
-                    },
+                    icon = R.drawable.ms_explore,
+                    selectedIcon = R.drawable.ms_explore_filled,
                     title = { stringResource(id = R.string.title_explore) },
                     content = {
                         ExplorePage()
@@ -144,9 +150,8 @@ fun MainPage(
                 ),
                 NavigationItem(
                     id = "notification",
-                    icon = {
-                        AnimatedImageVector.animatedVectorResource(id = R.drawable.ic_animated_rounded_notifications)
-                    },
+                    icon = R.drawable.ms_notifications,
+                    selectedIcon = R.drawable.ms_notifications_filled,
                     title = { stringResource(id = R.string.title_notifications) },
                     badge = messageCount > 0,
                     badgeText = "$messageCount",
@@ -159,9 +164,8 @@ fun MainPage(
                 ),
                 NavigationItem(
                     id = "user",
-                    icon = {
-                        AnimatedImageVector.animatedVectorResource(id = R.drawable.ic_animated_rounded_person)
-                    },
+                    icon = R.drawable.ms_person,
+                    selectedIcon = R.drawable.ms_person_filled,
                     title = { stringResource(id = R.string.title_user) },
                     content = {
                         UserPage()
@@ -174,53 +178,10 @@ fun MainPage(
     val selectedId = navigationItems[selectedIndex].id
     if (selectedId != selection.id) SideEffect { selection.select(selectedId) }
 
-    val navigationType by remember {
-        derivedStateOf {
-            when (windowWidthSizeClass) {
-                WindowWidthSizeClass.Compact -> {
-                    MainNavigationType.BOTTOM_NAVIGATION
-                }
-
-                WindowWidthSizeClass.Medium -> {
-                    MainNavigationType.NAVIGATION_RAIL
-                }
-
-                WindowWidthSizeClass.Expanded -> {
-                    if (foldingDevicePosture is DevicePosture.BookPosture) {
-                        MainNavigationType.NAVIGATION_RAIL
-                    } else {
-                        MainNavigationType.PERMANENT_NAVIGATION_DRAWER
-                    }
-                }
-
-                else -> {
-                    MainNavigationType.BOTTOM_NAVIGATION
-                }
-            }
-        }
-    }
-
-    /**
-     * Content inside Navigation Rail/Drawer can also be positioned at top, bottom or center for
-     * ergonomics and reachability depending upon the height of the device.
-     */
-    val navigationContentPosition by remember {
-        derivedStateOf {
-            when (windowHeightSizeClass) {
-                WindowHeightSizeClass.Compact -> {
-                    MainNavigationContentPosition.TOP
-                }
-
-                WindowHeightSizeClass.Medium,
-                WindowHeightSizeClass.Expanded -> {
-                    MainNavigationContentPosition.CENTER
-                }
-
-                else -> {
-                    MainNavigationContentPosition.TOP
-                }
-            }
-        }
+    val navigationType = mainNavigationType(windowSizeClass.widthSizeClass, foldingDevicePosture)
+    val navigationContentPosition = when (windowSizeClass.heightSizeClass) {
+        WindowHeightSizeClass.Medium, WindowHeightSizeClass.Expanded -> MainNavigationContentPosition.CENTER
+        else -> MainNavigationContentPosition.TOP
     }
     val compact = navigationType == MainNavigationType.BOTTOM_NAVIGATION
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
@@ -248,11 +209,13 @@ fun MainPage(
                 modifier = Modifier.fillMaxSize().then(if (compact) Modifier.nestedScroll(navScroll).observeNavigationTouch(navScroll) else Modifier),
                 bottomBar = {
                     if (compact) {
+                        val floating by context.dataStore.collectPreferenceAsState(FloatingNavigationBarKey, false)
                         MainNavigationBarSlot(navScroll) {
                             MainNavigationBar(
                                 currentPosition = selectedIndex,
                                 onSelect = onSelect,
                                 navigationItems = navigationItems,
+                                floating = floating,
                             )
                         }
                     }

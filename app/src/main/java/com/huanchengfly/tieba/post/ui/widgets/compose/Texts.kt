@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -28,9 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -227,7 +225,7 @@ fun IconText(
                     ),
                     children = {
                         Icon(
-                            Icons.Rounded.Link,
+                            ImageVector.vectorResource(R.drawable.ms_link),
                             contentDescription = stringResource(id = R.string.link),
                             modifier = Modifier.size(sizeDp),
                             tint = MaterialTheme.colorScheme.primary,
@@ -242,7 +240,7 @@ fun IconText(
                     ),
                     children = {
                         Icon(
-                            Icons.Rounded.SlowMotionVideo,
+                            ImageVector.vectorResource(R.drawable.ms_slow_motion_video),
                             contentDescription = stringResource(id = R.string.desc_video),
                             modifier = Modifier.size(sizeDp),
                             tint = MaterialTheme.colorScheme.primary,
@@ -257,7 +255,7 @@ fun IconText(
                     ),
                     children = {
                         Icon(
-                            Icons.Rounded.AccountCircle,
+                            ImageVector.vectorResource(R.drawable.ms_account_circle),
                             contentDescription = stringResource(id = R.string.user),
                             modifier = Modifier.size(sizeDp),
                             tint = MaterialTheme.colorScheme.primary,

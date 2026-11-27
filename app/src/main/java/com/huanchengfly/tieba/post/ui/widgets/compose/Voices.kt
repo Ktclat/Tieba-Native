@@ -7,10 +7,6 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -31,8 +27,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -80,7 +78,7 @@ fun VoicePlayer(url: String, duration: Int, modifier: Modifier = Modifier) {
             Surface(shape = MenuDefaults.shape, color = MenuDefaults.containerColor, shadowElevation = MenuDefaults.ShadowElevation) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.menu_save_audio)) },
-                    leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                    leadingIcon = { Icon(ImageVector.vectorResource(R.drawable.ms_download), contentDescription = null) },
                     onClick = {
                         tooltip.dismiss()
                         val name = Uri.parse(url).getQueryParameter("voice_md5") ?: System.currentTimeMillis().toString()
@@ -93,8 +91,8 @@ fun VoicePlayer(url: String, duration: Int, modifier: Modifier = Modifier) {
         FilledTonalButton(onClick = { VoicePlayback.toggle(context, owner, url) }, shapes = ButtonDefaults.shapes()) {
             when {
                 buffering -> LoadingIndicator(Modifier.size(ButtonDefaults.IconSize))
-                playing -> Icon(Icons.Rounded.Pause, stringResource(R.string.pause_voice), Modifier.size(ButtonDefaults.IconSize))
-                else -> Icon(Icons.Rounded.PlayArrow, stringResource(R.string.play_voice), Modifier.size(ButtonDefaults.IconSize))
+                playing -> Icon(ImageVector.vectorResource(R.drawable.ms_pause), stringResource(R.string.pause_voice), Modifier.size(ButtonDefaults.IconSize))
+                else -> Icon(ImageVector.vectorResource(R.drawable.ms_play_arrow), stringResource(R.string.play_voice), Modifier.size(ButtonDefaults.IconSize))
             }
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             val seconds = if (active) elapsed else duration.coerceAtLeast(0) / 1_000

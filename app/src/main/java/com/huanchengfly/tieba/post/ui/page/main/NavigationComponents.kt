@@ -1,14 +1,13 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
@@ -17,15 +16,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.NavigationRail as MaterialNavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.WideNavigationRail
+import androidx.compose.material3.WideNavigationRailItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -37,7 +37,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.AccountNavIcon
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import kotlinx.collections.immutable.ImmutableList
 
-@OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
 internal fun DestinationIcon(item: NavigationItem, selected: Boolean) {
     BadgedBox(badge = {
@@ -49,7 +48,7 @@ internal fun DestinationIcon(item: NavigationItem, selected: Boolean) {
         }
     }) {
         Icon(
-            painter = rememberAnimatedVectorPainter(item.icon(), atEnd = selected),
+            painter = painterResource(if (selected) item.selectedIcon else item.icon),
             modifier = Modifier.size(24.dp).testTag("navigation-icon-${item.id}"),
             contentDescription = null,
         )
@@ -104,30 +103,44 @@ internal fun NavigationRail(
     navigationItems: ImmutableList<NavigationItem>,
     navigationContentPosition: MainNavigationContentPosition,
 ) {
-    MaterialNavigationRail(header = { AccountNavIcon(spacer = false) }) {
-        Column(
-            modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (navigationContentPosition == MainNavigationContentPosition.CENTER) Arrangement.Center else Arrangement.Top,
-        ) {
+    val centered = navigationContentPosition == MainNavigationContentPosition.CENTER
+    WideNavigationRail(
+        header = {
+            Box(Modifier.width(96.dp), contentAlignment = Alignment.Center) {
+                AccountNavIcon(spacer = false)
+            }
+        },
+        arrangement = if (centered) Arrangement.Center else Arrangement.Top,
+    ) {
+        val destinations: @Composable () -> Unit = {
             navigationItems.forEachIndexed { index, item ->
                 val selected = index == currentPosition
-                NavigationRailItem(
-                    modifier = Modifier.destinationBadgeDescription(item),
+                WideNavigationRailItem(
+                    modifier = Modifier.fillMaxWidth().destinationBadgeDescription(item),
                     selected = selected,
+                    railExpanded = false,
                     onClick = { onSelect(index) },
                     icon = { DestinationIcon(item, selected) },
                     label = { Text(item.title(selected), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 )
             }
         }
+        if (centered) destinations() else {
+            // Short landscape windows still need to reach every destination below the account.
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) { destinations() }
+        }
     }
 }
 
 @Immutable
-data class NavigationItem @OptIn(ExperimentalAnimationGraphicsApi::class) constructor(
+data class NavigationItem(
     val id: String,
-    val icon: @Composable () -> AnimatedImageVector,
+    @DrawableRes val icon: Int,
+    @DrawableRes val selectedIcon: Int,
     val title: @Composable (selected: Boolean) -> String,
     val badge: Boolean = false,
     val badgeText: String? = null,

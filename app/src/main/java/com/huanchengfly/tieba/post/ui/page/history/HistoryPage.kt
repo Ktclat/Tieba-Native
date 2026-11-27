@@ -14,24 +14,19 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -47,9 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -97,17 +94,17 @@ fun HistoryPage(navigator: DestinationsNavigator) {
                     title = { Text(stringResource(R.string.title_history)) },
                     navigationIcon = {
                         IconButton(onClick = ::back, shapes = IconButtonDefaults.shapes()) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
+                            Icon(ImageVector.vectorResource(R.drawable.ms_arrow_back), stringResource(R.string.button_back))
                         }
                     },
                     actions = {
                         if (!searching) {
                             IconButton(onClick = { searching = true }, shapes = IconButtonDefaults.shapes()) {
-                                Icon(Icons.Outlined.Search, stringResource(R.string.history_search))
+                                Icon(ImageVector.vectorResource(R.drawable.ms_search), stringResource(R.string.history_search))
                             }
                         }
                         IconButton(onClick = { confirmClear = true }, enabled = !clearing, shapes = IconButtonDefaults.shapes()) {
-                            Icon(Icons.Outlined.Delete, stringResource(R.string.title_history_delete))
+                            Icon(ImageVector.vectorResource(R.drawable.ms_delete), stringResource(R.string.title_history_delete))
                         }
                     },
                 )
@@ -126,7 +123,7 @@ fun HistoryPage(navigator: DestinationsNavigator) {
                         trailingIcon = if (query.isNotEmpty()) {
                             {
                                 IconButton(onClick = { query = "" }, shapes = IconButtonDefaults.shapes()) {
-                                    Icon(Icons.Outlined.Close, stringResource(R.string.history_clear_query))
+                                    Icon(ImageVector.vectorResource(R.drawable.ms_close), stringResource(R.string.history_clear_query))
                                 }
                             }
                         } else null,

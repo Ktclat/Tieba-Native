@@ -1,24 +1,15 @@
 package com.huanchengfly.tieba.post.ui.page.settings.account
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.SupervisedUserCircle
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +31,7 @@ import com.huanchengfly.tieba.post.ui.page.settings.LeadingIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
+import com.huanchengfly.tieba.post.ui.widgets.compose.SupportingMessage
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.AccountUtil.AllAccounts
@@ -94,7 +86,7 @@ fun AccountManagePage(
                         leadingIcon = {
                             LeadingIcon {
                                 AvatarIcon(
-                                    icon = Icons.Outlined.AccountCircle,
+                                    icon = ImageVector.vectorResource(R.drawable.ms_account_circle),
                                     size = Sizes.Small,
                                     contentDescription = null,
                                 )
@@ -114,7 +106,7 @@ fun AccountManagePage(
                         leadingIcon = {
                             LeadingIcon {
                                 AvatarIcon(
-                                    icon = Icons.Outlined.AccountCircle,
+                                    icon = ImageVector.vectorResource(R.drawable.ms_account_circle),
                                     size = Sizes.Small,
                                     contentDescription = null,
                                 )
@@ -132,7 +124,7 @@ fun AccountManagePage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.AddCircleOutline,
+                                icon = ImageVector.vectorResource(R.drawable.ms_add_circle),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -141,26 +133,14 @@ fun AccountManagePage(
                 )
             }
             prefsItem {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            style = SpanStyle(
-                                fontWeight = FontWeight.Bold
-                            )
-                        ) {
-                            append(stringResource(id = R.string.tip_start))
+                SupportingMessage(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append(stringResource(R.string.tip_start))
                         }
-                        append(stringResource(id = R.string.tip_account_error))
-                    },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .padding(start = 8.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .padding(12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                        append(stringResource(R.string.tip_account_error))
+                    })
+                }
             }
             prefsItem {
                 TextPref(
@@ -169,7 +149,7 @@ fun AccountManagePage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = ImageVector.vectorResource(id = R.drawable.ic_outlined_close_circle_24),
+                                icon = ImageVector.vectorResource(id = R.drawable.ms_cancel),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -190,7 +170,7 @@ fun AccountManagePage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.SupervisedUserCircle,
+                                icon = ImageVector.vectorResource(R.drawable.ms_supervised_user_circle),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -207,7 +187,7 @@ fun AccountManagePage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.ContentCopy,
+                                icon = ImageVector.vectorResource(R.drawable.ms_content_copy),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -228,7 +208,7 @@ fun AccountManagePage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Edit,
+                                icon = ImageVector.vectorResource(R.drawable.ms_edit),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

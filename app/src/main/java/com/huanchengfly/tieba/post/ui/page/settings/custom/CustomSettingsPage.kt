@@ -7,16 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.Brightness2
-import androidx.compose.material.icons.outlined.BrightnessAuto
-import androidx.compose.material.icons.outlined.ColorLens
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.FontDownload
-import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.outlined.Upcoming
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,6 +32,7 @@ import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.ListPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.SwitchPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
+import com.huanchengfly.tieba.post.ui.page.main.FloatingNavigationBarKey
 import com.huanchengfly.tieba.post.ui.page.settings.LeadingIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
@@ -91,7 +82,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.FontDownload,
+                                icon = ImageVector.vectorResource(R.drawable.ms_font_download),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -112,7 +103,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Brightness2,
+                                icon = ImageVector.vectorResource(R.drawable.ms_brightness_2),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -134,7 +125,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Apps,
+                                icon = ImageVector.vectorResource(R.drawable.ms_apps),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -209,7 +200,7 @@ fun CustomSettingsPage(
                         leadingIcon = {
                             LeadingIcon {
                                 AvatarIcon(
-                                    icon = Icons.Outlined.ColorLens,
+                                    icon = ImageVector.vectorResource(R.drawable.ms_color_lens),
                                     size = Sizes.Small,
                                     contentDescription = null,
                                 )
@@ -230,7 +221,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.BrightnessAuto,
+                            icon = ImageVector.vectorResource(R.drawable.ms_brightness_auto),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -246,7 +237,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = ImageVector.vectorResource(id = R.drawable.ic_beaker),
+                            icon = ImageVector.vectorResource(id = R.drawable.ms_science),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -261,7 +252,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.FormatColorFill,
+                                icon = ImageVector.vectorResource(R.drawable.ms_format_color_fill),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -278,12 +269,24 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.ViewAgenda,
+                            icon = ImageVector.vectorResource(R.drawable.ms_view_agenda),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
                     }
                 }
+            }
+            prefsItem {
+                SwitchPref(
+                    key = FloatingNavigationBarKey.name,
+                    title = stringResource(R.string.title_floating_navigation_bar),
+                    summary = stringResource(R.string.summary_floating_navigation_bar),
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_bottom_navigation, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
+                )
             }
             prefsItem {
                 SwitchPref(
@@ -293,7 +296,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.Explore,
+                            icon = ImageVector.vectorResource(R.drawable.ms_explore),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -308,7 +311,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Upcoming,
+                                icon = ImageVector.vectorResource(R.drawable.ms_upcoming),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

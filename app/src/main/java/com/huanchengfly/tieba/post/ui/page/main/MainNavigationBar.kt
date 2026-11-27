@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
@@ -26,9 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -40,8 +46,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
+
+internal val FloatingNavigationBarKey = booleanPreferencesKey("floatingNavigationBar")
 
 @Stable
 internal class MainNavigationScrollState(private val scrollRangePx: Float) : NestedScrollConnection {
@@ -130,17 +140,18 @@ internal fun MainNavigationBarSlot(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun MainNavigationBar(
     currentPosition: Int,
     onSelect: (Int) -> Unit,
     navigationItems: ImmutableList<NavigationItem>,
     modifier: Modifier = Modifier,
+    floating: Boolean = false,
 ) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val select by rememberUpdatedState(onSelect)
-    // The bar fills its maximum width and needs a zero minimum width to divide it between items.
-    ShortNavigationBar(modifier = modifier.wrapContentWidth(), windowInsets = WindowInsets(0, 0, 0, 0)) {
+    val destinations: @Composable () -> Unit = {
         navigationItems.forEachIndexed { index, item ->
             key(item.id) {
                 val selected = index == currentPosition
@@ -169,5 +180,32 @@ internal fun MainNavigationBar(
                 )
             }
         }
+    }
+    val noInsets = WindowInsets(0, 0, 0, 0) // MainNavigationBarSlot owns the system insets.
+    if (floating) {
+        val margin = FloatingToolbarDefaults.ScreenOffset
+        Box(
+            Modifier.fillMaxWidth().padding(start = margin, end = margin, top = 8.dp, bottom = margin),
+            contentAlignment = Alignment.Center,
+        ) {
+            HorizontalFloatingToolbar(
+                expanded = true,
+                modifier = modifier.width((80 * navigationItems.size).dp),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+            ) {
+                ShortNavigationBar(
+                    modifier = Modifier.wrapContentWidth(),
+                    containerColor = Color.Transparent,
+                    windowInsets = noInsets,
+                    content = destinations,
+                )
+            }
+        }
+    } else {
+        ShortNavigationBar(
+            modifier = modifier.wrapContentWidth(),
+            windowInsets = noInsets,
+            content = destinations,
+        )
     }
 }

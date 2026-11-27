@@ -4,15 +4,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.HideSource
-import androidx.compose.material.icons.outlined.VideocamOff
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
@@ -65,7 +63,7 @@ fun BlockSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Block,
+                                icon = ImageVector.vectorResource(R.drawable.ms_block),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -82,7 +80,7 @@ fun BlockSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.HideSource,
+                            icon = ImageVector.vectorResource(R.drawable.ms_hide_source),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -98,7 +96,7 @@ fun BlockSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.VideocamOff,
+                                icon = ImageVector.vectorResource(R.drawable.ms_videocam_off),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

@@ -19,34 +19,32 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.page.thread.ReplyPrompt
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -61,15 +59,16 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.openReply
-import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
-import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
-import com.huanchengfly.tieba.post.ui.page.thread.PostCard
-import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
-import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
 import com.huanchengfly.tieba.post.ui.page.thread.CommentMetadata
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
+import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
+import com.huanchengfly.tieba.post.ui.page.thread.PostCard
+import com.huanchengfly.tieba.post.ui.page.thread.ReplyPrompt
 import com.huanchengfly.tieba.post.ui.page.thread.ReplyRecipient
+import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
+import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
 import com.huanchengfly.tieba.post.ui.page.thread.splitDirectedReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
@@ -437,12 +436,12 @@ internal fun SubPostsTopBar(floor: Int?, onNavigateUp: () -> Unit, onOpenThread:
         },
         navigationIcon = {
             IconButton(onClick = onNavigateUp, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.button_back))
+                Icon(ImageVector.vectorResource(R.drawable.ms_arrow_back), contentDescription = stringResource(R.string.button_back))
             }
         },
         actions = {
             IconButton(onClick = onOpenThread, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.Rounded.OpenInBrowser, contentDescription = stringResource(R.string.btn_open_origin_thread))
+                Icon(ImageVector.vectorResource(R.drawable.ms_open_in_browser), contentDescription = stringResource(R.string.btn_open_origin_thread))
             }
         },
     )

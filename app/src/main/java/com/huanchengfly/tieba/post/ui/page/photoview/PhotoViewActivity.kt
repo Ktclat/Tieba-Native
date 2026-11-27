@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,15 +31,20 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.panpf.sketch.compose.rememberAsyncImageState
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.zoomimage.SketchZoomAsyncImage
@@ -51,13 +53,10 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivityWithParcelable
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.toastShort
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import com.huanchengfly.tieba.post.utils.ImageUtil
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 private fun ViewPhoto(
@@ -145,7 +144,7 @@ internal fun PhotoActionBar(
                 enabled = shareEnabled,
                 shapes = IconButtonDefaults.shapes(),
             ) {
-                Icon(Icons.Rounded.Share, stringResource(R.string.title_share_pic), Modifier.size(20.dp))
+                Icon(ImageVector.vectorResource(R.drawable.ms_share), stringResource(R.string.title_share_pic), Modifier.size(20.dp))
             }
             IconButton(
                 onClick = { onSave(item.originUrl) },
@@ -153,7 +152,7 @@ internal fun PhotoActionBar(
                 enabled = saveEnabled,
                 shapes = IconButtonDefaults.shapes(),
             ) {
-                Icon(Icons.Rounded.Download, stringResource(R.string.desc_download_pic), Modifier.size(20.dp))
+                Icon(ImageVector.vectorResource(R.drawable.ms_download), stringResource(R.string.desc_download_pic), Modifier.size(20.dp))
             }
         }
     }

@@ -132,8 +132,6 @@ dependencies {
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     implementation("androidx.compose.material3:material3:1.4.0-alpha18")
-    implementation(compose.material.icons.core)
-    implementation(compose.material.icons.extended)
     implementation(compose.ui.util)
     implementation(compose.ui.tooling.preview)
     androidTestImplementation(compose.ui.test.junit4)

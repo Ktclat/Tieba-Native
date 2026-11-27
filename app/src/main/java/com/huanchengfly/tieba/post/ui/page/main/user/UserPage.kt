@@ -1,14 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main.user
 
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.ui.text.style.TextOverflow
-import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,13 +12,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -35,28 +33,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.models.database.Account
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
-import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.AboutPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.AppThemePageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.HistoryPageDestination
+import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SettingsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadStorePageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.WebViewPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
-import androidx.compose.material3.VerticalDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
-import androidx.compose.material3.Switch
-import androidx.compose.material3.HorizontalDivider
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.CuidUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -140,8 +138,8 @@ private fun LoginTipCard(onLogin: () -> Unit, modifier: Modifier = Modifier) {
         ListItem(
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             headlineContent = { Text(stringResource(R.string.tip_login), style = MaterialTheme.typography.titleMedium) },
-            leadingContent = { Icon(Icons.Rounded.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp)) },
-            trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ic_round_chevron_right), contentDescription = null) },
+            leadingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_account_circle), contentDescription = null, modifier = Modifier.size(32.dp)) },
+            trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_chevron_right), contentDescription = null) },
         )
     }
 }
@@ -222,7 +220,7 @@ fun UserPage(
                 }
                 if (account != null) {
                     ListMenuItem(
-                        icon = ImageVector.vectorResource(id = R.drawable.ic_favorite),
+                        icon = ImageVector.vectorResource(id = R.drawable.ms_bookmark),
                         text = stringResource(id = R.string.title_my_collect),
                         onClick = {
                             navigator.navigate(ThreadStorePageDestination)
@@ -230,14 +228,14 @@ fun UserPage(
                     )
                 }
                 ListMenuItem(
-                    icon = ImageVector.vectorResource(id = R.drawable.ic_outline_watch_later_24),
+                    icon = ImageVector.vectorResource(id = R.drawable.ms_watch_later),
                     text = stringResource(id = R.string.title_history),
                     onClick = {
                         navigator.navigate(HistoryPageDestination)
                     }
                 )
                 ListMenuItem(
-                    icon = ImageVector.vectorResource(id = R.drawable.ic_brush_24),
+                    icon = ImageVector.vectorResource(id = R.drawable.ms_brush),
                     text = stringResource(id = R.string.title_theme),
                     onClick = {
                         navigator.navigate(AppThemePageDestination)
@@ -262,7 +260,7 @@ fun UserPage(
                 }
                 if (account != null) {
                     ListMenuItem(
-                        icon = ImageVector.vectorResource(id = R.drawable.ic_help_outline_black_24),
+                        icon = ImageVector.vectorResource(id = R.drawable.ms_help),
                         text = stringResource(id = R.string.my_info_service_center),
                         onClick = {
                             navigator.navigate(
@@ -277,12 +275,12 @@ fun UserPage(
                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)
                 )
                 ListMenuItem(
-                    icon = ImageVector.vectorResource(id = R.drawable.ic_settings_24),
+                    icon = ImageVector.vectorResource(id = R.drawable.ms_settings),
                     text = stringResource(id = R.string.my_info_settings),
                     onClick = { navigator.navigate(SettingsPageDestination) },
                 )
                 ListMenuItem(
-                    icon = ImageVector.vectorResource(id = R.drawable.ic_info_black_24),
+                    icon = ImageVector.vectorResource(id = R.drawable.ms_info),
                     text = stringResource(id = R.string.my_info_about),
                     onClick = { navigator.navigate(AboutPageDestination) },
                 )

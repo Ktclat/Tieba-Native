@@ -5,15 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme as Material3Theme
-import androidx.compose.material3.Surface as Material3Surface
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -24,30 +22,26 @@ fun Chip(
     appendIcon: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     invertColor: Boolean = false,
-    shape: Shape = Material3Theme.shapes.small,
 ) {
     val scheme = Material3Theme.colorScheme
     if (onClick != null) {
-        FilterChip(
-            selected = invertColor,
+        AssistChip(
             onClick = onClick,
             modifier = modifier,
             label = { Text(text) },
             leadingIcon = prefixIcon,
             trailingIcon = appendIcon,
-            shape = shape,
         )
         return
     }
 
-    Material3Surface(
+    Badge(
         modifier = modifier,
-        shape = shape,
-        color = if (invertColor) scheme.secondaryContainer else scheme.surfaceContainerHigh,
+        containerColor = if (invertColor) scheme.secondaryContainer else scheme.surfaceContainerHigh,
         contentColor = if (invertColor) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {

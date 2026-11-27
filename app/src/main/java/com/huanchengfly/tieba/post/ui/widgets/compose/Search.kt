@@ -2,8 +2,6 @@
 
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.PhotoSizeSelectActual
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Card as MaterialCard
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon as M3Icon
 import androidx.compose.material3.IconButton
@@ -43,10 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,17 +59,17 @@ import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.buildAnnotatedStringWithUser
 import com.huanchengfly.tieba.post.utils.appPreferences
+import kotlin.math.min
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlin.math.min
 
 @Composable
-fun QuotePostCard(
+private fun QuotePostCard(
     quotePostInfo: SearchThreadBean.PostInfo,
     mainPost: SearchThreadBean.MainPost,
     onMainPostClick: (SearchThreadBean.MainPost) -> Unit,
-    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
     medias: ImmutableList<SearchThreadBean.MediaInfo> = persistentListOf(),
     keyword: String? = null,
 ) {
@@ -82,36 +81,38 @@ fun QuotePostCard(
             quotePostInfo.content
         )
     }
-    Column(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    MaterialCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        HighlightText(
-            text = quoteContentString,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            highlightKeywords = (keyword?.split(" ") ?: emptyList()).toImmutableList()
-        )
-        MainPostCard(
-            mainPost = mainPost,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .clickable {
-                    onMainPostClick(mainPost)
-                },
-            medias = medias,
-            keyword = keyword
-        )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HighlightText(
+                text = quoteContentString,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                highlightKeywords = (keyword?.split(" ") ?: emptyList()).toImmutableList(),
+            )
+            MainPostCard(
+                mainPost = mainPost,
+                onClick = { onMainPostClick(mainPost) },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                medias = medias,
+                keyword = keyword,
+            )
+        }
     }
 }
 
 @Composable
-fun MainPostCard(
+private fun MainPostCard(
     mainPost: SearchThreadBean.MainPost,
-    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     medias: ImmutableList<SearchThreadBean.MediaInfo> = persistentListOf(),
     keyword: String? = null,
 ) {
@@ -123,27 +124,33 @@ fun MainPostCard(
             mainPost.title
         )
     }
-    Column(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    MaterialCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
-        HighlightText(
-            text = titleString,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            highlightKeywords = (keyword?.split(" ") ?: emptyList()).toImmutableList()
-        )
-        if (mainPost.content.isNotBlank()) {
-            PbContentText(
-                text = mainPost.content,
-                style = MaterialTheme.typography.bodyMedium,
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            HighlightText(
+                text = titleString,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                highlightKeywords = (keyword?.split(" ") ?: emptyList()).toImmutableList()
             )
+            if (mainPost.content.isNotBlank()) {
+                PbContentText(
+                    text = mainPost.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            SearchMedia(medias = medias)
         }
-        SearchMedia(medias = medias)
     }
 }
 
@@ -257,26 +264,14 @@ fun SearchThreadItem(
                         quotePostInfo = item.postInfo,
                         mainPost = item.mainPost,
                         onMainPostClick = onMainPostClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable {
-                                onQuotePostClick(item.postInfo)
-                            },
+                        onClick = { onQuotePostClick(item.postInfo) },
                         medias = item.media.toImmutableList(),
                         keyword = searchKeyword
                     )
                 } else {
                     MainPostCard(
                         mainPost = item.mainPost,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable {
-                                onMainPostClick(item.mainPost)
-                            },
+                        onClick = { onMainPostClick(item.mainPost) },
                         medias = item.media.toImmutableList(),
                         keyword = searchKeyword
                     )
@@ -377,9 +372,8 @@ fun SearchMedia(
                     }
                 }
                 if (hasMoreMedia) {
-                    Badge(
-                        icon = Icons.Rounded.PhotoSizeSelectActual,
-                        text = "${medias.size}",
+                    MediaCountBadge(
+                        count = medias.size,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(8.dp)
@@ -399,7 +393,6 @@ fun SearchBox(
     onKeywordSubmit: (String) -> Unit = {},
     placeholder: @Composable () -> Unit = {},
     prependIcon: @Composable () -> Unit = {},
-    appendIcon: @Composable () -> Unit = {},
     focusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val state = rememberTextFieldState(keyword)
@@ -418,20 +411,22 @@ fun SearchBox(
         onSearch = onKeywordSubmit,
         expanded = focused,
         onExpandedChange = {},
-        modifier = modifier.focusRequester(focusRequester).onFocusEvent { focused = it.isFocused },
+        modifier = modifier.focusRequester(focusRequester).onFocusChanged { focused = it.isFocused },
+        textStyle = MaterialTheme.typography.bodyLarge,
         placeholder = placeholder,
         leadingIcon = prependIcon,
-        trailingIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                appendIcon()
-                if (keyword.isNotEmpty() && focused) {
-                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordChange("") }) {
-                        M3Icon(Icons.Rounded.Clear, stringResource(R.string.button_clear))
+        trailingIcon = if (keyword.isEmpty()) null else {
+            {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (focused) {
+                        IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordChange("") }) {
+                            M3Icon(ImageVector.vectorResource(R.drawable.ms_close), stringResource(R.string.button_clear))
+                        }
                     }
-                }
-                if (keyword.isNotBlank()) {
-                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordSubmit(keyword) }) {
-                        M3Icon(Icons.Rounded.Search, stringResource(R.string.button_search))
+                    if (keyword.isNotBlank()) {
+                        IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordSubmit(keyword) }) {
+                            M3Icon(ImageVector.vectorResource(R.drawable.ms_search), stringResource(R.string.button_search))
+                        }
                     }
                 }
             }

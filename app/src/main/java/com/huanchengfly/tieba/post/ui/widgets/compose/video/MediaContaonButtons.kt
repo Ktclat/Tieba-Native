@@ -11,10 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -26,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 
@@ -67,10 +65,10 @@ fun PlayPauseButton(modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         when {
-            isPlaying -> Icon(Icons.Rounded.Pause, stringResource(R.string.btn_pause_video))
+            isPlaying -> Icon(ImageVector.vectorResource(R.drawable.ms_pause), stringResource(R.string.btn_pause_video))
             playbackState == PlaybackState.BUFFERING -> LoadingIndicator(Modifier.size(24.dp))
-            playbackState == PlaybackState.ENDED -> Icon(Icons.Rounded.Replay, stringResource(R.string.btn_replay_video))
-            else -> Icon(Icons.Rounded.PlayArrow, stringResource(R.string.btn_play))
+            playbackState == PlaybackState.ENDED -> Icon(ImageVector.vectorResource(R.drawable.ms_replay), stringResource(R.string.btn_replay_video))
+            else -> Icon(ImageVector.vectorResource(R.drawable.ms_play_arrow), stringResource(R.string.btn_play))
         }
     }
 }

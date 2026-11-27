@@ -10,14 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,7 +26,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -103,9 +102,9 @@ internal fun <T> SearchHistorySection(
                     onLongClick = { onDelete(entry) },
                 ),
                 headlineContent = { Text(query, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                leadingContent = { Icon(Icons.Rounded.History, contentDescription = null) },
+                leadingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_history), contentDescription = null) },
                 trailingContent = if (managing) {
-                    { IconButton(onClick = { onDelete(entry) }, shapes = IconButtonDefaults.shapes()) { Icon(Icons.Rounded.Close, deleteLabel) } }
+                    { IconButton(onClick = { onDelete(entry) }, shapes = IconButtonDefaults.shapes()) { Icon(ImageVector.vectorResource(R.drawable.ms_close), deleteLabel) } }
                 } else null,
             )
         }

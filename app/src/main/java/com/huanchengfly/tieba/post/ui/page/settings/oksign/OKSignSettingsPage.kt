@@ -1,26 +1,18 @@
 package com.huanchengfly.tieba.post.ui.page.settings.oksign
 
-import androidx.compose.material3.MaterialTheme
 import android.os.Build
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BatteryAlert
-import androidx.compose.material.icons.outlined.BrowseGallery
-import androidx.compose.material.icons.outlined.OfflinePin
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +31,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
+import com.huanchengfly.tieba.post.ui.widgets.compose.SupportingMessage
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.utils.isIgnoringBatteryOptimizations
 import com.huanchengfly.tieba.post.utils.powerManager
@@ -80,7 +73,7 @@ fun OKSignSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.BrowseGallery,
+                                icon = ImageVector.vectorResource(R.drawable.ms_browse_gallery),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -98,7 +91,7 @@ fun OKSignSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Speed,
+                                icon = ImageVector.vectorResource(R.drawable.ms_speed),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -115,7 +108,7 @@ fun OKSignSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.OfflinePin,
+                                icon = ImageVector.vectorResource(R.drawable.ms_offline_pin),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -133,7 +126,7 @@ fun OKSignSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.WatchLater,
+                                icon = ImageVector.vectorResource(R.drawable.ms_watch_later),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -152,7 +145,7 @@ fun OKSignSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.BatteryAlert,
+                                icon = ImageVector.vectorResource(R.drawable.ms_battery_alert),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -179,26 +172,14 @@ fun OKSignSettingsPage(
             }
 
             prefsItem {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            style = SpanStyle(
-                                fontWeight = FontWeight.Bold
-                            )
-                        ) {
-                            append(stringResource(id = R.string.tip_start))
+                SupportingMessage(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append(stringResource(R.string.tip_start))
                         }
-                        append(stringResource(id = R.string.tip_auto_sign))
-                    },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .padding(start = 8.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .padding(12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                        append(stringResource(R.string.tip_auto_sign))
+                    })
+                }
             }
         }
     }

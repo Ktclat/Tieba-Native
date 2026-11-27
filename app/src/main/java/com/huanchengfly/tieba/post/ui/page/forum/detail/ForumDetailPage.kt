@@ -1,7 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.forum.detail
 
-import android.graphics.Typeface
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,8 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,14 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.PbContent
 import com.huanchengfly.tieba.post.api.models.protos.RecommendForumInfo
@@ -43,7 +37,6 @@ import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
@@ -153,27 +146,26 @@ private fun ForumDetailContent(
                 style = MaterialTheme.typography.titleLarge
             )
         }
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(color = MaterialTheme.colorScheme.surfaceContainer)
-                .padding(vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StatCardItem(
-                statNum = forumInfo.get { member_count },
-                statText = stringResource(id = R.string.text_stat_follow)
-            )
-            VerticalDivider(modifier = Modifier.height(16.dp))
-            StatCardItem(
-                statNum = forumInfo.get { thread_count },
-                statText = stringResource(id = R.string.text_stat_threads)
-            )
+        Card(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StatCardItem(
+                    statNum = forumInfo.get { member_count },
+                    statText = stringResource(id = R.string.text_stat_follow),
+                )
+                VerticalDivider(modifier = Modifier.height(16.dp))
+                StatCardItem(
+                    statNum = forumInfo.get { thread_count },
+                    statText = stringResource(id = R.string.text_stat_threads),
+                )
+            }
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Chip(text = stringResource(id = R.string.title_forum_intro))
+            Text(stringResource(R.string.title_forum_intro), style = MaterialTheme.typography.titleMedium)
             Column {
                 Text(text = forumInfo.get { slogan }, style = MaterialTheme.typography.bodyLarge)
                 Text(text = intro, style = MaterialTheme.typography.bodyLarge)
@@ -193,18 +185,12 @@ private fun RowScope.StatCardItem(
     ) {
         Text(
             text = statNum.getShortNumString(),
-            fontSize = 20.sp,
-            fontFamily = FontFamily(
-                Typeface.createFromAsset(
-                    LocalContext.current.assets,
-                    "bebas.ttf"
-                )
-            ),
+            style = MaterialTheme.typography.titleLarge,
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = statText,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

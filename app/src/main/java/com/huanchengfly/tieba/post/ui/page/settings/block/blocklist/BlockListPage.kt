@@ -2,9 +2,6 @@
 
 package com.huanchengfly.tieba.post.ui.page.settings.block.blocklist
 
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ListItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -18,15 +15,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.gson.reflect.TypeToken
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -55,8 +51,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
-import androidx.compose.material3.PrimaryTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.GsonUtil
@@ -160,7 +156,7 @@ fun BlockListPage(
                         },
                         shapes = ButtonDefaults.shapes(),
                     ) {
-                        Icon(if (black) Icons.Outlined.Block else Icons.Outlined.CheckCircle, null,
+                        Icon(ImageVector.vectorResource(if (black) R.drawable.ms_block else R.drawable.ms_check_circle), null,
                             modifier = Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text(stringResource(if (black) R.string.title_add_black else R.string.title_add_white))
@@ -223,7 +219,7 @@ fun BlockListPage(
 @Composable
 private fun BlockItemPlaceholder() {
     ListItem(
-        leadingContent = { Icon(Icons.Outlined.Block, null, Modifier.loadingPlaceholder(visible = true)) },
+        leadingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_block), null, Modifier.loadingPlaceholder(visible = true)) },
         headlineContent = { Text(stringResource(R.string.title_block_settings), Modifier.loadingPlaceholder(visible = true)) },
     )
 }
@@ -242,7 +238,7 @@ private fun BlockItem(
     ListItem(
         leadingContent = {
             Icon(
-                imageVector = if (isUser) Icons.Outlined.AccountCircle else ImageVector.vectorResource(R.drawable.ic_comment_new),
+                imageVector = ImageVector.vectorResource(if (isUser) R.drawable.ms_account_circle else R.drawable.ms_chat_bubble),
                 contentDescription = stringResource(if (isUser) R.string.block_type_user else R.string.block_type_keywords),
             )
         },

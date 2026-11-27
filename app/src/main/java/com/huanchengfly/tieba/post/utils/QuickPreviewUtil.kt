@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.utils
 
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.DrawableRes
@@ -11,6 +10,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.ForumPageBean
 import com.huanchengfly.tieba.post.api.models.ThreadContentBean
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaException
 import com.huanchengfly.tieba.post.components.ClipBoardForumLink
 import com.huanchengfly.tieba.post.components.ClipBoardLink
@@ -21,10 +21,10 @@ import com.huanchengfly.tieba.post.repository.PbPageRepository
 import com.huanchengfly.tieba.post.ui.page.forum.forumSortPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import retrofit2.Call
@@ -218,7 +218,7 @@ object QuickPreviewUtil {
                 url = clipBoardLink.url,
                 title = clipBoardLink.url,
                 subtitle = context.getString(R.string.subtitle_link),
-                icon = Icon(R.drawable.ic_link)
+                icon = Icon(R.drawable.ms_link)
             )
         )
         return listOfNotNull(flow, detailFlow).merge()
@@ -240,7 +240,7 @@ object QuickPreviewUtil {
                     url = link.url,
                     title = link.url,
                     subtitle = context.getString(R.string.subtitle_link),
-                    icon = Icon(R.drawable.ic_link)
+                    icon = Icon(R.drawable.ms_link)
                 )
             )
         }

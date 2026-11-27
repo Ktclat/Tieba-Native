@@ -2,15 +2,16 @@ package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsListItem
 import com.huanchengfly.tieba.post.ui.common.prefs.ifNotNullThen
 
@@ -49,7 +50,7 @@ fun TextPref(
         if (trailingContent == null && enabled && onClick != null) {
             @Composable {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    imageVector = ImageVector.vectorResource(R.drawable.ms_chevron_right),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),

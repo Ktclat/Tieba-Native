@@ -12,20 +12,33 @@ import android.provider.MediaStore
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -33,7 +46,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.huanchengfly.tieba.post.MainActivityV2
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.api.models.protos.frsPage.Classify
 import com.huanchengfly.tieba.post.api.models.protos.frsPage.ForumInfo
+import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.models.PicItem
@@ -43,12 +58,15 @@ import com.huanchengfly.tieba.post.ui.common.windowsizeclass.calculateWindowSize
 import com.huanchengfly.tieba.post.ui.page.forum.ForumContent
 import com.huanchengfly.tieba.post.ui.page.forum.ForumPartialChange
 import com.huanchengfly.tieba.post.ui.page.forum.ForumUiState
+import com.huanchengfly.tieba.post.ui.page.forum.forumSortPreference
+import com.huanchengfly.tieba.post.ui.page.forum.threadlist.GoodClassifyTabs
 import com.huanchengfly.tieba.post.ui.widgets.compose.NetworkImage
 import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideShouldLoad
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.collections.immutable.persistentListOf
 import kotlin.math.abs
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -158,19 +176,63 @@ class PixelForumGalleryTest {
             // The production navigation host supplies the surface behind this translucent page.
             Surface(modifier = Modifier.fillMaxSize()) {
                 ProvideShouldLoad(false) {
-                    ForumContent(name, 0, state, EmptyDestinationsNavigator, {})
+                    val sort by remember(name) { forumSortPreference(target, name) }.collectAsState(initial = 0)
+                    ForumContent(name, sort, state, EmptyDestinationsNavigator, {})
                 }
             }
         }
         val latest = target.getString(R.string.tab_forum_latest)
         val good = target.getString(R.string.tab_forum_good)
         awaitText(latest)
-        compose.onNodeWithText(latest).assertIsDisplayed()
-        tapText(good)
-        tapText(latest)
-        compose.onNodeWithText(title).assertIsDisplayed()
-        compose.waitForIdle()
+        val latestTab = compose.onNodeWithText(latest)
+        val goodTab = compose.onNodeWithText(good)
+        val left = latestTab.assertIsSelected().fetchSemanticsNode().boundsInRoot
+        val right = goodTab.fetchSemanticsNode().boundsInRoot
+        assertEquals(left.width, right.width, 1f)
+        assertEquals(left.right, right.left, 1f)
+        assertEquals(left.top, right.top, 1f)
+        assertEquals(left.bottom, right.bottom, 1f)
         capture("forum-normal")
+        tapText(good)
+        goodTab.assertIsSelected()
+        capture("forum-good")
+        tapText(latest)
+        latestTab.assertIsSelected()
+        tapText(latest)
+        val byReply = target.getString(R.string.title_sort_by_reply)
+        val byPost = target.getString(R.string.title_sort_by_send)
+        awaitText(byPost)
+        compose.onNodeWithText(byReply).assertIsSelected()
+        capture("forum-sort")
+        tapText(byPost)
+        val changedSort = hasStateDescription(target.getString(R.string.search_current_sort, byPost))
+        compose.waitUntil(10_000) { compose.onAllNodes(changedSort).fetchSemanticsNodes().isNotEmpty() }
+        tapText(latest)
+        compose.onNodeWithText(byPost).assertIsSelected()
+        tapText(byReply)
+        compose.onNodeWithText(title).assertIsDisplayed()
+
+        // The offline forum has no server-supplied categories. Exercise the same production
+        // chip row with nonempty data, and capture only that component as a separate fixture.
+        val classes = persistentListOf(
+            Classify(class_id = 0, class_name = "全部").wrapImmutable(),
+            Classify(class_id = 3, class_name = "路线攻略").wrapImmutable(),
+            Classify(class_id = 8, class_name = "装备交流").wrapImmutable(),
+        )
+        installContent {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                var selected by remember { mutableIntStateOf(0) }
+                Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                    Box(Modifier.fillMaxWidth().testTag("featured-categories")) {
+                        GoodClassifyTabs(classes, selected) { selected = it }
+                    }
+                }
+            }
+        }
+        tapText("路线攻略")
+        compose.onNodeWithText("路线攻略").assertIsSelected()
+        val chips = compose.onNodeWithTag("featured-categories").captureToImage().asAndroidBitmap()
+        File(directory, "forum-categories.png").outputStream().use { check(chips.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 
     private fun photo(name: String): File {

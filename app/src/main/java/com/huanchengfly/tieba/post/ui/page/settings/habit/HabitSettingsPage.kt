@@ -4,19 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.BrandingWatermark
-import androidx.compose.material.icons.automirrored.outlined.ExitToApp
-import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.material.icons.outlined.CalendarViewDay
-import androidx.compose.material.icons.outlined.ImageSearch
-import androidx.compose.material.icons.outlined.NightsStay
-import androidx.compose.material.icons.outlined.PhotoSizeSelectActual
-import androidx.compose.material.icons.outlined.SecurityUpdateWarning
-import androidx.compose.material.icons.outlined.SpeakerNotesOff
-import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material.icons.outlined.Verified
-import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -87,7 +74,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.PhotoSizeSelectActual,
+                                icon = ImageVector.vectorResource(R.drawable.ms_image),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -109,7 +96,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.AutoMirrored.Outlined.BrandingWatermark,
+                                icon = ImageVector.vectorResource(R.drawable.ms_branding_watermark),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -125,7 +112,7 @@ fun HabitSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.NightsStay,
+                            icon = ImageVector.vectorResource(R.drawable.ms_nights_stay),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -145,7 +132,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.CalendarViewDay,
+                                icon = ImageVector.vectorResource(R.drawable.ms_calendar_view_day),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -161,7 +148,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.AutoMirrored.Outlined.ExitToApp,
+                                icon = ImageVector.vectorResource(R.drawable.ms_exit_to_app),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -184,7 +171,7 @@ fun HabitSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = ImageVector.vectorResource(R.drawable.ic_outline_collapse_all),
+                            icon = ImageVector.vectorResource(R.drawable.ms_collapse_all),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -217,7 +204,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.StarOutline,
+                                icon = ImageVector.vectorResource(R.drawable.ms_star),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -235,7 +222,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.AutoMirrored.Rounded.Sort,
+                                icon = ImageVector.vectorResource(R.drawable.ms_sort),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -253,7 +240,7 @@ fun HabitSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.Verified,
+                            icon = ImageVector.vectorResource(R.drawable.ms_verified),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -268,7 +255,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.WatchLater,
+                                icon = ImageVector.vectorResource(R.drawable.ms_watch_later),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -284,7 +271,7 @@ fun HabitSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.SecurityUpdateWarning,
+                            icon = ImageVector.vectorResource(R.drawable.ms_security_update_warning),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -299,7 +286,7 @@ fun HabitSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.SpeakerNotesOff,
+                            icon = ImageVector.vectorResource(R.drawable.ms_speaker_notes_off),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -323,7 +310,7 @@ fun HabitSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.ImageSearch,
+                                icon = ImageVector.vectorResource(R.drawable.ms_image_search),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

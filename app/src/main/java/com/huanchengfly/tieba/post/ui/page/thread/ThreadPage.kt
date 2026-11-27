@@ -2,19 +2,16 @@
 
 package com.huanchengfly.tieba.post.ui.page.thread
 
-import com.huanchengfly.tieba.post.api.models.protos.openableThreadId
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -35,59 +32,42 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TonalToggleButton
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Chat
-import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.material.icons.rounded.AlignVerticalTop
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Face6
-import androidx.compose.material.icons.rounded.FaceRetouchingOff
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Report
-import androidx.compose.material.icons.rounded.RocketLaunch
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TonalToggleButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,13 +77,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -119,6 +101,7 @@ import com.huanchengfly.tieba.post.api.models.protos.SimpleForum
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.api.models.protos.plainText
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
@@ -134,23 +117,21 @@ import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.toJson
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
-import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.PbContentText
+import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
-import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
-import com.huanchengfly.tieba.post.ui.page.reply.openReply
-import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
+import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
+import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -162,8 +143,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.OriginThreadCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
+import com.huanchengfly.tieba.post.ui.widgets.compose.QuotedThread
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.StateIllustration
 import com.huanchengfly.tieba.post.ui.widgets.compose.TextWithMinWidth
@@ -173,6 +154,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
@@ -181,13 +163,13 @@ import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlin.math.max
 
 @Composable
 fun PostAgreeBtn(
@@ -213,7 +195,7 @@ fun PostAgreeBtn(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = if (hasAgreed) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                imageVector = ImageVector.vectorResource(if (hasAgreed) R.drawable.ms_favorite_filled else R.drawable.ms_favorite),
                 contentDescription = stringResource(id = R.string.title_agree),
                 tint = animatedColor,
                 modifier = Modifier.size(16.dp)
@@ -1160,18 +1142,14 @@ fun ThreadPage(
                                             thread?.getNullableImmutable { origin_thread_info }
                                                 .takeIf { thread?.get { is_share_thread } == 1 }
                                                 ?.let {
-                                                    val originId = it.get { openableThreadId }
-                                                    OriginThreadCard(
-                                                        originThreadInfo = it,
+                                                    QuotedThread(
+                                                        thread = it,
+                                                        onOpen = { id, fid ->
+                                                            navigator.navigate(ThreadPageDestination(id, forumId = fid))
+                                                        },
                                                         modifier = Modifier
                                                             .padding(horizontal = 16.dp)
-                                                            .padding(bottom = 16.dp)
-                                                            .clip(RoundedCornerShape(6.dp))
-                                                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                                                            .then(if (originId != null) Modifier.clickable {
-                                                                navigator.navigate(ThreadPageDestination(originId, forumId = it.get { fid }))
-                                                            } else Modifier)
-                                                            .padding(16.dp)
+                                                            .padding(bottom = 16.dp),
                                                     )
                                                 }
 
@@ -1217,39 +1195,34 @@ fun ThreadPage(
                             item(key = "LoadPreviousBtn") {
                                 if (hasPrevious) {
                                     Container {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    viewModel.send(
-                                                        ThreadUiIntent.LoadPrevious(
-                                                            threadId,
-                                                            max(currentPageMax - 1, 1),
-                                                            forumId,
-                                                            postId = data
-                                                                .first()
-                                                                .post
-                                                                .get { id },
-                                                            seeLz = isSeeLz,
-                                                            sortType = curSortType,
-                                                            postIds = data.map { it.post.get { id } }
-                                                        )
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.send(
+                                                    ThreadUiIntent.LoadPrevious(
+                                                        threadId,
+                                                        max(currentPageMax - 1, 1),
+                                                        forumId,
+                                                        postId = data
+                                                            .first()
+                                                            .post
+                                                            .get { id },
+                                                        seeLz = isSeeLz,
+                                                        sortType = curSortType,
+                                                        postIds = data.map { it.post.get { id } }
                                                     )
-                                                }
-                                                .padding(8.dp),
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalAlignment = Alignment.CenterVertically
+                                                )
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shapes = ButtonDefaults.shapes(),
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Rounded.AlignVerticalTop,
+                                                imageVector = ImageVector.vectorResource(R.drawable.ms_align_vertical_top),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(16.dp))
                                             Text(
-                                                text = stringResource(id = R.string.btn_load_previous),
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
+                                                text = stringResource(id = R.string.btn_load_previous)
                                             )
                                         }
                                     }
@@ -1261,7 +1234,7 @@ fun ThreadPage(
                                         TipScreen(
                                             title = { Text(text = stringResource(id = R.string.title_empty)) },
                                             image = {
-                                                StateIllustration(Icons.AutoMirrored.Rounded.Chat)
+                                                StateIllustration(ImageVector.vectorResource(R.drawable.ms_chat))
                                             },
                                             actions = {
                                                 if (canReload) {
@@ -1404,7 +1377,7 @@ internal fun ThreadBottomBar(
                 } else Spacer(Modifier.weight(1f))
                 PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
                 IconButton(onClick = onClickMore, shapes = IconButtonDefaults.shapes()) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                    Icon(ImageVector.vectorResource(R.drawable.ms_more_vert), contentDescription = stringResource(R.string.btn_more))
                 }
             }
             Spacer(
@@ -1642,7 +1615,7 @@ internal fun PostCard(
                             invertColor = true,
                             prefixIcon = {
                                 Icon(
-                                    imageVector = Icons.Rounded.Star,
+                                    imageVector = ImageVector.vectorResource(R.drawable.ms_star_filled),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -1679,14 +1652,13 @@ internal fun PostCard(
                                 }
                             }
                             if (moreReplies) {
-                                Text(
-                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable { onOpenSubPosts(0) }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                )
+                                TextButton(
+                                    onClick = { onOpenSubPosts(0) },
+                                    shapes = ButtonDefaults.shapes(),
+                                    modifier = Modifier.padding(start = 4.dp),
+                                ) {
+                                    Text(stringResource(R.string.open_all_sub_posts, post.sub_post_number))
+                                }
                             }
                         }
                     }
@@ -1834,7 +1806,7 @@ internal fun ThreadMenu(
                     onClick = onSeeLzClick,
                     icon = {
                         Icon(
-                            imageVector = if (isSeeLz) Icons.Rounded.Face6 else Icons.Rounded.FaceRetouchingOff,
+                            imageVector = ImageVector.vectorResource(if (isSeeLz) R.drawable.ms_face_6 else R.drawable.ms_face_retouching_off),
                             contentDescription = null
                         )
                     },
@@ -1855,7 +1827,7 @@ internal fun ThreadMenu(
                     onClick = onCollectClick,
                     icon = {
                         Icon(
-                            imageVector = if (isCollected) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                            imageVector = ImageVector.vectorResource(if (isCollected) R.drawable.ms_star_filled else R.drawable.ms_star),
                             contentDescription = null
                         )
                     },
@@ -1876,7 +1848,7 @@ internal fun ThreadMenu(
                     onClick = onImmersiveModeClick,
                     icon = {
                         Icon(
-                            imageVector = if (isImmersiveMode) Icons.AutoMirrored.Rounded.ChromeReaderMode else Icons.AutoMirrored.Outlined.ChromeReaderMode,
+                            imageVector = ImageVector.vectorResource(if (isImmersiveMode) R.drawable.ms_chrome_reader_mode_filled else R.drawable.ms_chrome_reader_mode),
                             contentDescription = null
                         )
                     },
@@ -1897,7 +1869,7 @@ internal fun ThreadMenu(
                     onClick = onDescClick,
                     icon = {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Sort,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_sort),
                             contentDescription = null
                         )
                     },
@@ -1907,28 +1879,28 @@ internal fun ThreadMenu(
         }
         Column {
             ListMenuItem(
-                icon = Icons.Rounded.RocketLaunch,
+                icon = ImageVector.vectorResource(R.drawable.ms_rocket_launch),
                 text = stringResource(id = R.string.title_jump_page),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onJumpPageClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.Share,
+                icon = ImageVector.vectorResource(R.drawable.ms_share),
                 text = stringResource(id = R.string.title_share),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onShareClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.ContentCopy,
+                icon = ImageVector.vectorResource(R.drawable.ms_content_copy),
                 text = stringResource(id = R.string.title_copy_link),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onCopyLinkClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.Report,
+                icon = ImageVector.vectorResource(R.drawable.ms_report),
                 text = stringResource(id = R.string.title_report),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onReportClick,
@@ -1936,7 +1908,7 @@ internal fun ThreadMenu(
             )
             if (canDelete()) {
                 ListMenuItem(
-                    icon = Icons.Rounded.Delete,
+                    icon = ImageVector.vectorResource(R.drawable.ms_delete),
                     text = stringResource(id = R.string.title_delete),
                     iconColor = MaterialTheme.colorScheme.onSurface,
                     onClick = onDeleteClick,

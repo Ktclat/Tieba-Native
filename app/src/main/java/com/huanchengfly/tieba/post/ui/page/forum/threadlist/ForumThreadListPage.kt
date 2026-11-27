@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -30,11 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
@@ -54,7 +57,6 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
@@ -72,9 +74,9 @@ private fun getRefreshIntent(
     forumName: String,
     isGood: Boolean,
     sortType: Int,
-    goodClassifyId: Int? = if (isGood) 0 else null,
+    goodClassifyId: Int?,
 ): ForumThreadListUiIntent {
-    return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, goodClassifyId)
+    return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, goodClassifyId ?: 0)
     else ForumThreadListUiIntent.Refresh(forumName, sortType, null)
 }
 
@@ -83,23 +85,26 @@ private enum class ItemType {
 }
 
 @Composable
-private fun GoodClassifyTabs(
+internal fun GoodClassifyTabs(
     goodClassifyHolders: ImmutableList<ImmutableHolder<Classify>>,
     selectedItem: Int?,
     onSelected: (Int) -> Unit,
 ) {
+    if (goodClassifyHolders.isEmpty()) return
+
     LazyRow(
-        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = goodClassifyHolders,
             key = { it.get { "${class_id}_$class_name" } }
         ) { holder ->
+            val (classify) = holder
             FilterChip(
-                label = { Text(holder.get { class_name }) },
-                selected = selectedItem == holder.get { class_id },
-                onClick = { onSelected(holder.get { class_id }) }
+                label = { Text(classify.class_name) },
+                selected = selectedItem == classify.class_id,
+                onClick = { if (selectedItem != classify.class_id) onSelected(classify.class_id) },
             )
         }
     }
@@ -112,26 +117,19 @@ private fun TopThreadItem(
     modifier: Modifier = Modifier,
     type: String = stringResource(id = R.string.content_top),
 ) {
-    Row(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Chip(
-            text = type,
-            shape = RoundedCornerShape(3.dp)
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-            fontSize = 15.sp
-        )
-    }
+    ListItem(
+        modifier = modifier.clickable(role = Role.Button, onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Badge(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) { Text(type, style = MaterialTheme.typography.labelSmall) }
+        },
+        headlineContent = {
+            Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+    )
 }
 
 @Composable
@@ -244,10 +242,14 @@ fun ForumThreadListPage(
         viewModel.send(getFirstLoadIntent(forumName, isGood, sortType))
         viewModel.initialized = true
     }
+    val goodClassifyId by viewModel.uiState.collectPartialAsState(
+        prop1 = ForumThreadListUiState::goodClassifyId,
+        initial = null
+    )
     onGlobalEvent<ForumThreadListUiEvent.Refresh>(
         filter = { it.isGood == isGood },
     ) {
-        viewModel.send(getRefreshIntent(forumName, isGood, it.sortType))
+        viewModel.send(getRefreshIntent(forumName, isGood, it.sortType, goodClassifyId))
     }
     onGlobalEvent<ForumThreadListUiEvent.BackToTop>(
         filter = { it.isGood == isGood },
@@ -303,10 +305,6 @@ fun ForumThreadListPage(
         prop1 = ForumThreadListUiState::threadListIds,
         initial = persistentListOf()
     )
-    val goodClassifyId by viewModel.uiState.collectPartialAsState(
-        prop1 = ForumThreadListUiState::goodClassifyId,
-        initial = null
-    )
     val goodClassifies by viewModel.uiState.collectPartialAsState(
         prop1 = ForumThreadListUiState::goodClassifies,
         initial = persistentListOf()
@@ -339,7 +337,9 @@ fun ForumThreadListPage(
                 onLoadMore = {
                     viewModel.send(
                         ForumThreadListUiIntent.LoadMore(
-                            forumId, forumName, currentPage, threadListIds, if (isGood) 0 else sortType,
+                            forumId, forumName, currentPage, threadListIds,
+                            sortType = if (isGood) 0 else sortType,
+                            goodClassifyId = if (isGood) goodClassifyId ?: 0 else null,
                         )
                     )
                 },

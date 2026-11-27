@@ -4,10 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.OfflineBolt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,8 +38,8 @@ import com.huanchengfly.tieba.post.utils.ImageCacheUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
+import kotlinx.coroutines.launch
 
 @Destination
 @Composable
@@ -88,7 +84,7 @@ fun MoreSettingsPage(
                         leadingIcon = {
                             LeadingIcon {
                                 AvatarIcon(
-                                    icon = Icons.Outlined.BugReport,
+                                    icon = ImageVector.vectorResource(R.drawable.ms_bug_report),
                                     size = Sizes.Small,
                                     contentDescription = null,
                                 )
@@ -106,7 +102,7 @@ fun MoreSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = ImageVector.vectorResource(id = R.drawable.ic_chrome),
+                                icon = ImageVector.vectorResource(id = R.drawable.ms_web),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -126,7 +122,7 @@ fun MoreSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = ImageVector.vectorResource(id = R.drawable.ic_today),
+                                icon = ImageVector.vectorResource(id = R.drawable.ms_today),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -147,7 +143,7 @@ fun MoreSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.OfflineBolt,
+                                icon = ImageVector.vectorResource(R.drawable.ms_offline_bolt),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -170,7 +166,7 @@ fun MoreSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Info,
+                                icon = ImageVector.vectorResource(R.drawable.ms_info),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

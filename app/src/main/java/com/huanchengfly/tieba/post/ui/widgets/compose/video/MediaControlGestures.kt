@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,20 +20,23 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.util.getDurationString
+import java.util.Objects
+import kotlin.math.abs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
-import java.util.Objects
-import kotlin.math.abs
 
 @Composable
 fun MediaControlGestures(
@@ -224,7 +224,7 @@ fun Modifier.quickSeekAnimation(
                 .fillMaxHeight()
         ) {
             ShadowedIcon(
-                Icons.Filled.FastRewind,
+                ImageVector.vectorResource(R.drawable.ms_fast_rewind_filled),
                 modifier = Modifier
                     .alpha(alphaRewind.value)
                     .align(Alignment.Center)
@@ -237,7 +237,7 @@ fun Modifier.quickSeekAnimation(
                 .fillMaxHeight()
         ) {
             ShadowedIcon(
-                Icons.Filled.FastForward,
+                ImageVector.vectorResource(R.drawable.ms_fast_forward_filled),
                 modifier = Modifier
                     .alpha(alphaForward.value)
                     .align(Alignment.Center)

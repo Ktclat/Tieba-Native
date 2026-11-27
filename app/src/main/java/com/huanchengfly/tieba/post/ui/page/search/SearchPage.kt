@@ -9,24 +9,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -43,13 +36,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -152,20 +149,13 @@ fun SearchPage(
         topBar = {
             TopAppBarContainer(
                 topBar = {
-                    Box(
-                        modifier = Modifier
-                            .height(64.dp)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        SearchTopBar(
-                            keyword = input,
-                            onKeywordChange = ::edit,
-                            onKeywordSubmit = ::submit,
-                            onBack = ::goBack,
-                            focusRequester = focusRequester,
-                        )
-                    }
+                    SearchTopBar(
+                        keyword = input,
+                        onKeywordChange = ::edit,
+                        onKeywordSubmit = ::submit,
+                        onBack = ::goBack,
+                        focusRequester = focusRequester,
+                    )
                 },
             ) {
                 if (showingResults) {
@@ -219,6 +209,17 @@ fun SearchPage(
 }
 
 @Composable
+internal fun SearchResultHeading(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() },
+    )
+}
+
+@Composable
 internal fun SearchSuggestionList(
     suggestions: ImmutableList<String>,
     onItemClick: (String) -> Unit,
@@ -229,10 +230,10 @@ internal fun SearchSuggestionList(
             ListItem(
                 modifier = Modifier.clickable(role = Role.Button) { onItemClick(term) },
                 headlineContent = { Text(term) },
-                leadingContent = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                leadingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_search), contentDescription = null) },
                 trailingContent = {
                     IconButton(onClick = { onFill(term) }, shapes = IconButtonDefaults.shapes()) {
-                        Icon(Icons.Rounded.Edit, stringResource(R.string.search_fill_suggestion, term))
+                        Icon(ImageVector.vectorResource(R.drawable.ms_edit), stringResource(R.string.search_fill_suggestion, term))
                     }
                 },
             )
@@ -257,12 +258,14 @@ internal fun SearchTabs(
             Box {
                 Tab(
                     selected = selected,
-                    modifier = if (canSort) Modifier.semantics { stateDescription = sortDescription } else Modifier,
+                    modifier = Modifier.fillMaxWidth().then(
+                        if (canSort) Modifier.semantics { stateDescription = sortDescription } else Modifier
+                    ),
                     onClick = { if (canSort) expanded = true else onTabSelected(tab) },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(tab.title))
-                            if (canSort) Icon(Icons.Rounded.ArrowDropDown, null, Modifier.size(18.dp))
+                            if (canSort) Icon(ImageVector.vectorResource(R.drawable.ms_arrow_drop_down), null, Modifier.size(18.dp))
                         }
                     },
                 )
@@ -273,7 +276,7 @@ internal fun SearchTabs(
                                 modifier = Modifier.semantics { this.selected = type == sortType },
                                 text = { Text(stringResource(label)) },
                                 trailingIcon = {
-                                    if (type == sortType) Icon(Icons.Rounded.Check, null)
+                                    if (type == sortType) Icon(ImageVector.vectorResource(R.drawable.ms_check), null)
                                 },
                                 onClick = {
                                     expanded = false
@@ -300,13 +303,16 @@ internal fun SearchTopBar(
     SearchBox(
         keyword = keyword,
         onKeywordChange = onKeywordChange,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         onKeywordSubmit = onKeywordSubmit,
         focusRequester = focusRequester,
-        placeholder = { Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        placeholder = { Text(hint, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         prependIcon = {
             IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
+                Icon(ImageVector.vectorResource(R.drawable.ms_arrow_back), stringResource(R.string.button_back))
             }
         },
     )
@@ -317,17 +323,7 @@ internal fun SearchTopBar(
 fun PreviewSearchBox() {
     var keyword by remember { mutableStateOf("") }
     TiebaLiteTheme {
-        Box(
-            modifier = Modifier
-                .height(64.dp)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(vertical = 8.dp, horizontal = 16.dp)
-        ) {
-            SearchTopBar(
-                keyword = keyword,
-                onKeywordChange = { keyword = it }
-            )
-        }
+        SearchTopBar(keyword = keyword, onKeywordChange = { keyword = it })
     }
 }
 

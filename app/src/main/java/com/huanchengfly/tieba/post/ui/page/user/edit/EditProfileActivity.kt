@@ -2,11 +2,6 @@
 
 package com.huanchengfly.tieba.post.ui.page.user.edit
 
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.MaterialTheme
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -35,10 +30,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -66,7 +64,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.github.panpf.sketch.compose.AsyncImage
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.BaseActivity
@@ -81,6 +78,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.CounterTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.picker.ListSinglePicker
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.AccountUtil
@@ -94,13 +92,13 @@ import com.huanchengfly.tieba.post.utils.requestPermission
 import com.huanchengfly.tieba.post.utils.shouldUsePhotoPicker
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.File
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
-import java.io.File
 
 @AndroidEntryPoint
 class EditProfileActivity : BaseActivity() {
@@ -311,7 +309,7 @@ fun EditProfileCard(
                     shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.PhotoCamera,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_photo_camera),
                         contentDescription = stringResource(id = R.string.upload_portrait),
                         modifier = Modifier
                             .size(24.dp)
@@ -345,7 +343,7 @@ fun EditProfileCard(
                         else -> R.string.profile_sex_unset
                     }))
                 },
-                trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ic_round_chevron_right), null) },
+                trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_chevron_right), null) },
                 colors = rowColors,
             )
             CounterTextField(
@@ -387,7 +385,7 @@ fun PageEditProfile(
                     navigationIcon = { BackNavigationIcon { onBackPressed() } },
                     actions = {
                         ActionItem(
-                            icon = ImageVector.vectorResource(id = R.drawable.ic_round_save_24),
+                            icon = ImageVector.vectorResource(id = R.drawable.ms_save),
                             contentDescription = stringResource(id = R.string.button_save_profile)
                         ) {
                             if (sex != uiState.sex ||
