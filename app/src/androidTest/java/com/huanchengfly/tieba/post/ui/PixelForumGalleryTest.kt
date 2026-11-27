@@ -22,11 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.huanchengfly.tieba.post.MainActivityV2
@@ -90,33 +92,38 @@ class PixelForumGalleryTest {
         compose.onNodeWithText(text).assertIsDisplayed().performTouchInput { click() }
     }
 
-    private fun capture(name: String, photoColor: Int? = null) {
+    private fun capture(name: String, photoColor: Int? = null, preferChooserPreview: Boolean = false) {
         val end = SystemClock.uptimeMillis() + 12_000
-        do {
+        while (true) {
             val raw = checkNotNull(device.takeScreenshot())
             val frame = if (raw.config == Bitmap.Config.HARDWARE) {
                 raw.copy(Bitmap.Config.ARGB_8888, false).also { raw.recycle() }
             } else raw
             try {
-                // Check the large image itself, above the controls and away from screen edges.
-                val hasPhoto = photoColor == null || (frame.height / 3 until 2 * frame.height / 3 step 24).sumOf { y ->
-                    (frame.width / 8 until 7 * frame.width / 8 step 24).count { x ->
+                // The viewer has a large centered image. Android chooses its own preview bounds.
+                val ys = if (preferChooserPreview) 0 until frame.height else frame.height / 3 until 2 * frame.height / 3
+                val xs = if (preferChooserPreview) 0 until frame.width else frame.width / 8 until 7 * frame.width / 8
+                val minimumSamples = if (preferChooserPreview) 12 else 140
+                val hasPhoto = photoColor == null || (ys step 24).sumOf { y ->
+                    (xs step 24).count { x ->
                         val c = frame.getPixel(x, y)
                         abs(Color.red(c) - Color.red(photoColor)) < 5 &&
                             abs(Color.green(c) - Color.green(photoColor)) < 5 &&
                             abs(Color.blue(c) - Color.blue(photoColor)) < 5
                     }
-                } > 140
-                if (hasPhoto) {
+                } > minimumSamples
+                val expired = SystemClock.uptimeMillis() >= end
+                // An OS release can omit media previews; URI, type and bytes are tested separately.
+                if (hasPhoto || (preferChooserPreview && expired)) {
                     File(directory, "$name.png").outputStream().use { check(frame.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                     return
                 }
+                check(!expired) { "Expected fixture image did not become visible on $name" }
             } finally {
                 frame.recycle()
             }
             SystemClock.sleep(120)
-        } while (SystemClock.uptimeMillis() < end)
-        error("Expected fixture image did not become visible on $name")
+        }
     }
 
     @Test fun openForumFromHistoryRetryReturnAndShowForumData() {
@@ -215,6 +222,7 @@ class PixelForumGalleryTest {
     }
 
     @Test fun openTwoPhotosAndSaveAndShareTheVisibleImage() {
+        val sourceActivity = compose.activity
         val first = photo("trail-map")
         val second = photo("trail-profile")
         val items = listOf(first, second).mapIndexed { index, file ->
@@ -286,14 +294,21 @@ class PixelForumGalleryTest {
                 assertEquals("content", stream.scheme)
                 assertArrayEquals(expected, target.contentResolver.openInputStream(stream)!!.use { it.readBytes() })
                 awaitForeground(checkNotNull(chooser.resolveActivity(target.packageManager)).packageName)
-                capture("gallery-share")
+                capture("gallery-share", Color.rgb(36, 75, 71), preferChooserPreview = true)
             } finally {
                 instrumentation.removeMonitor(monitor)
                 instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             }
-            awaitText("2 / 2")
+            awaitForeground(target.packageName, "2 / 2")
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-            compose.onNodeWithContentDescription("步道路线图").assertIsDisplayed()
+            compose.waitUntil(20_000) {
+                compose.runOnUiThread {
+                    sourceActivity.lifecycle.currentState == Lifecycle.State.RESUMED && sourceActivity.hasWindowFocus()
+                }
+            }
+            val thumbnail = compose.onNodeWithContentDescription("步道路线图")
+            compose.waitUntil(15_000) { thumbnail.isDisplayed() }
+            thumbnail.assertIsDisplayed()
         } finally {
             target.contentResolver.delete(saved, null, null)
         }

@@ -197,7 +197,7 @@
     <string name="title_dialog_clip_board_tieba_url">是否要打开剪贴板中的链接</string>
     <string name="subtitle_quick_preview_thread">来自%1$s吧，共 %2$s 条回复</string>
     <string name="subtitle_link">网页链接</string>
-    <string name="toast_preparing_share_pic">下载图片中…</string>
+    <string name="toast_preparing_share_pic">正在准备分享图片…</string>
     <string name="title_select_pic">选择背景图片</string>
     <string name="title_translucent_theme_alpha">透明度</string>
     <string name="title_translucent_theme_blur">模糊度</string>
