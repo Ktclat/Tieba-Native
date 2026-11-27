@@ -59,7 +59,9 @@ fun MultiSelectListPref(
     dialogBackgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
-    entries: Map<String, String> = mapOf() //TODO: Change to List?
+    entries: Map<String, String> = emptyMap(),
+    leadingIcon: @Composable (() -> Unit)? = null,
+    selectedSummary: (@Composable (Set<String>) -> String)? = null,
 ) {
 
     val entryList = remember(entries) { entries.toList() }
@@ -88,7 +90,8 @@ fun MultiSelectListPref(
     TextPref(
         title = title,
         modifier = modifier,
-        summary = summary,
+        summary = selectedSummary?.invoke(selected) ?: summary,
+        leadingIcon = leadingIcon,
         textColor = textColor,
         enabled = enabled,
         onClick = { showDialog = true },

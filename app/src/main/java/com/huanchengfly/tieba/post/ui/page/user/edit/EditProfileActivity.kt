@@ -15,8 +15,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +27,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TonalToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +61,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -79,7 +88,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
-import com.huanchengfly.tieba.post.ui.widgets.compose.picker.ListSinglePicker
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.ColorUtils
@@ -93,7 +101,6 @@ import com.huanchengfly.tieba.post.utils.shouldUsePhotoPicker
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -429,18 +436,26 @@ fun PageEditProfile(
                         DialogNegativeButton(text = stringResource(id = R.string.button_cancel))
                     }
                 ) {
-                    ListSinglePicker(
-                        itemTitles = persistentListOf(
-                            stringResource(id = R.string.profile_sex_male),
-                            stringResource(id = R.string.profile_sex_female)
-                        ),
-                        itemValues = persistentListOf(1, 2),
-                        selectedPosition = if (sex == 1) 0 else if (sex == 2) 1 else -1,
-                        onItemSelected = { _, _, value, _ ->
-                            sex = value
-                            dismiss()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    ) {
+                        listOf(1 to R.string.profile_sex_male, 2 to R.string.profile_sex_female).forEach { (value, label) ->
+                            TonalToggleButton(
+                                checked = sex == value,
+                                onCheckedChange = {
+                                    sex = value
+                                    dismiss()
+                                },
+                                shapes = if (value == 1) ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    else ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                                modifier = Modifier.weight(1f).semantics {
+                                    role = Role.RadioButton
+                                    selected = sex == value
+                                },
+                            ) { Text(stringResource(label)) }
                         }
-                    )
+                    }
                 }
                 Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.card_margin)))
                 EditProfileCard(

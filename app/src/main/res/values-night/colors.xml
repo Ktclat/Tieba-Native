@@ -2,6 +2,7 @@
 <resources>
     <color name="color_place_holder">#333</color>
     <color name="colorSplashBg">@color/m3_sys_color_dark_surface</color>
+    <color name="colorSplashWordmark">@color/m3_sys_color_dark_on_surface_variant</color>
 
     <color name="color_swipe_refresh_bg">#1C2938</color>
 </resources>

@@ -39,9 +39,13 @@ class MainLaunchThemeTest {
             assertEquals(255, Color.alpha(launchColor))
             assertNotEquals(Color.BLACK, launchColor)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val platform = splash.obtainStyledAttributes(intArrayOf(android.R.attr.windowSplashScreenBackground))
+                val platform = splash.obtainStyledAttributes(intArrayOf(
+                    android.R.attr.windowSplashScreenBackground,
+                    android.R.attr.windowSplashScreenBrandingImage,
+                ))
                 try {
                     assertEquals(launchColor, platform.getColor(0, Color.TRANSPARENT))
+                    assertEquals(R.drawable.ic_splash_tieba_native, platform.getResourceId(1, 0))
                 } finally {
                     platform.recycle()
                 }

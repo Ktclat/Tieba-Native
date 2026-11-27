@@ -16,28 +16,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import com.huanchengfly.tieba.post.LocalDestination
-import com.huanchengfly.tieba.post.LocalNavController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
-import com.huanchengfly.tieba.post.ui.page.destinations.ThreadTabSearchPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.SearchThreadList
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.spec.Direction
 import kotlinx.collections.immutable.ImmutableList
-
-internal fun DestinationsNavigator.openThreadTabSearchResult(controller: NavHostController, destination: Direction) {
-    // Until a result is chosen, Back still cancels the picker and restores its caller.
-    val previous = controller.previousBackStackEntry?.destination?.route
-    val replaceFrom = if (previous == ThreadPageDestination.route) ThreadPageDestination.route else ThreadTabSearchPageDestination.route
-    navigate(destination) { popUpTo(replaceFrom) { inclusive = true } }
-}
 
 @Composable
 internal fun SearchThreadResults(
@@ -51,18 +40,15 @@ internal fun SearchThreadResults(
     onRetryPage: (() -> Unit)? = null,
     header: LazyListScope.() -> Unit = {},
 ) {
-    val pickingTab = LocalDestination.current == ThreadTabSearchPageDestination
-    val controller = if (pickingTab) LocalNavController.current else null
     fun open(destination: Direction?) {
-        if (destination == null) return
-        if (controller == null) navigator.navigate(destination) else navigator.openThreadTabSearchResult(controller, destination)
+        if (destination != null) navigator.navigate(destination)
     }
 
     SearchThreadList(
         data = data,
         lazyListState = lazyListState,
-        onItemClick = { open(it.searchDestination(openInTab = pickingTab)) },
-        onReplyClick = { open(it.searchDestination(scrollToReply = true, openInTab = pickingTab)) },
+        onItemClick = { open(it.searchDestination()) },
+        onReplyClick = { open(it.searchDestination(scrollToReply = true)) },
         onItemUserClick = { user ->
             user.userId.positiveId()?.let { navigator.navigate(UserProfilePageDestination(it)) }
         },
@@ -96,14 +82,10 @@ internal fun SearchThreadResults(
 
 private fun String?.positiveId(): Long? = this?.toLongOrNull()?.takeIf { it > 0 }
 
-internal fun SearchThreadBean.ThreadInfoBean.searchDestination(scrollToReply: Boolean = false, openInTab: Boolean = false): Direction? {
+internal fun SearchThreadBean.ThreadInfoBean.searchDestination(scrollToReply: Boolean = false): Direction? {
     val threadId = tid.positiveId() ?: return postInfo?.searchDestination(scrollToReply) ?: mainPost?.searchDestination()
     if (postInfo != null) {
         cid.positiveId()?.let { subPostId ->
-            if (openInTab) {
-                val floorId = postInfo.takeIf { it.tid == threadId && it.pid > 0 }?.pid ?: 0L
-                return ThreadPageDestination(threadId = threadId, postId = floorId, scrollToReply = true)
-            }
             return SubPostsPageDestination(threadId = threadId, subPostId = subPostId, loadFromSubPost = true)
         }
     }

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,15 +66,17 @@ import com.huanchengfly.tieba.post.components.ClipBoardLinkDetector
 import com.huanchengfly.tieba.post.components.ClipBoardThreadLink
 import com.huanchengfly.tieba.post.services.NotifyJobService
 import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.PredictiveBackKey
+import com.huanchengfly.tieba.post.ui.common.ProvideBackDispatcher
 import com.huanchengfly.tieba.post.utils.LocalBlockRuleStore
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppThemeName
-import androidx.compose.runtime.key
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.ui.page.thread.tabs.LocalThreadTabs
 import com.huanchengfly.tieba.post.ui.page.thread.tabs.rememberThreadTabs
 import com.huanchengfly.tieba.post.ui.page.NavGraphs
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import com.huanchengfly.tieba.post.ui.utils.DevicePosture
 import com.huanchengfly.tieba.post.ui.utils.isBookPosture
 import com.huanchengfly.tieba.post.ui.utils.isSeparating
@@ -115,6 +118,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -129,6 +133,7 @@ val LocalDevicePosture =
 val LocalNavController =
     staticCompositionLocalOf<NavHostController> { throw IllegalStateException("not allowed here!") }
 val LocalDestination = compositionLocalOf<DestinationSpec<*>?> { null }
+internal val LocalVisibleMainTabs = compositionLocalOf { MainNavigationPreferences.visibleIds(MainNavigationPreferences.options.keys) }
 
 @AndroidEntryPoint
 class MainActivityV2 : BaseComposeActivity() {
@@ -392,15 +397,19 @@ class MainActivityV2 : BaseComposeActivity() {
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun Content() {
         val storedRules by remember { LocalBlockRuleStore.rules(applicationContext) }.collectAsState(initial = null)
+        val visibleTabs by remember {
+            dataStore.data.map { MainNavigationPreferences.visibleIds(it) }.distinctUntilChanged()
+        }.collectAsState(initial = null)
         val rules = storedRules
-        if (rules == null) {
+        val tabs = visibleTabs
+        if (rules == null || tabs == null) {
             // Draw an opaque first frame while the local rules are read. Links and previews
             // must wait for those rules before displaying any content.
             Surface(modifier = Modifier.fillMaxSize()) {
                 Box(contentAlignment = Alignment.Center) { LoadingIndicator() }
             }
         } else {
-            CompositionLocalProvider(LocalContentBlockRules provides rules) { MainContent() }
+            CompositionLocalProvider(LocalContentBlockRules provides rules, LocalVisibleMainTabs provides tabs) { MainContent() }
         }
     }
 
@@ -455,24 +464,35 @@ class MainActivityV2 : BaseComposeActivity() {
                 val currentDestination by navController.currentDestinationAsState()
 
                 CompositionLocalProvider(
-                    LocalThreadTabs provides key(LocalAccount.current?.uid) { rememberThreadTabs() },
+                    LocalThreadTabs provides rememberThreadTabs(LocalAccount.current?.uid),
                     LocalNavController provides navController,
                     LocalDestination provides currentDestination,
                 ) {
+                    val predictiveBack = dataStore.collectPreferenceAsState(PredictiveBackKey, false)
                     val motion = MaterialTheme.motionScheme.fastEffectsSpec<IntOffset>()
-                    val transitions = remember(motion) {
+                    val transitions = remember(motion, predictiveBack) {
                         RootNavGraphDefaultAnimations(
                             enterTransition = { slideIntoContainer(SlideDirection.Start, motion) },
                             exitTransition = { slideOutOfContainer(SlideDirection.Start, motion) },
-                            popEnterTransition = { fadeIn(tween(140, delayMillis = 70)) },
-                            popExitTransition = { fadeOut(tween(70)) },
+                            // Adjacent pages share the same distance and timing, including when
+                            // AndroidX seeks the transition backwards after a cancelled gesture.
+                            popEnterTransition = {
+                                if (predictiveBack.value) slideIntoContainer(SlideDirection.End, tween(240, easing = LinearEasing))
+                                else fadeIn(tween(140, delayMillis = 70))
+                            },
+                            popExitTransition = {
+                                if (predictiveBack.value) slideOutOfContainer(SlideDirection.End, tween(240, easing = LinearEasing))
+                                else fadeOut(tween(70))
+                            },
                         )
                     }
-                    DestinationsNavHost(
-                        navController = navController,
-                        navGraph = NavGraphs.root,
-                        engine = rememberNavHostEngine(rootDefaultAnimations = transitions),
-                    )
+                    ProvideBackDispatcher(predictiveBack.value) {
+                        DestinationsNavHost(
+                            navController = navController,
+                            navGraph = NavGraphs.root,
+                            engine = rememberNavHostEngine(rootDefaultAnimations = transitions),
+                        )
+                    }
                 }
 
                 SideEffect {

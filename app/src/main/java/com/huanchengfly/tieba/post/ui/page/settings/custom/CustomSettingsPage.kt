@@ -24,16 +24,22 @@ import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.common.PredictiveBackKey
 import com.huanchengfly.tieba.post.activities.AppFontSizeActivity
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.rememberPreferenceAsState
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.ListPref
+import com.huanchengfly.tieba.post.ui.common.prefs.widgets.MultiSelectListPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.SwitchPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
 import com.huanchengfly.tieba.post.ui.page.main.FloatingNavigationBarKey
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import com.huanchengfly.tieba.post.ui.page.settings.LeadingIcon
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsGridLayout
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsLayoutKey
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsStackLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -92,6 +98,20 @@ fun CustomSettingsPage(
                         context.goToActivity<AppFontSizeActivity>()
                     }
                 )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                prefsItem {
+                    SwitchPref(
+                        key = PredictiveBackKey.name,
+                        title = stringResource(R.string.title_predictive_back),
+                        summary = stringResource(R.string.summary_predictive_back),
+                        leadingIcon = {
+                            LeadingIcon {
+                                AvatarIcon(resId = R.drawable.ms_arrow_back, size = Sizes.Small, contentDescription = null)
+                            }
+                        },
+                    )
+                }
             }
             prefsItem {
                 val darkThemeValues = stringArrayResource(id = R.array.dark_theme_values)
@@ -262,6 +282,23 @@ fun CustomSettingsPage(
                 )
             }
             prefsItem {
+                ListPref(
+                    key = ThreadTabsLayoutKey.name,
+                    title = stringResource(R.string.thread_tabs_layout_title),
+                    defaultValue = ThreadTabsGridLayout,
+                    entries = mapOf(
+                        ThreadTabsGridLayout to stringResource(R.string.thread_tabs_layout_grid),
+                        ThreadTabsStackLayout to stringResource(R.string.thread_tabs_layout_stack),
+                    ),
+                    useSelectedAsSummary = true,
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_apps, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
+                )
+            }
+            prefsItem {
                 SwitchPref(
                     key = "listSingle",
                     title = stringResource(id = R.string.settings_forum_single),
@@ -289,19 +326,22 @@ fun CustomSettingsPage(
                 )
             }
             prefsItem {
-                SwitchPref(
-                    key = "hideExplore",
-                    title = stringResource(id = R.string.title_hide_explore),
-                    defaultChecked = false,
-                ) {
-                    LeadingIcon {
-                        AvatarIcon(
-                            icon = ImageVector.vectorResource(R.drawable.ms_explore),
-                            size = Sizes.Small,
-                            contentDescription = null,
-                        )
-                    }
-                }
+                val labels = MainNavigationPreferences.options.mapValues { stringResource(it.value) }
+                val userLabel = stringResource(R.string.title_user)
+                MultiSelectListPref(
+                    key = MainNavigationPreferences.key.name,
+                    title = stringResource(R.string.title_visible_main_tabs),
+                    defaultValue = MainNavigationPreferences.options.keys,
+                    entries = labels,
+                    selectedSummary = { enabled ->
+                        MainNavigationPreferences.visibleIds(enabled).joinToString("、") { labels[it] ?: userLabel }
+                    },
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_bottom_navigation, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
+                )
             }
             prefsItem {
                 SwitchPref(

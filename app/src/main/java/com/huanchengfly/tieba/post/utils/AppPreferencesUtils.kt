@@ -107,8 +107,6 @@ open class AppPreferencesUtils private constructor(private val preferencesDataSt
 
     var hideBlockedContent by DataStoreDelegates.boolean(defaultValue = false)
 
-    var hideExplore by DataStoreDelegates.boolean(defaultValue = false)
-
     var hideForumIntroAndStat by DataStoreDelegates.boolean(defaultValue = false)
 
     var hideMedia by DataStoreDelegates.boolean(defaultValue = false)

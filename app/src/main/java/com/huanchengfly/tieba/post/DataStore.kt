@@ -14,6 +14,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,7 +45,8 @@ private val dataStoreInstance by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) 
                     override suspend fun shouldMigrate(currentData: Preferences): Boolean {
                         return currentData[stringPreferencesKey("dark_theme")] == "dark"
                     }
-                }
+                },
+                MainNavigationPreferences,
             )
         }
     )

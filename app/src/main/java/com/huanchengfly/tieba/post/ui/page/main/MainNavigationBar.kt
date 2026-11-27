@@ -158,7 +158,7 @@ internal fun MainNavigationBar(
         navigationItems.forEachIndexed { index, item ->
             key(item.id) {
                 val selected = index == currentPosition
-                val drag = if (selected) {
+                val drag = if (selected && navigationItems.size > 1) {
                     Modifier.pointerInput(index, navigationItems.size, rtl) {
                         var distance = 0f
                         detectHorizontalDragGestures(

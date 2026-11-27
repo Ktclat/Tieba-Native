@@ -19,6 +19,9 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isOff
+import androidx.compose.ui.test.isOn
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -28,10 +31,16 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.datastore.preferences.core.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.huanchengfly.tieba.post.MainActivityV2
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.dataStore
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsLayoutKey
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
@@ -196,6 +205,91 @@ class PixelSearchNavigationTest {
         await(hasText(context.getString(R.string.button_retry)))
         compose.onNodeWithText(context.getString(R.string.title_forum, "摄影")).assertIsDisplayed()
         compose.onNode(blockedForum).assertDoesNotExist()
+    }
+
+    @Test fun chooseSavedTabLayoutAndVisibleBottomDestinations() {
+        val store = context.dataStore
+        val original = runBlocking { store.data.first() }
+        try {
+            checkTabAndNavigationSettings()
+        } finally {
+            runBlocking {
+                store.edit { prefs ->
+                    val destinations = original[MainNavigationPreferences.key]
+                    val layout = original[ThreadTabsLayoutKey]
+                    if (destinations == null) prefs.remove(MainNavigationPreferences.key) else prefs[MainNavigationPreferences.key] = destinations
+                    if (layout == null) prefs.remove(ThreadTabsLayoutKey) else prefs[ThreadTabsLayoutKey] = layout
+                }
+            }
+        }
+    }
+
+    private fun checkTabAndNavigationSettings() {
+        val layoutTitle = context.getString(R.string.thread_tabs_layout_title)
+        val grid = hasText(context.getString(R.string.thread_tabs_layout_grid)) and selectable
+        val stacked = hasText(context.getString(R.string.thread_tabs_layout_stack)) and selectable
+        val navigationTitle = context.getString(R.string.title_visible_main_tabs)
+        val confirm = hasText(context.getString(R.string.button_sure_default)) and hasClickAction()
+        val optional = listOf("首页", "动态", "消息")
+        val toggle = SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)
+        fun openPersonalization() {
+            clickTab("我")
+            click(hasText("设置") and hasClickAction())
+            click(hasText("个性化") and hasClickAction())
+            await(hasText("字体大小"))
+        }
+        fun openRow(title: String) {
+            val row = hasText(title) and hasClickAction()
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(row)
+            click(row)
+        }
+        fun leaveSettings() {
+            click(hasContentDescription(back))
+            await(hasText("使用习惯"))
+            click(hasContentDescription(back))
+            await(hasText("请先登录"))
+        }
+
+        await(hasText("随便看看"))
+        openPersonalization()
+        openRow(layoutTitle)
+        await(grid and isSelected())
+        click(stacked)
+        openRow(layoutTitle)
+        await(stacked and isSelected())
+        compose.capturePhoneReview("thread-tabs-layout-setting")
+        click(grid)
+
+        openRow(navigationTitle)
+        for (label in optional) {
+            val choice = hasText(label) and toggle
+            await(choice and isOn())
+            click(choice)
+            await(choice and isOff())
+        }
+        compose.capturePhoneReview("navigation-destinations-setting")
+        click(confirm)
+        leaveSettings()
+        for (label in optional) compose.onNode(hasText(label) and selectable).assertDoesNotExist()
+        compose.onNode(hasText("我") and selectable).assertIsSelected()
+        compose.capturePhoneReview("navigation-profile-only")
+
+        openPersonalization()
+        openRow(navigationTitle)
+        for (label in optional) {
+            val choice = hasText(label) and toggle
+            await(choice and isOff())
+            click(choice)
+            await(choice and isOn())
+        }
+        click(confirm)
+        leaveSettings()
+        clickTab("动态")
+        await(hasText("热榜"))
+        clickTab("消息")
+        await(hasText("登录后查看消息"))
+        clickTab("首页")
+        await(hasText("随便看看"))
     }
 
     @Test fun switchBetweenStandardAndFloatingNavigationInSettings() {

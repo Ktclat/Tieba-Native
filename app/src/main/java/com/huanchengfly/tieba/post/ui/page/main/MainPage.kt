@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -25,10 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.huanchengfly.tieba.post.LocalDevicePosture
 import com.huanchengfly.tieba.post.LocalDestination
 import com.huanchengfly.tieba.post.LocalNotificationCountFlow
+import com.huanchengfly.tieba.post.LocalVisibleMainTabs
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -112,19 +109,13 @@ fun MainPage(
     }
 
     val context = LocalContext.current
-    var lastHideExplore by rememberSaveable { mutableStateOf(false) }
-    val hideExplore by context.dataStore.collectPreferenceAsState(
-        key = booleanPreferencesKey("hideExplore"),
-        defaultValue = false,
-        initialValue = lastHideExplore,
-    )
-    SideEffect { lastHideExplore = hideExplore }
-    val selection = rememberMainTabSelection("home")
+    val tabs = LocalVisibleMainTabs.current
+    val selection = rememberMainTabSelection(tabs.first())
 
     val coroutineScope = rememberCoroutineScope()
-    val navigationItems by remember {
+    val navigationItems by remember(tabs, selection, viewModel) {
         derivedStateOf {
-            listOfNotNull(
+            listOf(
                 NavigationItem(
                     id = "home",
                     icon = R.drawable.ms_home,
@@ -132,14 +123,13 @@ fun MainPage(
                     title = { stringResource(id = R.string.title_main) },
                     content = {
                         HomePage(
-                            canOpenExplore = !hideExplore
+                            canOpenExplore = "explore" in tabs
                         ) {
                             selection.select("explore")
                         }
                     }
                 ),
-                if (hideExplore) null
-                else NavigationItem(
+                NavigationItem(
                     id = "explore",
                     icon = R.drawable.ms_explore,
                     selectedIcon = R.drawable.ms_explore_filled,
@@ -171,7 +161,7 @@ fun MainPage(
                         UserPage()
                     }
                 ),
-            ).toImmutableList()
+            ).filter { it.id in tabs }.toImmutableList()
         }
     }
     val selectedIndex = navigationItems.indexOfFirst { it.id == selection.id }.coerceAtLeast(0)
@@ -187,7 +177,7 @@ fun MainPage(
     val navScrollRangePx = with(LocalDensity.current) { 132.dp.toPx() }
     val navScroll = remember(selectedId, navigationType, navScrollRangePx) { MainNavigationScrollState(navScrollRangePx) }
     BackHandler(enabled = selectedIndex != 0 && LocalDestination.current == MainPageDestination) {
-        selection.select("home")
+        selection.select(navigationItems.first().id)
     }
     val onSelect: (Int) -> Unit = { index ->
         navigationItems.getOrNull(index)?.let { item ->

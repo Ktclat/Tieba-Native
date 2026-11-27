@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.Rect
+import android.os.Build
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -11,11 +12,18 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inspector.WindowInspector
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.huanchengfly.tieba.post.MainActivityV2
+import com.huanchengfly.tieba.post.dataStore
+import com.huanchengfly.tieba.post.ui.common.PredictiveBackKey
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import kotlin.math.abs
 import org.junit.Assert.assertTrue
@@ -102,7 +110,14 @@ class PixelBackGestureTest {
         return changed.toFloat() / samples
     }
 
-    private fun gesture(name: String, left: Boolean, cancel: Boolean, source: String, destination: String) {
+    private fun gesture(
+        name: String,
+        left: Boolean,
+        cancel: Boolean,
+        source: String,
+        destination: String,
+        expectPreview: Boolean = false,
+    ) {
         awaitLabel(source)
         SystemClock.sleep(500)
         val before = capture("$name-before")
@@ -134,8 +149,11 @@ class PixelBackGestureTest {
             val metrics = File(context.filesDir, "phone-review/gestures.tsv")
             if (!metrics.exists()) metrics.writeText("gesture\tdrag_changed_fraction\tsettled_changed_fraction\n")
             metrics.appendText("$name\t$duringChange\t$settled\n")
-            // SystemUI draws its own edge arrow, but the sampled page must stay in place until release.
-            assertTrue("$name moved content while held ($duringChange)", duringChange < 0.001f)
+            if (expectPreview) {
+                assertTrue("$name did not show a page preview while held ($duringChange)", duringChange > 0.005f)
+            } else {
+                assertTrue("$name moved content while held ($duringChange)", duringChange < 0.001f)
+            }
             if (cancel) {
                 assertTrue("$name changed content on cancellation ($settled)", settled < 0.001f)
             } else {
@@ -170,6 +188,39 @@ class PixelBackGestureTest {
         } while (SystemClock.uptimeMillis() < deadline)
         capture("unexpected-foreground").recycle()
         error("The resumed activity did not reach the expected focused window (dialog=$dialog)")
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    fun predictivePageCanBeCancelledAndCommittedAfterEnablingInSettings() {
+        val store = context.dataStore
+        val original = runBlocking { store.data.first()[PredictiveBackKey] }
+        try {
+            runBlocking { store.edit { it.remove(PredictiveBackKey) } }
+            val launcher = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
+            ActivityScenario.launch<MainActivityV2>(launcher).use {
+                awaitLabel("随便看看")
+                tap("我")
+                tap("设置")
+                tap("个性化")
+                tap("预测性返回")
+                runBlocking { withTimeout(5_000) { store.data.first { it[PredictiveBackKey] == true } } }
+                gesture(
+                    "predictive-page-left-cancel", left = true, cancel = true,
+                    source = "字体大小", destination = "使用习惯", expectPreview = true,
+                )
+                gesture(
+                    "predictive-page-right-commit", left = false, cancel = false,
+                    source = "字体大小", destination = "使用习惯", expectPreview = true,
+                )
+                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                awaitLabel("请先登录")
+            }
+        } finally {
+            runBlocking {
+                store.edit { if (original == null) it.remove(PredictiveBackKey) else it[PredictiveBackKey] = original }
+            }
+        }
     }
 
     @Test fun cancelAndCommitFromOppositeEdgesOnTabsAndNestedPages() {

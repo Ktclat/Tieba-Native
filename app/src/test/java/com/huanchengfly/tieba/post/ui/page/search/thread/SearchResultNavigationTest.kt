@@ -68,18 +68,6 @@ class SearchResultNavigationTest {
     }
 
     @Test
-    fun newTabOpensTheParentFloorForAMatchingNestedReply() {
-        assertEquals(
-            ThreadPageDestination(threadId = 10, postId = 20, scrollToReply = true).route,
-            subreply.searchDestination(openInTab = true)?.route,
-        )
-        assertEquals(
-            ThreadPageDestination(threadId = 10, scrollToReply = true).route,
-            subreply.copy(postInfo = parent.copy(tid = 99)).searchDestination(openInTab = true)?.route,
-        )
-    }
-
-    @Test
     fun quotedReplyAndMainPostOpenTheirOwnThread() {
         assertEquals(
             ThreadPageDestination(threadId = 40, postId = 50, scrollToReply = true).route,

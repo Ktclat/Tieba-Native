@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -72,7 +72,7 @@ class AppFontSizeActivity : BaseComposeActivity() {
                             Button(onClick = ::loadScale, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.native_font_retry)) }
                             Button(onClick = { finish() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_back)) }
                         }
-                    } else CircularProgressIndicator()
+                    } else LoadingIndicator()
                 }
             }
             return

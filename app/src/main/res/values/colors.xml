@@ -286,6 +286,7 @@
     <color name="color_divider">#FFF7FBFE</color>
 
     <color name="colorSplashBg">@color/m3_sys_color_light_surface</color>
+    <color name="colorSplashWordmark">@color/m3_sys_color_light_on_surface_variant</color>
     <color name="icon_blue">#FF3373EE</color>
     <color name="icon_purple">#FF8E6DCA</color>
     <color name="black_trans">#50000000</color>

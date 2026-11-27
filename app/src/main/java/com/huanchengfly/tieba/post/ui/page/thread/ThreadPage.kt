@@ -125,7 +125,7 @@ import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
 import com.huanchengfly.tieba.post.ui.page.thread.tabs.TrackThreadTab
 import com.huanchengfly.tieba.post.ui.page.thread.tabs.threadTabAnchorIndex
 import com.huanchengfly.tieba.post.ui.page.thread.tabs.restoreThreadTabAnchor
-import com.huanchengfly.tieba.post.ui.page.thread.tabs.leaveClosedThread
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.withReadingPosition
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
@@ -260,6 +260,13 @@ sealed interface ThreadPageExtra
 
 @Serializable
 data object ThreadPageNoExtra : ThreadPageExtra
+
+@Serializable
+data class ThreadPageFromTabsExtra(
+    val scrollOffset: Int,
+    val latest: Boolean,
+    val floor: Int,
+) : ThreadPageExtra
 
 @Serializable
 data class ThreadPageFromStoreExtra(
@@ -469,7 +476,20 @@ fun ThreadPage(
     }
     val tabs = LocalThreadTabs.current
     if (blockedThread) {
-        LaunchedEffect(tabs, threadId) { tabs?.close(threadId) }
+        val saved = tabs?.find(threadId)
+        LaunchedEffect(saved?.generation, rules, forum, topic, author, firstPost) {
+            if (saved != null && tabs != null) {
+                val forumName = listOf(forum?.get { name }, topic?.forumName, topic?.forumInfo?.name)
+                    .firstOrNull { rules.blocksForum(it) }
+                val blockedAuthor = listOf(author?.get(), topic?.author, firstPost?.get { this.author })
+                    .firstOrNull { rules.blocksAuthor(it) }
+                tabs.describe(saved.copy(
+                    forumName = forumName ?: saved.forumName,
+                    authorName = blockedAuthor?.name ?: saved.authorName,
+                    authorAlias = blockedAuthor?.nameShow ?: saved.authorAlias,
+                ), saved.generation)
+            }
+        }
         BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_thread))
         return
     }
@@ -529,37 +549,33 @@ fun ThreadPage(
     val firstFloor = remember(firstPost) {
         firstPost?.get { ThreadFloorKey(id, floor) }?.takeIf { it.postId > 0L }
     }
-    val tabOffset = rememberSaveable(threadId, postId) {
-        tabs?.find(threadId)?.takeIf { it.postId == postId }?.scrollOffset ?: 0
-    }
-    val tabWasLatest = rememberSaveable(threadId, postId) { tabs?.find(threadId)?.latest == true }
+    val tabAnchor = extra as? ThreadPageFromTabsExtra
     var restoringTab by rememberSaveable(threadId, postId) {
         mutableStateOf(from == ThreadPageFrom.FROM_TABS && postId > 0)
     }
-    TrackThreadTab(
-        tab = ThreadTab(
-            threadId = threadId, title = threadTitle.ifBlank { threadInfo?.title.orEmpty() },
-            forumName = curForumName ?: topic?.forumName.orEmpty(), forumId = curForumId,
-            postId = postId, onlyAuthor = isSeeLz, sortType = curSortType,
-            authorName = (author?.get() ?: topic?.author)?.name.orEmpty(),
-            authorAlias = (author?.get() ?: topic?.author)?.nameShow.orEmpty(),
-        ),
-        list = lazyListState, firstFloor = firstFloor, recordPosition = !restoringTab,
-        onExpired = { navigator.leaveClosedThread() },
+    val currentTab = ThreadTab(
+        threadId = threadId, title = threadTitle.ifBlank { threadInfo?.title.orEmpty() },
+        forumName = curForumName ?: topic?.forumName.orEmpty(), forumId = curForumId,
+        postId = postId, onlyAuthor = isSeeLz, sortType = curSortType,
+        floor = tabAnchor?.floor ?: 0, scrollOffset = tabAnchor?.scrollOffset ?: 0, latest = tabAnchor?.latest == true,
+        authorName = (author?.get() ?: topic?.author)?.name.orEmpty(),
+        authorAlias = (author?.get() ?: topic?.author)?.nameShow.orEmpty(),
     )
+    val recordTabPosition = !restoringTab && !isRefreshing && currentPageMax > 0
+    TrackThreadTab(currentTab, lazyListState, firstFloor, recordPosition = recordTabPosition)
     LaunchedEffect(restoringTab, currentPageMax, isRefreshing, firstFloor, visibleFloors, visibleLatest, curSortType) {
         if (!restoringTab || currentPageMax <= 0 || isRefreshing || isEmpty) return@LaunchedEffect
         val replies = visibleFloors.map { it.post.get { id } }
         val latest = visibleLatest.map { it.post.get { id } }
         val descending = curSortType == ThreadSortType.SORT_TYPE_DESC
-        val exact = threadTabAnchorIndex(postId, firstFloor?.postId, replies, latest, descending, tabWasLatest)
+        val exact = threadTabAnchorIndex(postId, firstFloor?.postId, replies, latest, descending, tabAnchor?.latest == true)
         // A deleted or locally blocked anchor can disappear between visits. Resume at the
         // first reply of the page returned for that PID, or at the topic in an empty thread.
         val firstReply = (if (descending) latest.firstOrNull() else null) ?: replies.firstOrNull() ?: latest.firstOrNull()
         val index = exact ?: firstReply?.let {
             threadTabAnchorIndex(it, firstFloor?.postId, replies, latest, descending)
         } ?: 0
-        lazyListState.restoreThreadTabAnchor(index, if (exact != null) tabOffset else 0)
+        lazyListState.restoreThreadTabAnchor(index, if (exact != null) tabAnchor?.scrollOffset ?: 0 else 0)
         restoringTab = false
     }
     val coroutineScope = rememberCoroutineScope()
@@ -944,7 +960,11 @@ fun ThreadPage(
                 ThreadTopBar(
                     forum = forum,
                     onBack = ::leaveThread,
-                    actions = { ThreadTabsButton(navigator, threadId) },
+                    actions = {
+                        ThreadTabsButton(navigator, threadId, currentTab = {
+                            if (recordTabPosition) currentTab.withReadingPosition(lazyListState, firstFloor) else currentTab
+                        })
+                    },
                     onForumClick = {
                         val forumName = forum?.get { name }
                         if (forumName != null) navigator.navigate(

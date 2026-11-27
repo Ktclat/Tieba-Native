@@ -20,7 +20,7 @@ def run(test_apk, output):
                PACKAGE + ".ui.page.thread.PixelLocalReplyRulesTest", PACKAGE + ".ui.page.threadstore.PixelFavoritesTest",
                PACKAGE + ".ui.page.user.PixelUserProfileTest", PACKAGE + ".ui.page.thread.PixelThreadTabsTest"]
     report = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", ",".join(classes),
-                 PACKAGE + ".test/androidx.test.runner.AndroidJUnitRunner", timeout=360).decode()
+                 PACKAGE + ".test/androidx.test.runner.AndroidJUnitRunner", timeout=540).decode()
     (output / "on-device-tests.txt").write_text(report)
     directory = "files/phone-review"
     # Preserve completed screenshots and the failing window even if a later assertion fails.
@@ -32,7 +32,7 @@ def run(test_apk, output):
         if Path(name).name == name and (name.endswith(".png") or name in {"gestures.tsv", "gallery-controls.tsv"}):
             (output / name).write_bytes(adb("exec-out", "run-as", PACKAGE, "cat", directory + "/" + name))
     print(report, flush=True)
-    if "OK (13 tests)" not in report:
+    if "OK (15 tests)" not in report:
         raise RuntimeError("Android phone review instrumentation failed")
     expected = {"discussion-topic.png", "discussion-preview.png", "discussion-expanded.png", "gestures.tsv",
                 "gallery-first.png", "gallery-second.png", "gallery-share.png", "gallery-controls.tsv",
@@ -44,9 +44,11 @@ def run(test_apk, output):
                 "selected-phrase-menu.png", "selected-phrase-confirm.png", "selected-phrase-blocked.png",
                 "favorites-overview.png", "favorites-search.png", "favorites-in-progress.png",
                 "user-profile-hierarchy.png", "thread-tabs-empty.png", "thread-tabs-two-posts.png",
-                "thread-tabs-restored-floor.png"}
+                "thread-tabs-restored-floor.png", "thread-tabs-stacked.png", "thread-tabs-close-all.png",
+                "thread-tabs-layout-setting.png", "navigation-destinations-setting.png", "navigation-profile-only.png"}
     expected.update(f"{name}-{stage}.png" for name in
-                    ("tab-left-cancel", "tab-right-commit", "page-right-cancel", "page-left-commit")
+                    ("tab-left-cancel", "tab-right-commit", "page-right-cancel", "page-left-commit",
+                     "predictive-page-left-cancel", "predictive-page-right-commit")
                     for stage in ("before", "drag", "settled"))
     missing = expected.difference(files)
     if missing:

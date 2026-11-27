@@ -1,42 +1,60 @@
 package com.huanchengfly.tieba.post.ui.page.thread.tabs
 
 import android.app.Application
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadFloorKey
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = Application::class)
 class ThreadTabSessionTest {
-    @get:Rule val compose = createComposeRule()
+    @Test fun openingFreshArchivesRestoresPositionAndKeepsAccountsAndGuestsSeparate() = runBlocking {
+        val app = RuntimeEnvironment.getApplication()
+        suspend fun reopen(account: String?) = ThreadTabs(ThreadTabArchive.open(app, account)).also {
+            assertFalse(it.ready)
+            it.load()
+            assertTrue(it.ready)
+        }
+        val first = reopen("alice")
+        first.save(ThreadTab(10, "第一帖", forumName = "喜欢的吧", onlyAuthor = true, sortType = 1))
+        first.save(ThreadTab(11, "第二帖"))
+        val generation = first.entries.last().generation
+        first.mark(10, generation, ThreadFloorKey(18, 4, latest = true), -75)
+        reopen("bob").save(ThreadTab(10, "另一账号"))
+        reopen(null).save(ThreadTab(12, "游客"))
 
-    @Test fun recreatingTheActivityRestoresTabsAndChangingAccountStartsANewSession() {
-        val restore = StateRestorationTester(compose)
-        val account = mutableStateOf("reader-one")
-        lateinit var session: ThreadTabs
-        restore.setContent { session = key(account.value) { rememberThreadTabs() } }
-        val oldSession = compose.runOnIdle {
-            val old = session.activate(ThreadTab(10, "第一帖", onlyAuthor = true))
-            session.mark(10, old.generation, ThreadFloorKey(18, 4, latest = true), 75)
-            session.activate(ThreadTab(11, "第二帖"))
-            session
-        }
-        restore.emulateSavedInstanceStateRestore()
-        compose.runOnIdle {
-            assertNotSame(oldSession, session)
-            assertEquals(oldSession.entries, session.entries)
-            account.value = "reader-two"
-        }
-        compose.runOnIdle { assertTrue(session.entries.isEmpty()) }
+        val restored = reopen("alice")
+        assertEquals(first.entries, restored.entries)
+        assertEquals(listOf(11L, 10L), restored.entries.map { it.threadId })
+        assertEquals(first.entries.last().direction().route, restored.entries.last().direction().route)
+
+        restored.close(11)
+        val afterRemoval = reopen("alice")
+        assertEquals(listOf(10L), afterRemoval.entries.map { it.threadId })
+        afterRemoval.closeAll()
+        afterRemoval.mark(10, generation, ThreadFloorKey(22, 5), 85)
+        assertTrue(reopen("alice").entries.isEmpty())
+        assertEquals("另一账号", reopen("bob").entries.single().title)
+        assertEquals("游客", reopen(null).entries.single().title)
+    }
+
+    @Test fun simultaneousWindowsShareTheSameAccountSession() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val first = ThreadTabArchive.session(context, "shared")
+        val second = ThreadTabArchive.session(context, "shared")
+        assertSame(first, second)
+        first.load()
+        first.save(ThreadTab(10, "刚保存"))
+        second.closeAll()
+        assertTrue(first.entries.isEmpty())
+        assertTrue(ThreadTabArchive.open(context, "shared").read().isEmpty())
     }
 }

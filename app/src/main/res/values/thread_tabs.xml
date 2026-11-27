@@ -1,8 +1,16 @@
 <resources>
-    <string name="thread_tabs_open">帖子标签，%1$d 个已打开</string>
+    <string name="thread_tabs_open">帖子标签，已保存 %1$d 个</string>
     <string name="thread_tabs_title">帖子标签</string>
     <string name="thread_tabs_new">新建标签</string>
-    <string name="thread_tabs_empty">还没有打开的帖子</string>
+    <string name="thread_tabs_close_all">关闭全部</string>
+    <string name="thread_tabs_confirm_close_all">关闭全部帖子标签？</string>
+    <string name="thread_tabs_empty">还没有保存的帖子</string>
+    <string name="thread_tabs_empty_hint">阅读帖子时，点「新建标签」即可保存阅读位置。</string>
+    <string name="thread_tabs_filtered">没有可显示的标签</string>
+    <string name="thread_tabs_filtered_hint">已保存的标签被本地屏蔽规则隐藏。</string>
     <string name="thread_tab_id">帖子 %1$s</string>
     <string name="thread_tab_close">关闭「%1$s」</string>
+    <string name="thread_tabs_layout_title">帖子标签布局</string>
+    <string name="thread_tabs_layout_grid">网格</string>
+    <string name="thread_tabs_layout_stack">堆叠</string>
 </resources>
