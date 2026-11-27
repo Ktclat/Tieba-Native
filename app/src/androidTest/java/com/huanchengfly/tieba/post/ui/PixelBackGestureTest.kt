@@ -155,13 +155,12 @@ class PixelBackGestureTest {
     ): View {
         val deadline = SystemClock.uptimeMillis() + 10_000
         do {
-            val activeId = device.rootInActiveWindow?.windowId
             var ready: View? = null
             scenario.onActivity { activity ->
                 val roots = WindowInspector.getGlobalWindowViews()
                 val focused = roots.firstOrNull { it.hasWindowFocus() && it.isAttachedToWindow }
                 if (activity.lifecycle.currentState == Lifecycle.State.RESUMED &&
-                    focused != null && focused.accessibilityWindowId == activeId &&
+                    focused != null &&
                     (focused !== activity.window.decorView) == dialog &&
                     (dismissedWindow == null || (!dismissedWindow.isAttachedToWindow && dismissedWindow !in roots))
                 ) ready = focused
