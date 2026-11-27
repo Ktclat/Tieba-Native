@@ -8,7 +8,10 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.inspector.WindowInspector
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -145,8 +148,33 @@ class PixelBackGestureTest {
         }
     }
 
+    private fun awaitFocusedWindow(
+        scenario: ActivityScenario<MainActivityV2>,
+        dialog: Boolean,
+        dismissedWindow: View? = null,
+    ): View {
+        val deadline = SystemClock.uptimeMillis() + 10_000
+        do {
+            val activeId = device.rootInActiveWindow?.windowId
+            var ready: View? = null
+            scenario.onActivity { activity ->
+                val roots = WindowInspector.getGlobalWindowViews()
+                val focused = roots.firstOrNull { it.hasWindowFocus() && it.isAttachedToWindow }
+                if (activity.lifecycle.currentState == Lifecycle.State.RESUMED &&
+                    focused != null && focused.accessibilityWindowId == activeId &&
+                    (focused !== activity.window.decorView) == dialog &&
+                    (dismissedWindow == null || (!dismissedWindow.isAttachedToWindow && dismissedWindow !in roots))
+                ) ready = focused
+            }
+            ready?.let { return it }
+            SystemClock.sleep(50)
+        } while (SystemClock.uptimeMillis() < deadline)
+        capture("unexpected-foreground").recycle()
+        error("The resumed activity did not reach the expected focused window (dialog=$dialog)")
+    }
+
     @Test fun cancelAndCommitFromOppositeEdgesOnTabsAndNestedPages() {
-        ActivityScenario.launch(MainActivityV2::class.java).use {
+        ActivityScenario.launch(MainActivityV2::class.java).use { scenario ->
             awaitLabel("随便看看")
             tap("我")
             gesture("tab-left-cancel", left = true, cancel = true, source = "请先登录", destination = "随便看看")
@@ -159,10 +187,19 @@ class PixelBackGestureTest {
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             awaitLabel("请先登录")
             tap("主题选择")
+            awaitLabel("跟随系统壁纸")
+            device.waitForIdle(500, 5_000)
+            val themeWindow = awaitFocusedWindow(scenario, dialog = false)
             tap("自定义颜色")
             awaitLabel("设置自定义主题")
+            val dialogWindow = awaitFocusedWindow(scenario, dialog = true)
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            // The theme semantics may reappear while Android is still removing the dialog
+            // window. The next back key belongs to the resumed and focused activity only.
             awaitLabel("跟随系统壁纸")
+            device.waitForIdle(500, 5_000)
+            check(awaitFocusedWindow(scenario, dialog = false, dismissedWindow = dialogWindow) === themeWindow)
+            capture("theme-return-ready").recycle()
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             awaitLabel("请先登录")
         }
