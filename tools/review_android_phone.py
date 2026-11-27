@@ -1,4 +1,4 @@
-"""Run the installed app's Pixel 9 gesture, discussion, forum and gallery checks and collect their screenshots."""
+"""Run the installed app's Pixel 9 UI checks and collect their screenshots."""
 
 import argparse
 from pathlib import Path
@@ -17,7 +17,8 @@ def run(test_apk, output):
     adb("install", "-r", "-g", str(test_apk), timeout=120)
     classes = [PACKAGE + ".ui.PixelBackGestureTest", PACKAGE + ".ui.page.thread.PixelDiscussionReviewTest",
                PACKAGE + ".ui.PixelForumGalleryTest", PACKAGE + ".ui.PixelSearchNavigationTest",
-               PACKAGE + ".ui.page.thread.PixelLocalReplyRulesTest", PACKAGE + ".ui.page.threadstore.PixelFavoritesTest"]
+               PACKAGE + ".ui.page.thread.PixelLocalReplyRulesTest", PACKAGE + ".ui.page.threadstore.PixelFavoritesTest",
+               PACKAGE + ".ui.page.user.PixelUserProfileTest", PACKAGE + ".ui.page.thread.PixelThreadTabsTest"]
     report = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", ",".join(classes),
                  PACKAGE + ".test/androidx.test.runner.AndroidJUnitRunner", timeout=360).decode()
     (output / "on-device-tests.txt").write_text(report)
@@ -31,7 +32,7 @@ def run(test_apk, output):
         if Path(name).name == name and (name.endswith(".png") or name in {"gestures.tsv", "gallery-controls.tsv"}):
             (output / name).write_bytes(adb("exec-out", "run-as", PACKAGE, "cat", directory + "/" + name))
     print(report, flush=True)
-    if "OK (10 tests)" not in report:
+    if "OK (13 tests)" not in report:
         raise RuntimeError("Android phone review instrumentation failed")
     expected = {"discussion-topic.png", "discussion-preview.png", "discussion-expanded.png", "gestures.tsv",
                 "gallery-first.png", "gallery-second.png", "gallery-share.png", "gallery-controls.tsv",
@@ -41,7 +42,9 @@ def run(test_apk, output):
                 "local-block-settings.png", "local-block-comment.png", "local-block-invalid.png", "local-block-forum.png",
                 "local-block-replies.png", "local-block-replies-restored.png",
                 "selected-phrase-menu.png", "selected-phrase-confirm.png", "selected-phrase-blocked.png",
-                "favorites-overview.png", "favorites-search.png", "favorites-in-progress.png"}
+                "favorites-overview.png", "favorites-search.png", "favorites-in-progress.png",
+                "user-profile-hierarchy.png", "thread-tabs-empty.png", "thread-tabs-two-posts.png",
+                "thread-tabs-restored-floor.png"}
     expected.update(f"{name}-{stage}.png" for name in
                     ("tab-left-cancel", "tab-right-commit", "page-right-cancel", "page-left-commit")
                     for stage in ("before", "drag", "settled"))

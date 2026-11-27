@@ -97,14 +97,14 @@ class ThreadViewModel @Inject constructor() :
 
     override fun dispatchEvent(partialChange: ThreadPartialChange): UiEvent? {
         return when (partialChange) {
-            is ThreadPartialChange.Init.Success -> if (partialChange.postId != 0L) ThreadUiEvent.ScrollToFirstReply else null
-            ThreadPartialChange.LoadPrevious.Start -> ThreadUiEvent.ScrollToFirstReply
+            is ThreadPartialChange.Init.Success -> if (partialChange.postId != 0L) ThreadUiEvent.ScrollToFirstReply(initial = true) else null
+            ThreadPartialChange.LoadPrevious.Start -> ThreadUiEvent.ScrollToFirstReply(initial = false)
             is ThreadPartialChange.AddFavorite.Success -> ThreadUiEvent.AddFavoriteSuccess(
                 partialChange.floor
             )
 
             ThreadPartialChange.RemoveFavorite.Success -> ThreadUiEvent.RemoveFavoriteSuccess
-            is ThreadPartialChange.Load.Success -> ThreadUiEvent.LoadSuccess(partialChange.currentPage)
+            is ThreadPartialChange.Load.Success -> ThreadUiEvent.LoadSuccess(partialChange.currentPage, partialChange.postId)
 
             is ThreadPartialChange.LoadMyLatestReply.Success -> ThreadUiEvent.ScrollToLatestReply.takeIf {
                 partialChange.hasNewPost
@@ -1259,13 +1259,11 @@ data class ThreadUiState(
 ) : UiState
 
 sealed interface ThreadUiEvent : UiEvent {
-    data object ScrollToFirstReply : ThreadUiEvent
+    data class ScrollToFirstReply(val initial: Boolean) : ThreadUiEvent
 
     data object ScrollToLatestReply : ThreadUiEvent
 
-    data class LoadSuccess(
-        val page: Int
-    ) : ThreadUiEvent
+    data class LoadSuccess(val page: Int, val postId: Long) : ThreadUiEvent
 
     data class AddFavoriteSuccess(val floor: Int) : ThreadUiEvent
 

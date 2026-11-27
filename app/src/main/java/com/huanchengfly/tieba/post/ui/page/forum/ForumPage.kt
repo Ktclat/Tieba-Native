@@ -84,6 +84,7 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumDetailPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumSearchPostPageDestination
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
 import com.huanchengfly.tieba.post.ui.page.forum.threadlist.ForumThreadListPage
 import com.huanchengfly.tieba.post.ui.page.forum.threadlist.ForumThreadListUiEvent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
@@ -774,6 +775,7 @@ private fun ForumToolbar(
                     )
                 }
             }
+            ThreadTabsButton(navigator)
             if (menuContent != null) {
                 Box {
                     val menuState = rememberMenuState()

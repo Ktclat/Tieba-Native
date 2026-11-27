@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,6 +67,10 @@ import com.huanchengfly.tieba.post.services.NotifyJobService
 import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
 import com.huanchengfly.tieba.post.utils.LocalBlockRuleStore
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppThemeName
+import androidx.compose.runtime.key
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.LocalThreadTabs
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.rememberThreadTabs
 import com.huanchengfly.tieba.post.ui.page.NavGraphs
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
@@ -249,8 +254,8 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     private fun initAutoSign() {
-        runCatching {
-            TiebaUtil.initAutoSign(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { TiebaUtil.initAutoSign(applicationContext) }
         }
     }
 
@@ -284,8 +289,6 @@ class MainActivityV2 : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        window.decorView.setBackgroundColor(0)
-        window.setBackgroundDrawable(ColorDrawable(0))
         launch {
             ClientUtils.setActiveTimestamp()
         }
@@ -386,11 +389,19 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     @Composable
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun Content() {
         val storedRules by remember { LocalBlockRuleStore.rules(applicationContext) }.collectAsState(initial = null)
-        // Deep links and clipboard previews must use the saved rules on their first frame.
-        val rules = storedRules ?: return
-        CompositionLocalProvider(LocalContentBlockRules provides rules) { MainContent() }
+        val rules = storedRules
+        if (rules == null) {
+            // Draw an opaque first frame while the local rules are read. Links and previews
+            // must wait for those rules before displaying any content.
+            Surface(modifier = Modifier.fillMaxSize()) {
+                Box(contentAlignment = Alignment.Center) { LoadingIndicator() }
+            }
+        } else {
+            CompositionLocalProvider(LocalContentBlockRules provides rules) { MainContent() }
+        }
     }
 
     @Composable
@@ -439,11 +450,12 @@ class MainActivityV2 : BaseComposeActivity() {
             )
         }
         TiebaLiteLocalProvider {
-            TranslucentThemeBackground {
+            TranslucentThemeBackground(modifier = Modifier.fillMaxSize()) {
                 val navController = rememberNavController()
                 val currentDestination by navController.currentDestinationAsState()
 
                 CompositionLocalProvider(
+                    LocalThreadTabs provides key(LocalAccount.current?.uid) { rememberThreadTabs() },
                     LocalNavController provides navController,
                     LocalDestination provides currentDestination,
                 ) {

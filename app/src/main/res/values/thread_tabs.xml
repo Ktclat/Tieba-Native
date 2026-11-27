@@ -1,0 +1,8 @@
+<resources>
+    <string name="thread_tabs_open">帖子标签，%1$d 个已打开</string>
+    <string name="thread_tabs_title">帖子标签</string>
+    <string name="thread_tabs_new">新建标签</string>
+    <string name="thread_tabs_empty">还没有打开的帖子</string>
+    <string name="thread_tab_id">帖子 %1$s</string>
+    <string name="thread_tab_close">关闭「%1$s」</string>
+</resources>

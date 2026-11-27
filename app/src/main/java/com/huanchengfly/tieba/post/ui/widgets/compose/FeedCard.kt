@@ -824,11 +824,13 @@ fun FeedCard(
             )
         },
         content = {
+            val showTitle = item.get { is_ntitle != 1 && title.isNotBlank() }
+            val preview = remember(item) { item.get { abstractText } }
             ThreadContent(
                 title = item.get { title },
-                abstractText = item.get { abstractText },
-                showTitle = item.get { is_ntitle != 1 && title.isNotBlank() },
-                showAbstract = item.get { abstractText.isNotBlank() },
+                abstractText = preview,
+                showTitle = showTitle,
+                showAbstract = preview.isNotBlank() && (!showTitle || preview.trim() != item.get { title }.trim()),
             )
 
             ThreadMedia(

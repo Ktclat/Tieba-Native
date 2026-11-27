@@ -9,6 +9,7 @@ import struct
 import subprocess
 import time
 from xml.etree import ElementTree
+from capture_cold_start import record_cold_start
 
 PACKAGE = "com.huanchengfly.tieba.post"
 PHONE_WIDTH, PHONE_HEIGHT, PHONE_DPI = 1080, 2424, 420
@@ -300,8 +301,11 @@ def run(apk, output, baseline):
     adb("install", "-r", "-g", str(apk), timeout=90)
     adb("shell", "input", "keyevent", "KEYCODE_WAKEUP")
     adb("shell", "wm", "dismiss-keyguard")
-    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
-    find_label("随便看看", recover_launcher=True)
+    if baseline:
+        adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+        find_label("随便看看", recover_launcher=True)
+    else:
+        record_cold_start(output / "cold-start", PACKAGE, adb, lambda: find_label("随便看看", recover_launcher=True))
     capture(output, "01-home", "随便看看")
     tap("动态")
     find_label("热榜")

@@ -33,6 +33,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
 import com.huanchengfly.tieba.post.ui.page.main.explore.concern.ConcernPage
 import com.huanchengfly.tieba.post.ui.page.main.explore.hot.HotPage
 import com.huanchengfly.tieba.post.ui.page.main.explore.personalized.PersonalizedPage
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
@@ -136,6 +137,7 @@ fun ExplorePage() {
                     ) {
                         navigator.navigate(SearchPageDestination)
                     }
+                    ThreadTabsButton(navigator)
                 },
             ) {
                 ExplorePageTab(pagerState = pagerState, pages = pages)

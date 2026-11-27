@@ -9,11 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,17 +21,13 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -90,7 +82,6 @@ import com.huanchengfly.tieba.post.ui.page.user.likeforum.UserLikeForumPage
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
@@ -238,7 +229,7 @@ private fun UserProfileContent(
 }
 
 @Composable
-private fun UserProfileToolbar(
+internal fun UserProfileToolbar(
     user: ImmutableHolder<User>,
     isSelf: Boolean,
     showTitle: Boolean,
@@ -469,14 +460,11 @@ private fun UserProfileContentNormal(
                             UserProfileDetail(
                                 user = user,
                                 modifier = Modifier
-                                    .padding(16.dp)
-                                    .padding(top = 8.dp),
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
                                 showBtn = showActionBtn,
+                                actionEnabled = !disableButton,
                                 isSelf = isSelf,
                                 onBtnClick = {
-                                    if (disableButton || !showActionBtn) {
-                                        return@UserProfileDetail
-                                    }
                                     if (isSelf) {
                                         context.goToActivity<EditProfileActivity>()
                                     } else if (user.get { has_concerned } == 0) {
@@ -485,12 +473,7 @@ private fun UserProfileContentNormal(
                                         onUnfollow()
                                     }
                                 },
-                                onCopyIdClick = {
-                                    TiebaUtil.copyText(
-                                        context,
-                                        user.get { id }.toString()
-                                    )
-                                }
+                                onCopyIdClick = { TiebaUtil.copyText(context, it) }
                             )
                         }
                     }
@@ -613,11 +596,9 @@ private fun UserProfileContentExpanded(
                             .weight(1f)
                             .align(Alignment.Top),
                         showBtn = showActionBtn,
+                        actionEnabled = !disableButton,
                         isSelf = isSelf,
                         onBtnClick = {
-                            if (disableButton || !showActionBtn) {
-                                return@UserProfileDetail
-                            }
                             if (isSelf) {
                                 context.goToActivity<EditProfileActivity>()
                             } else if (user.get { has_concerned } == 0) {
@@ -626,12 +607,7 @@ private fun UserProfileContentExpanded(
                                 onUnfollow()
                             }
                         },
-                        onCopyIdClick = {
-                            TiebaUtil.copyText(
-                                context,
-                                user.get { id }.toString()
-                            )
-                        }
+                        onCopyIdClick = { TiebaUtil.copyText(context, it) }
                     )
 
                     Column(
@@ -666,7 +642,7 @@ data class UserProfilePageData(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UserProfileTabRow(
+internal fun UserProfileTabRow(
     user: ImmutableHolder<User>,
     pages: ImmutableList<UserProfilePageData>,
     pagerState: PagerState,
@@ -726,217 +702,13 @@ private fun ToolbarUserTitle(
                 text = StringUtil.getUsernameAnnotatedString(
                     LocalContext.current,
                     user.get { name },
-                    user.get { nameShow },
-                    LocalContentColor.current
-                )
+                    user.get { nameShow.ifBlank { name } },
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         modifier = modifier
     )
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun UserProfileDetail(
-    user: ImmutableHolder<User>,
-    modifier: Modifier = Modifier,
-    showBtn: Boolean = true,
-    isSelf: Boolean = false,
-    onBtnClick: () -> Unit = {},
-    onCopyIdClick: () -> Unit = {},
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Avatar(
-                data = StringUtil.getBigAvatarUrl(user.get { portraith.ifBlank { portrait } }),
-                size = 96.dp,
-                contentDescription = null,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (showBtn) {
-                Button(
-                    onClick = onBtnClick,
-                    colors = if (user.get { has_concerned } == 0 || isSelf) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.outlinedButtonColors()
-                    },
-                    border = if (user.get { has_concerned } == 0 || isSelf) {
-                        null
-                    } else {
-                        ButtonDefaults.outlinedButtonBorder(enabled = true)
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (isSelf) {
-                            Icon(imageVector = ImageVector.vectorResource(R.drawable.ms_edit), contentDescription = null)
-                            Text(text = stringResource(id = R.string.menu_edit_info))
-                        } else if (user.get { has_concerned } == 0) {
-                            Icon(imageVector = ImageVector.vectorResource(R.drawable.ms_add), contentDescription = null)
-                            Text(text = stringResource(id = R.string.button_follow))
-                        } else {
-                            Text(text = stringResource(id = R.string.button_unfollow))
-                        }
-                    }
-                }
-            }
-        }
-        Text(
-            text = StringUtil.getUsernameAnnotatedString(
-                LocalContext.current,
-                user.get { name },
-                user.get { nameShow },
-                LocalContentColor.current
-            ),
-            style = MaterialTheme.typography.titleLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.Bold
-        )
-        ProvideTextStyle(value = MaterialTheme.typography.bodyMedium) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(IntrinsicSize.Min)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_follow),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { concern_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                VerticalDivider(modifier = Modifier.fillMaxHeight())
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_fans),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { fans_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                VerticalDivider(modifier = Modifier.fillMaxHeight())
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_agrees),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { total_agree_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-        Text(
-            text = user.get { intro }.takeIf { it.isNotEmpty() }
-                ?: stringResource(id = R.string.tip_no_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        user.getNullableImmutable { bazhu_grade }?.let {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ms_verified),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = it.get { desc },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        } ?: user.getNullableImmutable { new_god_data }
-            ?.takeIf { it.get { status } != 0 }
-            ?.let {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ms_verified),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = stringResource(id = R.string.text_god_verify, it.get { field_name }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        val sexEmoji = when (user.get { sex }) {
-            1 -> "♂"
-            2 -> "♀"
-            else -> "?"
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Chip(text = sexEmoji, invertColor = true)
-            Chip(
-                text = stringResource(
-                    id = R.string.text_profile_user_id,
-                    user.get { tieba_uid }.toString()
-                ),
-                appendIcon = {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ms_content_copy),
-                        contentDescription = null
-                    )
-                },
-                onClick = onCopyIdClick
-            )
-            if (user.get { ip_address }.isNotEmpty()) {
-                Chip(
-                    text = stringResource(
-                        id = R.string.text_profile_ip_location,
-                        user.get { ip_address }
-                    ),
-                )
-            }
-            Chip(
-                text = stringResource(
-                    id = R.string.text_profile_tb_age,
-                    user.get { tb_age }
-                )
-            )
-        }
-    }
 }

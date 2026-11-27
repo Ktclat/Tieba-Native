@@ -55,6 +55,7 @@ import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
+import com.huanchengfly.tieba.post.ui.page.destinations.ThreadTabSearchPageDestination
 import com.huanchengfly.tieba.post.ui.page.search.forum.SearchForumPage
 import com.huanchengfly.tieba.post.ui.page.search.thread.SearchThreadPage
 import com.huanchengfly.tieba.post.ui.page.search.thread.SearchThreadSortType
@@ -68,6 +69,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarContainer
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.spec.DestinationSpec
 import kotlinx.collections.immutable.ImmutableList
 
 internal enum class SearchTab(val title: Int) {
@@ -82,15 +84,28 @@ private val threadSortLabels = mapOf(
     SearchThreadSortType.SORT_TYPE_RELATIVE to R.string.title_search_order_relevant,
 )
 
-@OptIn(ExperimentalFoundationApi::class)
 @Destination(
     deepLinks = [
         DeepLink(uriPattern = "tblite://search")
     ]
 )
 @Composable
-fun SearchPage(
+fun SearchPage(navigator: DestinationsNavigator) {
+    SearchContent(navigator, SearchTab.Forum, SearchPageDestination)
+}
+
+@Destination
+@Composable
+fun ThreadTabSearchPage(navigator: DestinationsNavigator) {
+    SearchContent(navigator, SearchTab.Thread, ThreadTabSearchPageDestination)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SearchContent(
     navigator: DestinationsNavigator,
+    initialTab: SearchTab,
+    destination: DestinationSpec<*>,
     viewModel: SearchViewModel = pageViewModel<SearchUiIntent, SearchViewModel>(
         listOf(SearchUiIntent.Init)
     ),
@@ -139,12 +154,12 @@ fun SearchPage(
     }
     MyBackHandler(
         enabled = keyword.isNotEmpty() || input.isNotEmpty(),
-        currentScreen = SearchPageDestination,
+        currentScreen = destination,
         onBack = ::goBack,
     )
 
     var sortType by rememberSaveable { mutableIntStateOf(SearchThreadSortType.SORT_TYPE_NEWEST) }
-    val pagerState = rememberPagerState { SearchTab.entries.size }
+    val pagerState = rememberPagerState(initialPage = initialTab.ordinal) { SearchTab.entries.size }
     MyScaffold(
         topBar = {
             TopAppBarContainer(
@@ -154,6 +169,7 @@ fun SearchPage(
                         onKeywordChange = ::edit,
                         onKeywordSubmit = ::submit,
                         onBack = ::goBack,
+                        hint = stringResource(if (initialTab == SearchTab.Thread) R.string.hint_search_thread_tab else R.string.hint_search),
                         focusRequester = focusRequester,
                     )
                 },

@@ -119,6 +119,13 @@ import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
 import com.huanchengfly.tieba.post.ui.common.PbContentText
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.LocalThreadTabs
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTab
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.TrackThreadTab
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.threadTabAnchorIndex
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.restoreThreadTabAnchor
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.leaveClosedThread
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
@@ -245,6 +252,7 @@ object ThreadPageFrom {
     const val FROM_STORE = "store_thread"
     const val FROM_PERSONALIZED = "personalized"
     const val FROM_HISTORY = "history"
+    const val FROM_TABS = "tabs"
 }
 
 @Serializable
@@ -459,7 +467,9 @@ fun ThreadPage(
             rules.blocksForum(topic?.forumInfo?.name) || rules.blocksAuthor(author?.get()) ||
             rules.blocksAuthor(topic?.author) || rules.blocksAuthor(firstPost?.get { this.author })
     }
+    val tabs = LocalThreadTabs.current
     if (blockedThread) {
+        LaunchedEffect(tabs, threadId) { tabs?.close(threadId) }
         BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_thread))
         return
     }
@@ -519,6 +529,39 @@ fun ThreadPage(
     val firstFloor = remember(firstPost) {
         firstPost?.get { ThreadFloorKey(id, floor) }?.takeIf { it.postId > 0L }
     }
+    val tabOffset = rememberSaveable(threadId, postId) {
+        tabs?.find(threadId)?.takeIf { it.postId == postId }?.scrollOffset ?: 0
+    }
+    val tabWasLatest = rememberSaveable(threadId, postId) { tabs?.find(threadId)?.latest == true }
+    var restoringTab by rememberSaveable(threadId, postId) {
+        mutableStateOf(from == ThreadPageFrom.FROM_TABS && postId > 0)
+    }
+    TrackThreadTab(
+        tab = ThreadTab(
+            threadId = threadId, title = threadTitle.ifBlank { threadInfo?.title.orEmpty() },
+            forumName = curForumName ?: topic?.forumName.orEmpty(), forumId = curForumId,
+            postId = postId, onlyAuthor = isSeeLz, sortType = curSortType,
+            authorName = (author?.get() ?: topic?.author)?.name.orEmpty(),
+            authorAlias = (author?.get() ?: topic?.author)?.nameShow.orEmpty(),
+        ),
+        list = lazyListState, firstFloor = firstFloor, recordPosition = !restoringTab,
+        onExpired = { navigator.leaveClosedThread() },
+    )
+    LaunchedEffect(restoringTab, currentPageMax, isRefreshing, firstFloor, visibleFloors, visibleLatest, curSortType) {
+        if (!restoringTab || currentPageMax <= 0 || isRefreshing || isEmpty) return@LaunchedEffect
+        val replies = visibleFloors.map { it.post.get { id } }
+        val latest = visibleLatest.map { it.post.get { id } }
+        val descending = curSortType == ThreadSortType.SORT_TYPE_DESC
+        val exact = threadTabAnchorIndex(postId, firstFloor?.postId, replies, latest, descending, tabWasLatest)
+        // A deleted or locally blocked anchor can disappear between visits. Resume at the
+        // first reply of the page returned for that PID, or at the topic in an empty thread.
+        val firstReply = (if (descending) latest.firstOrNull() else null) ?: replies.firstOrNull() ?: latest.firstOrNull()
+        val index = exact ?: firstReply?.let {
+            threadTabAnchorIndex(it, firstFloor?.postId, replies, latest, descending)
+        } ?: 0
+        lazyListState.restoreThreadTabAnchor(index, if (exact != null) tabOffset else 0)
+        restoringTab = false
+    }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     fun closeBottomSheet() {
@@ -528,7 +571,7 @@ fun ThreadPage(
     }
 
     viewModel.onEvent<ThreadUiEvent.ScrollToFirstReply> {
-        lazyListState.scrollToDiscussionItem(1)
+        if (from != ThreadPageFrom.FROM_TABS || !it.initial) lazyListState.scrollToDiscussionItem(1)
     }
     viewModel.onEvent<ThreadUiEvent.ScrollToLatestReply> {
         if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
@@ -538,7 +581,8 @@ fun ThreadPage(
         }
     }
     viewModel.onEvent<ThreadUiEvent.LoadSuccess> {
-        if (it.page > 1 || waitLoadSuccessAndScrollToFirstReply) {
+        val openingTab = from == ThreadPageFrom.FROM_TABS && it.postId == postId
+        if (!openingTab && (it.page > 1 || waitLoadSuccessAndScrollToFirstReply)) {
             waitLoadSuccessAndScrollToFirstReply = false
             lazyListState.scrollToDiscussionItem(1)
         }
@@ -894,194 +938,195 @@ fun ThreadPage(
     }
 
     ProvideNavigator(navigator = navigator) {
-        StateScreen(
-            modifier = Modifier.fillMaxSize(),
-            isEmpty = isEmpty,
-            isError = isError,
-            isLoading = isRefreshing,
-            errorScreen = {
-                error?.let {
-                    val (e) = it
-                    ErrorScreen(error = e)
-                }
-            },
-            onReload = {
-                viewModel.send(
-                    ThreadUiIntent.Load(
-                        threadId,
-                        page = 0,
-                        postId = postId,
-                        forumId = forumId,
-                        seeLz = seeLz,
-                        sortType = sortType
-                    )
+        MyScaffold(
+            snackbarHostState = snackbarHostState,
+            topBar = {
+                ThreadTopBar(
+                    forum = forum,
+                    onBack = ::leaveThread,
+                    actions = { ThreadTabsButton(navigator, threadId) },
+                    onForumClick = {
+                        val forumName = forum?.get { name }
+                        if (forumName != null) navigator.navigate(
+                            ForumPageDestination(
+                                forumName
+                            )
+                        )
+                    }
                 )
-            }
-        ) {
-            MyScaffold(
-                snackbarHostState = snackbarHostState,
-                topBar = {
-                    ThreadTopBar(
-                        forum = forum,
-                        onBack = ::leaveThread,
-                        onForumClick = {
-                            val forumName = forum?.get { name }
-                            if (forumName != null) navigator.navigate(
-                                ForumPageDestination(
-                                    forumName
+            },
+            bottomBar = {
+                if (!isEmpty) ThreadBottomBar(
+                    user = user,
+                    signedIn = currentAccount != null,
+                    onClickReply = {
+                        openReply(
+                            ReplyArgs(
+                                forumId = curForumId ?: 0,
+                                forumName = forum?.get { name }.orEmpty(),
+                                threadId = threadId,
+                            )
+                        )
+                    },
+                    onAgree = {
+                        val firstPostId =
+                            thread?.get { firstPostId }.takeIf { it != 0L }
+                                ?: firstPost?.get { id }
+                                ?: 0L
+                        if (firstPostId != 0L) viewModel.send(
+                            ThreadUiIntent.AgreeThread(
+                                threadId,
+                                firstPostId,
+                                !hasThreadAgreed
+                            )
+                        )
+                    },
+                    onClickMore = { menuOpen = true },
+                    hasAgreed = hasThreadAgreed,
+                    agreeNum = threadAgreeNum,
+                )
+            },
+        ) { paddingValues ->
+            if (menuOpen) {
+                ModalBottomSheet(
+                    onDismissRequest = { menuOpen = false },
+                    sheetState = bottomSheetState,
+                ) {
+                    ThreadMenu(
+                        isSeeLz = isSeeLz,
+                        isCollected = isCollected,
+                        isImmersiveMode = isImmersiveMode,
+                        isDesc = curSortType == ThreadSortType.SORT_TYPE_DESC,
+                        canDelete = { author?.get { id } == user.get { id } },
+                        onSeeLzClick = {
+                            viewModel.send(
+                                ThreadUiIntent.LoadFirstPage(
+                                    threadId,
+                                    forumId,
+                                    !isSeeLz,
+                                    curSortType
                                 )
                             )
-                        }
-                    )
-                },
-                bottomBar = {
-                    ThreadBottomBar(
-                        user = user,
-                        signedIn = currentAccount != null,
-                        onClickReply = {
-                            openReply(
-                                ReplyArgs(
-                                    forumId = curForumId ?: 0,
-                                    forumName = forum?.get { name }.orEmpty(),
-                                    threadId = threadId,
+                            closeBottomSheet()
+                        },
+                        onCollectClick = {
+                            if (isCollected) {
+                                val fid = forum?.get { id } ?: forumId
+                                val tbs = anti?.get { tbs }
+                                if (fid != null) {
+                                    viewModel.send(
+                                        ThreadUiIntent.RemoveFavorite(
+                                            threadId,
+                                            fid,
+                                            tbs
+                                        )
+                                    )
+                                }
+                            } else {
+                                val readItem = lazyListState.lastVisibleFloor(firstFloor)
+                                if (readItem != null) {
+                                    viewModel.send(
+                                        ThreadUiIntent.AddFavorite(
+                                            threadId,
+                                            readItem.postId,
+                                            readItem.floor
+                                        )
+                                    )
+                                }
+                            }
+                            closeBottomSheet()
+                        },
+                        onImmersiveModeClick = {
+                            if (!isImmersiveMode && !isSeeLz) {
+                                viewModel.send(
+                                    ThreadUiIntent.LoadFirstPage(
+                                        threadId,
+                                        forumId,
+                                        true,
+                                        curSortType
+                                    )
                                 )
+                            }
+                            viewModel.send(ThreadUiIntent.ToggleImmersiveMode(!isImmersiveMode))
+                            closeBottomSheet()
+                        },
+                        onDescClick = {
+                            viewModel.send(
+                                ThreadUiIntent.LoadFirstPage(
+                                    threadId,
+                                    forumId,
+                                    isSeeLz,
+                                    if (curSortType != ThreadSortType.SORT_TYPE_DESC) ThreadSortType.SORT_TYPE_DESC else ThreadSortType.SORT_TYPE_DEFAULT
+                                )
+                            )
+                            closeBottomSheet()
+                        },
+                        onJumpPageClick = {
+                            closeBottomSheet()
+                            jumpToPageDialogState.show()
+                        },
+                        onShareClick = {
+                            TiebaUtil.shareText(
+                                context,
+                                "https://tieba.baidu.com/p/$threadId",
+                                threadTitle
                             )
                         },
-                        onAgree = {
+                        onCopyLinkClick = {
+                            TiebaUtil.copyText(
+                                context,
+                                "https://tieba.baidu.com/p/$threadId?see_lz=${isSeeLz.booleanToString()}"
+                            )
+                        },
+                        onReportClick = {
                             val firstPostId =
                                 thread?.get { firstPostId }.takeIf { it != 0L }
                                     ?: firstPost?.get { id }
                                     ?: 0L
-                            if (firstPostId != 0L) viewModel.send(
-                                ThreadUiIntent.AgreeThread(
-                                    threadId,
-                                    firstPostId,
-                                    !hasThreadAgreed
+                            coroutineScope.launch {
+                                TiebaUtil.reportPost(
+                                    context,
+                                    navigator,
+                                    firstPostId.toString()
                                 )
-                            )
+                            }
                         },
-                        onClickMore = { menuOpen = true },
-                        hasAgreed = hasThreadAgreed,
-                        agreeNum = threadAgreeNum,
+                        onDeleteClick = {
+                            deletePost = null
+                            confirmDeleteDialogState.show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
                     )
-                },
-            ) { paddingValues ->
-                if (menuOpen) {
-                    ModalBottomSheet(
-                        onDismissRequest = { menuOpen = false },
-                        sheetState = bottomSheetState,
-                    ) {
-                        ThreadMenu(
-                            isSeeLz = isSeeLz,
-                            isCollected = isCollected,
-                            isImmersiveMode = isImmersiveMode,
-                            isDesc = curSortType == ThreadSortType.SORT_TYPE_DESC,
-                            canDelete = { author?.get { id } == user.get { id } },
-                            onSeeLzClick = {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadFirstPage(
-                                        threadId,
-                                        forumId,
-                                        !isSeeLz,
-                                        curSortType
-                                    )
-                                )
-                                closeBottomSheet()
-                            },
-                            onCollectClick = {
-                                if (isCollected) {
-                                    val fid = forum?.get { id } ?: forumId
-                                    val tbs = anti?.get { tbs }
-                                    if (fid != null) {
-                                        viewModel.send(
-                                            ThreadUiIntent.RemoveFavorite(
-                                                threadId,
-                                                fid,
-                                                tbs
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    val readItem = lazyListState.lastVisibleFloor(firstFloor)
-                                    if (readItem != null) {
-                                        viewModel.send(
-                                            ThreadUiIntent.AddFavorite(
-                                                threadId,
-                                                readItem.postId,
-                                                readItem.floor
-                                            )
-                                        )
-                                    }
-                                }
-                                closeBottomSheet()
-                            },
-                            onImmersiveModeClick = {
-                                if (!isImmersiveMode && !isSeeLz) {
-                                    viewModel.send(
-                                        ThreadUiIntent.LoadFirstPage(
-                                            threadId,
-                                            forumId,
-                                            true,
-                                            curSortType
-                                        )
-                                    )
-                                }
-                                viewModel.send(ThreadUiIntent.ToggleImmersiveMode(!isImmersiveMode))
-                                closeBottomSheet()
-                            },
-                            onDescClick = {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadFirstPage(
-                                        threadId,
-                                        forumId,
-                                        isSeeLz,
-                                        if (curSortType != ThreadSortType.SORT_TYPE_DESC) ThreadSortType.SORT_TYPE_DESC else ThreadSortType.SORT_TYPE_DEFAULT
-                                    )
-                                )
-                                closeBottomSheet()
-                            },
-                            onJumpPageClick = {
-                                closeBottomSheet()
-                                jumpToPageDialogState.show()
-                            },
-                            onShareClick = {
-                                TiebaUtil.shareText(
-                                    context,
-                                    "https://tieba.baidu.com/p/$threadId",
-                                    threadTitle
-                                )
-                            },
-                            onCopyLinkClick = {
-                                TiebaUtil.copyText(
-                                    context,
-                                    "https://tieba.baidu.com/p/$threadId?see_lz=${isSeeLz.booleanToString()}"
-                                )
-                            },
-                            onReportClick = {
-                                val firstPostId =
-                                    thread?.get { firstPostId }.takeIf { it != 0L }
-                                        ?: firstPost?.get { id }
-                                        ?: 0L
-                                coroutineScope.launch {
-                                    TiebaUtil.reportPost(
-                                        context,
-                                        navigator,
-                                        firstPostId.toString()
-                                    )
-                                }
-                            },
-                            onDeleteClick = {
-                                deletePost = null
-                                confirmDeleteDialogState.show()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp)
-                        )
-                    }
                 }
+            }
+            StateScreen(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                isEmpty = isEmpty,
+                isError = isError,
+                isLoading = isRefreshing,
+                errorScreen = {
+                    error?.let {
+                        val (e) = it
+                        ErrorScreen(error = e)
+                    }
+                },
+                onReload = {
+                    viewModel.send(
+                        ThreadUiIntent.Load(
+                            threadId,
+                            page = 0,
+                            postId = postId,
+                            forumId = forumId,
+                            seeLz = seeLz,
+                            sortType = sortType
+                        )
+                    )
+                }
+            ) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues)
+                    modifier = Modifier.fillMaxSize()
                         .pullToRefresh(
                             isRefreshing = isRefreshing, state = pullRefreshState,
                             enabled = enablePullRefresh, onRefresh = refreshPosts,
@@ -1301,7 +1346,8 @@ internal fun ThreadTopBar(
     forum: ImmutableHolder<SimpleForum>?,
     onBack: () -> Unit,
     onForumClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
 ) {
     TitleCentredToolbar(
         title = {
@@ -1331,6 +1377,7 @@ internal fun ThreadTopBar(
         navigationIcon = {
             BackNavigationIcon(onBack)
         },
+        actions = { actions() },
         modifier = modifier
     )
 }

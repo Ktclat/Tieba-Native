@@ -70,7 +70,8 @@
     <style name="Base" />
 
     <style name="Theme.NewAppTheme" parent="Theme.Material3Expressive.DayNight.NoActionBar">
-        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowBackground">@color/colorSplashBg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
