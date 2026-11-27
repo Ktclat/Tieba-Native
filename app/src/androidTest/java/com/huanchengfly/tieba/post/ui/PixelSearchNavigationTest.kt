@@ -29,6 +29,7 @@ import com.huanchengfly.tieba.post.R
 import java.io.File
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -93,9 +94,13 @@ class PixelSearchNavigationTest {
         await(hasSetTextAction())
         val hint = context.getString(R.string.hint_search)
         val placeholder = compose.onNodeWithText(hint, useUnmergedTree = true).assertIsDisplayed()
-        val layout = mutableListOf<TextLayoutResult>()
-        placeholder.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layout) }
-        assertTrue("The entire Chinese placeholder should fit", !layout.single().hasVisualOverflow)
+        val layouts = mutableListOf<TextLayoutResult>()
+        placeholder.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        assertFalse(layout.didOverflowHeight)
+        assertFalse(layout.isLineEllipsized(0))
+        assertEquals(hint.length, layout.getLineEnd(0, visibleEnd = true))
+        assertTrue("Last character must fit in the hint bounds", layout.getLineRight(0) <= layout.size.width)
         val field = input.fetchSemanticsNode().boundsInRoot
         assertTrue("Search field is shorter than 56dp: $field", field.height >= 56 * density - 1)
         capture("search-empty")

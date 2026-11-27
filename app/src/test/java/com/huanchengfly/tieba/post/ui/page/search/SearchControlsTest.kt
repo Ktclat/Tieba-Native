@@ -107,17 +107,25 @@ class SearchControlsTest {
     @Test fun forumSearchFieldFitsChineseHintAndInputAndKeepsFocusAfterClearing() {
         val hint = resources.getString(R.string.hint_search_in_ba, "安卓手机")
         val term = "安卓真机体验"
+        lateinit var host: View
         compose.setContent {
+            val view = LocalView.current
+            SideEffect { host = view }
             var draft by remember { mutableStateOf("") }
             MaterialTheme { SearchTopBar(draft, { draft = it }, hint = hint) }
         }
+        compose.captureReviewImage(host, "search-forum-placeholder.png")
 
         val input = compose.onNode(hasSetTextAction())
         assertTrue(input.getUnclippedBoundsInRoot().height >= 56.dp)
         val hintNode = compose.onNodeWithText(hint, useUnmergedTree = true)
         val layouts = mutableListOf<TextLayoutResult>()
         hintNode.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertFalse(layouts.single().hasVisualOverflow)
+        val layout = layouts.single()
+        assertFalse(layout.didOverflowHeight)
+        assertFalse(layout.isLineEllipsized(0))
+        assertEquals(hint.length, layout.getLineEnd(0, visibleEnd = true))
+        assertTrue("Last character must fit in the hint bounds", layout.getLineRight(0) <= layout.size.width)
         input.performClick().performTextInput(term)
         input.assertTextContains(term)
         compose.onNodeWithContentDescription(resources.getString(R.string.button_clear)).performClick()
