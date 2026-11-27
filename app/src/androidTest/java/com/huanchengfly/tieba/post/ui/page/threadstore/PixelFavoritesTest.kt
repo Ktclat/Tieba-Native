@@ -1,23 +1,23 @@
 package com.huanchengfly.tieba.post.ui.page.threadstore
 
+import android.graphics.BitmapFactory
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.core.graphics.ColorUtils
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -33,10 +33,8 @@ import com.huanchengfly.tieba.post.ui.common.windowsizeclass.calculateWindowSize
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadPageFrom
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadPageFromStoreExtra
-import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,12 +58,7 @@ class PixelFavoritesTest {
         progress: Map<String, FavoriteReadingPosition>,
         navigator: NavHostController,
     ) {
-        MyScaffold(backgroundColor = Color.Transparent, topBar = {
-            TitleCentredToolbar(
-                title = stringResource(R.string.title_my_collect),
-                navigationIcon = { BackNavigationIcon(onBackPressed = {}) },
-            )
-        }) { padding ->
+        FavoritesScaffold(onBack = {}) { modifier ->
             FavoriteListContent(
                 state = state, progress = progress, onRefresh = {}, onLoadMore = {},
                 onOpen = { info, position ->
@@ -73,7 +66,7 @@ class PixelFavoritesTest {
                     navigator.navigate(route.route)
                 },
                 onUserClick = {}, onDelete = {},
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = modifier,
             )
         }
     }
@@ -87,12 +80,16 @@ class PixelFavoritesTest {
         val state = ThreadStoreUiState(data = listOf(trail, studio, lens), hasMore = false)
         val progress = mapOf(trail.threadId to marker, lens.threadId to completed)
         lateinit var navigator: NavHostController
+        var surface = 0
+        var onSurface = 0
         val activity = compose.activity
 
         compose.runOnUiThread {
             activity.setContent {
                 CompositionLocalProvider(LocalWindowSizeClass provides calculateWindowSizeClass(activity)) {
                     TiebaLiteTheme {
+                        surface = MaterialTheme.colorScheme.surface.toArgb()
+                        onSurface = MaterialTheme.colorScheme.onSurface.toArgb()
                         navigator = rememberNavController()
                         NavHost(navigator, startDestination = "favorites") {
                             composable("favorites") { FavoritesScreen(state, progress, navigator) }
@@ -110,7 +107,15 @@ class PixelFavoritesTest {
         shown(trail)
         shown(studio)
         shown(lens)
-        compose.capturePhoneReview("favorites-overview")
+        val overview = compose.capturePhoneReview("favorites-overview")
+        val screen = BitmapFactory.decodeFile(overview.path)
+        try {
+            val background = screen.getPixel(screen.width / 2, screen.height * 3 / 4)
+            assertTrue("List background must match the theme surface", ColorUtils.calculateContrast(surface, background) < 1.05)
+            assertTrue("List titles must contrast with the rendered background", ColorUtils.calculateContrast(onSurface, background) >= 4.5)
+        } finally {
+            screen.recycle()
+        }
         field.performTextReplacement("夜景")
         shown(studio)
         absent(trail)
@@ -126,7 +131,8 @@ class PixelFavoritesTest {
         absent(trail)
         absent(lens)
         compose.capturePhoneReview("favorites-search")
-        field.performTextReplacement("")
+        compose.onNodeWithContentDescription(activity.getString(R.string.button_search)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(activity.getString(R.string.button_clear)).performClick()
         select("有进度")
         shown(trail)
         shown(lens)

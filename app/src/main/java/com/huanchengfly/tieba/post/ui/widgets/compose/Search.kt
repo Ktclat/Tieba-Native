@@ -394,6 +394,7 @@ fun SearchBox(
     placeholder: @Composable () -> Unit = {},
     prependIcon: @Composable () -> Unit = {},
     focusRequester: FocusRequester = remember { FocusRequester() },
+    showSubmitButton: Boolean = true,
 ) {
     val state = rememberTextFieldState(keyword)
     val externalKeyword by rememberUpdatedState(keyword)
@@ -418,12 +419,12 @@ fun SearchBox(
         trailingIcon = if (keyword.isEmpty()) null else {
             {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (focused) {
+                    if (focused || !showSubmitButton) {
                         IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordChange("") }) {
                             M3Icon(ImageVector.vectorResource(R.drawable.ms_close), stringResource(R.string.button_clear))
                         }
                     }
-                    if (keyword.isNotBlank()) {
+                    if (showSubmitButton && keyword.isNotBlank()) {
                         IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onKeywordSubmit(keyword) }) {
                             M3Icon(ImageVector.vectorResource(R.drawable.ms_search), stringResource(R.string.button_search))
                         }

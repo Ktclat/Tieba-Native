@@ -40,7 +40,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -89,17 +88,7 @@ fun ThreadStorePage(navigator: DestinationsNavigator) {
     val accountId = LocalAccount.current?.uid
     key(accountId) {
         val snackbarHostState = remember { SnackbarHostState() }
-        MyScaffold(
-            backgroundColor = Color.Transparent,
-            snackbarHostState = snackbarHostState,
-            topBar = {
-                TitleCentredToolbar(
-                    title = stringResource(R.string.title_my_collect),
-                    navigationIcon = { BackNavigationIcon(onBackPressed = { navigator.navigateUp() }) },
-                )
-            },
-        ) { padding ->
-            val content = Modifier.fillMaxSize().padding(padding)
+        FavoritesScaffold(onBack = { navigator.navigateUp() }, snackbarHostState = snackbarHostState) { content ->
             if (accountId == null) {
                 Column(
                     content,
@@ -117,6 +106,24 @@ fun ThreadStorePage(navigator: DestinationsNavigator) {
             }
         }
     }
+}
+
+@Composable
+internal fun FavoritesScaffold(
+    onBack: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    content: @Composable (Modifier) -> Unit,
+) {
+    MyScaffold(
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        snackbarHostState = snackbarHostState,
+        topBar = {
+            TitleCentredToolbar(
+                title = stringResource(R.string.title_my_collect),
+                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
+            )
+        },
+    ) { padding -> content(Modifier.fillMaxSize().padding(padding)) }
 }
 
 @Composable
@@ -243,6 +250,7 @@ internal fun FavoriteListContent(
         SearchBox(
             keyword = keyword, onKeywordChange = { keyword = it },
             onKeywordSubmit = { focusManager.clearFocus() },
+            showSubmitButton = false,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.favorite_search_hint)) },
             prependIcon = { Icon(painterResource(R.drawable.ms_search), contentDescription = null) },

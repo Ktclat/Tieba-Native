@@ -256,7 +256,7 @@ class PixelSearchNavigationTest {
 }
 
 
-internal fun ComposeContentTestRule.capturePhoneReview(name: String) {
+internal fun ComposeContentTestRule.capturePhoneReview(name: String): File {
     waitForIdle()
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val directory = File(instrumentation.targetContext.filesDir, "phone-review").apply { mkdirs() }
@@ -264,9 +264,11 @@ internal fun ComposeContentTestRule.capturePhoneReview(name: String) {
     val image = if (raw.config == Bitmap.Config.HARDWARE) {
         raw.copy(Bitmap.Config.ARGB_8888, false).also { raw.recycle() }
     } else raw
+    val target = File(directory, "$name.png")
     try {
-        File(directory, "$name.png").outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        target.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     } finally {
         image.recycle()
     }
+    return target
 }

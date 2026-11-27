@@ -167,6 +167,8 @@ class PixelLocalReplyRulesTest {
             val saved = runBlocking { storeRules.first() }
             assertEquals(2, saved.count(BlockRuleTarget.COMMENT))
             assertFalse(saved.blocksComment(other))
+            compose.waitUntil(5_000) { compose.activity.hasWindowFocus() }
+            InstrumentationRegistry.getInstrumentation().uiAutomation.waitForIdle(500, 5_000)
             compose.capturePhoneReview("selected-phrase-blocked")
         } finally {
             save(previous)
