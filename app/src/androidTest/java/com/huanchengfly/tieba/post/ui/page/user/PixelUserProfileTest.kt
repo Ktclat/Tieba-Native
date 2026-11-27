@@ -101,13 +101,23 @@ class PixelUserProfileTest {
         }
         val nickname = textLayout(profile.nameShow)
         val idLayout = textLayout(id)
+        compose.capturePhoneReview("user-profile-hierarchy")
         assertTrue(nickname.layoutInput.style.fontSize.value > idLayout.layoutInput.style.fontSize.value)
-        assertFalse(idLayout.hasVisualOverflow)
+        val measured = idLayout.multiParagraph
+        val metrics = "ID box=${idLayout.size}, paragraph=${measured.width}×${measured.height}, " +
+            "overflow width=${idLayout.didOverflowWidth} height=${idLayout.didOverflowHeight}, " +
+            "lines=${idLayout.lineCount}, right=${idLayout.getLineRight(0)}, bottom=${idLayout.getLineBottom(0)}"
+        assertEquals(metrics, 1, idLayout.lineCount)
+        assertFalse(metrics, idLayout.isLineEllipsized(0))
+        assertEquals(metrics, id.length, idLayout.getLineEnd(0, visibleEnd = true))
+        assertFalse(metrics, idLayout.hasVisualOverflow)
+        // Line extents are fractional; the composited image has whole pixels.
+        assertTrue(metrics, idLayout.getLineRight(0) <= idLayout.size.width + 1f &&
+            idLayout.getLineBottom(0) <= idLayout.size.height + 1f)
         compose.onNodeWithText(profile.intro, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText(activity.getString(R.string.text_profile_ip_location, profile.ip_address), useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText(activity.getString(R.string.text_profile_tb_age, profile.tb_age), useUnmergedTree = true).assertIsDisplayed()
         compose.onAllNodesWithText(headline, useUnmergedTree = true).assertCountEquals(1)
-        compose.capturePhoneReview("user-profile-hierarchy")
         compose.onNode(hasText(id) and hasClickAction()).performClick()
         compose.runOnIdle {
             val clipboard = activity.getSystemService(ClipboardManager::class.java)

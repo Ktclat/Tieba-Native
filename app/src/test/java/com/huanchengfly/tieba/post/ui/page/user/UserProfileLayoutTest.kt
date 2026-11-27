@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.user
 
 import android.app.Application
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.App
@@ -31,6 +35,7 @@ import com.huanchengfly.tieba.post.ui.page.user.post.PostListItemData
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostItem
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -66,6 +71,30 @@ class UserProfileLayoutTest {
         compose.onAllNodesWithText("IP 属地", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("吧龄", substring = true).assertCountEquals(0)
         compose.runOnIdle { assertEquals(listOf("5986190117", "27"), copied) }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h915dp-420dpi")
+    fun publicIdFitsAtPhoneDensityBesideAVisibleFollowAction() {
+        var user by mutableStateOf(User(id = 71409, name = "雾岛听风", nameShow = "雾岛听风", tieba_uid = "5986190117"))
+        compose.setContent {
+            TiebaLiteTheme {
+                UserProfileDetail(user.wrapImmutable(), modifier = Modifier.width(411.dp).padding(16.dp))
+            }
+        }
+        for (publicId in listOf("5986190117", "9223372036854775807")) {
+            compose.runOnIdle { user = user.copy(tieba_uid = publicId) }
+            val label = App.INSTANCE.getString(R.string.text_profile_user_id, publicId)
+            val results = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(label, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
+            val layout = results.single()
+            val dimensions = "ID $publicId: box=${layout.size}, lines=${layout.lineCount}, " +
+                "width=${layout.multiParagraph.width}, height=${layout.multiParagraph.height}"
+            assertFalse(dimensions, layout.hasVisualOverflow)
+            assertEquals(dimensions, 1, layout.lineCount)
+            assertEquals(label.length, layout.getLineEnd(0, visibleEnd = true))
+        }
     }
 
     @Test fun narrowPanelStacksActionWhileRequestsDisableIt() {

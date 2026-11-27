@@ -109,8 +109,15 @@ def record_cold_start(output, package, adb, await_home, control=False):
                 time.sleep(0.2)
             start = int(adb("shell", "date", "+%s%N").strip()) / 1e9
             flags = ["--activity-no-animation"] if control else []
-            launch = adb("shell", "am", "start", "-W", *flags, "-a", "android.intent.action.MAIN",
-                         "-c", "android.intent.category.LAUNCHER", "-p", package, timeout=60)
+            # Launchers send an explicit intent. An implicit startActivity would
+            # require CATEGORY_DEFAULT, which the launcher's filter does not declare.
+            try:
+                launch = adb("shell", "am", "start", "-W", "-a", "android.intent.action.MAIN",
+                             "-c", "android.intent.category.LAUNCHER", "-f", "0x10200000",
+                             *flags, "-n", package + "/.MainActivityV2", timeout=60)
+            except subprocess.CalledProcessError as error:
+                (output / "launch.txt").write_bytes((error.stdout or b"") + (error.stderr or b""))
+                raise
             (output / "launch.txt").write_bytes(launch)
             await_home()
         finally:

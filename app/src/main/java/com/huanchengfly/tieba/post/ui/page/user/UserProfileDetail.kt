@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
@@ -74,45 +76,49 @@ internal fun UserProfileDetail(
                     contentDescription = null,
                 )
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        text = StringUtil.getUsernameAnnotatedString(
-                            LocalContext.current, info.name, info.nameShow.ifBlank { info.name }, colors.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.semantics { heading() },
-                        style = typography.titleLarge,
-                        color = colors.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = StringUtil.getUsernameAnnotatedString(
+                                LocalContext.current, info.name, info.nameShow.ifBlank { info.name }, colors.onSurfaceVariant,
+                            ),
+                            modifier = Modifier.weight(1f).semantics { heading() },
+                            style = typography.titleLarge,
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (showBtn && inlineAction) {
+                            ProfileAction(isSelf, info.has_concerned != 0, actionEnabled, onBtnClick)
+                        }
+                    }
                     if (id != null) {
                         val copyLabel = stringResource(R.string.title_copy)
                         TextButton(
                             onClick = { onCopyIdClick(id) },
-                            modifier = Modifier.semantics { onClick(label = copyLabel, action = null) },
+                            modifier = Modifier.fillMaxWidth().semantics { onClick(label = copyLabel, action = null) },
                             colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
                             shapes = ButtonDefaults.shapes(),
                             contentPadding = PaddingValues(0.dp),
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.text_profile_user_id, id),
-                                    style = typography.bodySmall,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                                Icon(
-                                    ImageVector.vectorResource(R.drawable.ms_content_copy),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.ms_content_copy),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.text_profile_user_id, id),
+                                style = typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
                 }
-                if (showBtn && inlineAction) ProfileAction(isSelf, info.has_concerned != 0, actionEnabled, onBtnClick)
             }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
