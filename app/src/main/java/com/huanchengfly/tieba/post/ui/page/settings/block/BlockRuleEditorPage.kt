@@ -121,7 +121,7 @@ internal fun BlockRuleEditor(
                         onClick = {
                             if (!saving) {
                                 saving = true
-                                scope.launch {
+                                scope.launch(Dispatchers.Main.immediate) {
                                     try {
                                         onSave(text)
                                         onBack()
