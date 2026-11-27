@@ -2,6 +2,10 @@
 
 package com.huanchengfly.tieba.post.ui.page.main.explore.hot
 
+import androidx.compose.runtime.remember
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,6 +84,11 @@ fun HotPage(
     val tabList by viewModel.uiState.collectPartialAsState(HotUiState::tabList)
     val currentTabCode by viewModel.uiState.collectPartialAsState(HotUiState::currentTabCode)
     val isLoadingThreadList by viewModel.uiState.collectPartialAsState(HotUiState::isLoadingThreadList)
+    val visibleThreads = rememberVisibleItems(threadList) { blocksThread(it.get()) }
+    val ranks = remember(threadList, visibleThreads) {
+        if (visibleThreads.size == threadList.size) emptyMap()
+        else threadList.mapIndexed { index, item -> item.get { threadId } to index }.toMap()
+    }
     PullToRefreshLayout(
         refreshing = isLoading,
         onRefresh = { viewModel.send(HotUiIntent.Load) },
@@ -205,8 +214,9 @@ fun HotPage(
                 if (isLoadingThreadList) {
                     items(10) { ThreadListItemPlaceholder() }
                 } else {
+                    if (visibleThreads.isEmpty()) item { FilteredPageNotice() }
                     itemsIndexed(
-                        items = threadList,
+                        items = visibleThreads,
                         key = { _, item -> "Thread_${item.get { threadId }}" }
                     ) { index, item ->
                         Container {
@@ -244,7 +254,7 @@ fun HotPage(
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    RankNumber(index)
+                                    RankNumber(ranks[item.get { threadId }] ?: index)
                                     Text(
                                         text = stringResource(
                                             id = R.string.hot_num,

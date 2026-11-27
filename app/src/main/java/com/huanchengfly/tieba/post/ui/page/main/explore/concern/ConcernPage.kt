@@ -1,12 +1,16 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.concern
 
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import kotlinx.collections.immutable.toImmutableList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.huanchengfly.tieba.post.api.models.protos.hasAgree
@@ -41,6 +45,13 @@ fun ConcernPage(
     val nextPageTag by viewModel.uiState.collectPartialAsState(ConcernUiState::nextPageTag)
     val data by viewModel.uiState.collectPartialAsState(ConcernUiState::data)
 
+    val hasMore by viewModel.uiState.collectPartialAsState(ConcernUiState::hasMore)
+    val threads = remember(data) {
+        data.mapNotNull { if (it.recommendType == 1) it.threadList else null }.toImmutableList()
+    }
+    val visible = rememberVisibleItems(threads) { blocksThread(it) }
+    val loadMore = { viewModel.send(ConcernUiIntent.LoadMore(nextPageTag)) }
+
     val lazyListState = rememberLazyListState()
     if (LocalShouldLoad.current) {
         viewModel.bindScrollToTopEvent(lazyListState = lazyListState)
@@ -57,7 +68,9 @@ fun ConcernPage(
     ) {
         LoadMoreLayout(
             isLoading = isLoadingMore,
-            onLoadMore = { viewModel.send(ConcernUiIntent.LoadMore(nextPageTag)) },
+            onLoadMore = loadMore,
+            loadEnd = !hasMore,
+            isEmpty = visible.isEmpty(),
             lazyListState = lazyListState,
         ) {
             MyLazyColumn(
@@ -65,48 +78,46 @@ fun ConcernPage(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                if (threads.isNotEmpty() && visible.isEmpty()) {
+                    item { FilteredPageNotice(if (hasMore && !isLoadingMore && !isRefreshing) loadMore else null) }
+                }
                 items(
-                    items = data,
-                    key = { item -> "${item.recommendType}_${item.threadList?.id}" },
-                    contentType = { item -> item.recommendType }
+                    items = visible,
+                    key = { it.id },
                 ) { item ->
                     Container {
-                        if (item.recommendType == 1) {
-                            FeedCard(
-                                item = wrapImmutable(item.threadList!!),
-                                onClick = {
-                                    navigator.navigate(
-                                        ThreadPageDestination(
-                                            it.threadId,
-                                            it.forumId,
-                                            threadInfo = it
-                                        )
+                        FeedCard(
+                            item = wrapImmutable(item),
+                            onClick = {
+                                navigator.navigate(
+                                    ThreadPageDestination(
+                                        it.threadId,
+                                        it.forumId,
+                                        threadInfo = it
                                     )
-                                },
-                                onClickReply = {
-                                    navigator.navigate(
-                                        ThreadPageDestination(
-                                            it.threadId,
-                                            it.forumId,
-                                            scrollToReply = true
-                                        )
+                                )
+                            },
+                            onClickReply = {
+                                navigator.navigate(
+                                    ThreadPageDestination(
+                                        it.threadId,
+                                        it.forumId,
+                                        scrollToReply = true
                                     )
-                                },
-                                onAgree = {
-                                    viewModel.send(
-                                        ConcernUiIntent.Agree(
-                                            it.threadId,
-                                            it.firstPostId,
-                                            it.hasAgree
-                                        )
+                                )
+                            },
+                            onAgree = {
+                                viewModel.send(
+                                    ConcernUiIntent.Agree(
+                                        it.threadId,
+                                        it.firstPostId,
+                                        it.hasAgree
                                     )
-                                },
-                                onClickForum = { navigator.navigate(ForumPageDestination(it.name)) },
-                                onClickUser = { navigator.navigate(UserProfilePageDestination(it.id)) },
-                            )
-                        } else {
-                            Box {}
-                        }
+                                )
+                            },
+                            onClickForum = { navigator.navigate(ForumPageDestination(it.name)) },
+                            onClickUser = { navigator.navigate(UserProfilePageDestination(it.id)) },
+                        )
                     }
                 }
             }

@@ -112,7 +112,10 @@ object QuickPreviewUtil {
                                 threadContentBean.forum?.name,
                                 threadContentBean.thread?.replyNum
                             ),
-                            icon = Icon(threadContentBean.thread?.author?.portrait)
+                            icon = Icon(threadContentBean.thread?.author?.portrait),
+                            forumName = threadContentBean.forum?.name,
+                            authorName = threadContentBean.thread?.author?.name,
+                            authorNickname = threadContentBean.thread?.author?.nameShow,
                         )
                     )
                 }
@@ -136,7 +139,10 @@ object QuickPreviewUtil {
                         it.data_?.forum?.name,
                         it.data_?.thread?.replyNum?.toString()
                     ),
-                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.displayPortrait))
+                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.displayPortrait)),
+                    forumName = it.data_?.forum?.name,
+                    authorName = it.data_?.thread?.author?.name,
+                    authorNickname = it.data_?.thread?.author?.nameShow,
                 )
             }
             .catch { it.printStackTrace() }
@@ -253,6 +259,9 @@ object QuickPreviewUtil {
         val title: String? = null,
         val subtitle: String? = null,
         val icon: Icon? = null,
+        val forumName: String? = (clipBoardLink as? ClipBoardForumLink)?.forumName,
+        val authorName: String? = null,
+        val authorNickname: String? = null,
     )
 
     @Immutable

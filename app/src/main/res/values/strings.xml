@@ -359,7 +359,21 @@
     <string name="summary_now_account">已登录账号 %s</string>
     <string name="summary_not_logged_in">未登录，点击登录</string>
     <string name="title_settings_more">更多</string>
-    <string name="summary_block_settings">眼不见心不烦</string>
+    <string name="summary_block_settings">管理吧名、用户和评论屏蔽规则</string>
+    <string name="block_rules_section">本地正则屏蔽</string>
+    <string name="block_management_section">屏蔽词与显示</string>
+    <string name="block_rules_forum">吧名规则</string>
+    <string name="block_rules_user">用户名规则</string>
+    <string name="block_rules_comment">评论正文规则</string>
+    <string name="block_rules_count">%1$d 条规则</string>
+    <string name="block_rules_field">正则表达式</string>
+    <string name="block_rules_instructions">每行一条，匹配任意一条即屏蔽。英文字母忽略大小写。</string>
+    <string name="block_rules_forum_example">例如 ^(摄影|数码)$ 只匹配摄影吧和数码吧。吧名也可以带「吧」字。</string>
+    <string name="block_rules_user_example">例如 ^推广号[0-9]+$ 匹配「推广号」后接数字的用户名。</string>
+    <string name="block_rules_comment_example">例如 加群|代练 匹配含有「加群」或「代练」的评论和楼中楼回复。</string>
+    <string name="block_rules_invalid">第 %1$d 行的正则有误：%2$s</string>
+    <string name="block_rules_save">保存规则</string>
+    <string name="block_rules_write_error">保存失败，请重试。</string>
     <string name="summary_settings_custom">个性你的 UI 界面</string>
     <string name="summary_settings_habit">万般功能不如自己顺手</string>
     <string name="summary_settings_oksign">一键签到功能设定</string>
@@ -490,6 +504,7 @@
     <string name="btn_open_origin_thread">查看原贴</string>
     <string name="tip_blocked_thread">由于你的屏蔽设置，该贴已被屏蔽</string>
     <string name="tip_blocked_content">由于你的屏蔽设置，该内容已被屏蔽</string>
+    <string name="tip_blocked_user_profile">该用户已被本机的用户名规则屏蔽</string>
     <string name="tip_blocked_message">由于你的屏蔽设置，该消息已被屏蔽</string>
     <string name="tip_thread_store_deleted">该贴已被删除</string>
     <string name="button_clear">清除</string>
@@ -555,4 +570,7 @@
     <string name="wallpaper_position">壁纸 %1$d</string>
     <string name="play_voice">播放语音</string>
     <string name="pause_voice">暂停语音</string>
+    <string name="tip_locally_blocked_forum">此吧已被你的本地吧名规则屏蔽</string>
+    <string name="local_rules_filtered_page">当前已加载的内容均已被本地规则屏蔽</string>
+    <string name="local_rules_continue_loading">继续加载</string>
 </resources>

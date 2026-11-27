@@ -130,6 +130,11 @@ import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.ui.models.blocksOrigin
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
@@ -448,6 +453,21 @@ fun ThreadPage(
         initial = persistentListOf()
     )
 
+    val rules = LocalContentBlockRules.current
+    val topic = thread?.get() ?: threadInfo
+    val blockedThread = remember(rules, forum, topic, author, firstPost) {
+        rules.blocksForum(forum?.get { name }) || rules.blocksForum(topic?.forumName) ||
+            rules.blocksForum(topic?.forumInfo?.name) || rules.blocksAuthor(author?.get()) ||
+            rules.blocksAuthor(topic?.author) || rules.blocksAuthor(firstPost?.get { this.author })
+    }
+    if (blockedThread) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_thread))
+        return
+    }
+
+    val hideBlocked = LocalDisplayPreferences.current.hideBlockedContent || isImmersiveMode
+    val visibleFloors = remember(rules, data, hideBlocked) { rules.displayFloors(data, hideBlocked) }
+    val visibleLatest = remember(rules, latestPosts, hideBlocked) { rules.displayFloors(latestPosts, hideBlocked) }
     val isEmpty by remember {
         derivedStateOf { data.isEmpty() && firstPost == null }
     }
@@ -513,7 +533,7 @@ fun ThreadPage(
     }
     viewModel.onEvent<ThreadUiEvent.ScrollToLatestReply> {
         if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
-            lazyListState.scrollToDiscussionItem(2 + data.size)
+            lazyListState.scrollToDiscussionItem(2 + visibleFloors.size)
         } else {
             lazyListState.scrollToDiscussionItem(1)
         }
@@ -800,6 +820,33 @@ fun ThreadPage(
         )
     }
 
+    fun loadMorePosts() {
+        if (hasMore) {
+            viewModel.send(
+                ThreadUiIntent.LoadMore(
+                    threadId = threadId,
+                    page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
+                    else currentPageMax + 1,
+                    forumId = forumId,
+                    postId = nextPagePostId,
+                    seeLz = isSeeLz,
+                    sortType = curSortType,
+                    postIds = data.map { it.post.get { id } }
+                )
+            )
+        } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
+            viewModel.send(
+                ThreadUiIntent.LoadLatestPosts(
+                    threadId = threadId,
+                    curLatestPostId = data.last().post.get { id },
+                    forumId = curForumId,
+                    seeLz = isSeeLz,
+                    sortType = curSortType
+                )
+            )
+        }
+    }
+
     fun LazyListScope.replyFloors(posts: ImmutableList<PostItemData>, latest: Boolean = false) {
         itemsIndexed(
             items = posts,
@@ -816,7 +863,7 @@ fun ThreadPage(
     }
 
     fun LazyListScope.latestPosts(desc: Boolean) {
-        if (latestPosts.isNotEmpty()) {
+        if (visibleLatest.isNotEmpty()) {
             if (!desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -830,7 +877,7 @@ fun ThreadPage(
                     }
                 }
             }
-            replyFloors(latestPosts, latest = true)
+            replyFloors(visibleLatest, latest = true)
             if (desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -1043,32 +1090,7 @@ fun ThreadPage(
                 ) {
                     LoadMoreLayout(
                         isLoading = isLoadingMore,
-                        onLoadMore = {
-                            if (hasMore) {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadMore(
-                                        threadId = threadId,
-                                        page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
-                                        else currentPageMax + 1,
-                                        forumId = forumId,
-                                        postId = nextPagePostId,
-                                        seeLz = isSeeLz,
-                                        sortType = curSortType,
-                                        postIds = data.map { it.post.get { id } }
-                                    )
-                                )
-                            } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadLatestPosts(
-                                        threadId = threadId,
-                                        curLatestPostId = data.last().post.get { id },
-                                        forumId = curForumId,
-                                        seeLz = isSeeLz,
-                                        sortType = curSortType
-                                    )
-                                )
-                            }
-                        },
+                        onLoadMore = ::loadMorePosts,
                         loadEnd = loadMoreEnd,
                         indicator = { isLoading, loadMoreEnd, willLoad ->
                             ThreadLoadMoreIndicator(
@@ -1079,7 +1101,7 @@ fun ThreadPage(
                             )
                         },
                         lazyListState = lazyListState,
-                        isEmpty = data.isEmpty(),
+                        isEmpty = visibleFloors.isEmpty(),
                         preloadCount = loadMorePreloadCount,
                     ) {
                         MyLazyColumn(
@@ -1141,6 +1163,7 @@ fun ThreadPage(
 
                                             thread?.getNullableImmutable { origin_thread_info }
                                                 .takeIf { thread?.get { is_share_thread } == 1 }
+                                                ?.takeUnless { rules.blocksOrigin(it.get()) }
                                                 ?.let {
                                                     QuotedThread(
                                                         thread = it,
@@ -1193,7 +1216,7 @@ fun ThreadPage(
                                 latestPosts(true)
                             }
                             item(key = "LoadPreviousBtn") {
-                                if (hasPrevious) {
+                                if (hasPrevious && data.isNotEmpty()) {
                                     Container {
                                         TextButton(
                                             onClick = {
@@ -1228,11 +1251,17 @@ fun ThreadPage(
                                     }
                                 }
                             }
-                            if (!isRefreshing && data.isEmpty()) {
+                            if (!isRefreshing && visibleFloors.isEmpty() && visibleLatest.isEmpty() &&
+                                (data.isNotEmpty() || latestPosts.isNotEmpty())
+                            ) {
+                                item(key = "FilteredReplies") {
+                                    FilteredPageNotice(if (hasMore && !isLoadingMore) ::loadMorePosts else null)
+                                }
+                            } else if (!isRefreshing && data.isEmpty() && latestPosts.isEmpty()) {
                                 item(key = "EmptyTip") {
                                     Container {
                                         TipScreen(
-                                            title = { Text(text = stringResource(id = R.string.title_empty)) },
+                                            title = { Text(stringResource(R.string.title_empty)) },
                                             image = {
                                                 StateIllustration(ImageVector.vectorResource(R.drawable.ms_chat))
                                             },
@@ -1249,7 +1278,7 @@ fun ThreadPage(
                                     }
                                 }
                             } else {
-                                replyFloors(data)
+                                replyFloors(visibleFloors)
                             }
                             if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
                                 latestPosts(false)
@@ -1512,9 +1541,20 @@ internal fun PostCard(
         post.agree?.diffAgreeNum ?: 0L
     }
     val menuState = rememberMenuState()
-    val hideBlockedContent = context.appPreferences.hideBlockedContent || immersiveMode
-    val visibleSubPosts = remember(subPosts, hideBlockedContent) {
-        if (hideBlockedContent) subPosts.filterNot { it.blocked } else subPosts
+    val rules = LocalContentBlockRules.current
+    val hideBlockedContent = LocalDisplayPreferences.current.hideBlockedContent || immersiveMode
+    val visibleSubPosts = remember(subPosts, hideBlockedContent, rules) {
+        if (!hideBlockedContent && rules.isEmpty) return@remember subPosts
+        subPosts.mapNotNull { item ->
+            val blockedReply = item.blocked || rules.blocksNestedReply(item.subPost.get { author }) {
+                item.subPostContent.visibleReplyBody()
+            }
+            when {
+                blockedReply && hideBlockedContent -> null
+                blockedReply != item.blocked -> item.copy(blocked = true)
+                else -> item
+            }
+        }
     }
     val moreReplies = post.sub_post_number > subPosts.size
     BlockableContent(

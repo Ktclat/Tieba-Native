@@ -71,6 +71,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -254,6 +255,7 @@ class MainNavigationBarTest {
         assertEquals(window.width, visible.width)
         assertEquals(window.bottom - 24.dp - visible.height, feed.getUnclippedBoundsInRoot().bottom)
         compose.captureReviewImage(view, "nav-visible.png")
+        assertIndicatorSurroundsIconAndLabel("nav-visible.png")
 
         dragFeed(-82f)
         val partial = compose.runOnIdle { hideFraction }
@@ -308,6 +310,7 @@ class MainNavigationBarTest {
         assertTrue(bounds.all { it.width >= 48.dp && it.height >= 48.dp && it.left >= initial.left && it.right <= initial.right })
         assertTrue(bounds.zipWithNext().all { (left, right) -> left.right <= right.left })
         compose.captureReviewImage(view, "nav-floating.png")
+        assertIndicatorSurroundsIconAndLabel("nav-floating.png")
 
         buttons[1].performTouchInput { click() }.assertIsSelected()
         buttons[1].performTouchInput { swipe(center, center + Offset(width * 1.2f, 0f), 400) }
@@ -369,6 +372,20 @@ class MainNavigationBarTest {
         scroll.onPostFling(androidx.compose.ui.unit.Velocity.Zero, androidx.compose.ui.unit.Velocity.Zero)
         assertEquals(0, scroll.bufferedHeightPx)
         assertEquals(0.5f, scroll.hiddenFraction)
+    }
+
+    private fun assertIndicatorSurroundsIconAndLabel(screenshot: String) {
+        val selectedIcon = compose.onNodeWithTag("navigation-icon-0", useUnmergedTree = true)
+        val selectedLabel = compose.onNode(hasText(titles[0]) and hasAnyAncestor(isSelectable()), useUnmergedTree = true)
+        val inactiveLabel = compose.onNode(hasText(titles[1]) and hasAnyAncestor(isSelectable()), useUnmergedTree = true)
+        // Sample just outside the glyphs, keeping antialiased icon and text pixels out of the check.
+        fun backgroundBeside(node: SemanticsNodeInteraction): Int {
+            val bounds = node.fetchSemanticsNode().boundsInRoot
+            return screenshotPixel(screenshot, bounds.left.toInt() - 2, bounds.center.y.toInt())
+        }
+        val indicator = backgroundBeside(selectedIcon)
+        assertNotEquals(backgroundBeside(inactiveLabel), indicator)
+        assertEquals(indicator, backgroundBeside(selectedLabel))
     }
 
     private fun screenshotPixel(name: String, x: Int, y: Int): Int {

@@ -2,6 +2,8 @@
 
 package com.huanchengfly.tieba.post.ui.page.forum
 
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -244,6 +246,13 @@ fun ForumPage(
     viewModel: ForumViewModel = pageViewModel(),
     navigator: DestinationsNavigator
 ) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val rules = LocalContentBlockRules.current
+    val resolvedName = state.forum?.get { name }
+    if (rules.blocksForum(forumName) || rules.blocksForum(resolvedName)) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_locally_blocked_forum))
+        return
+    }
     val context = LocalContext.current
     val sortPreference = remember(context, forumName) { forumSortPreference(context, forumName) }
     val currentSortType = sortPreference.collectAsState(initial = null).value
@@ -304,7 +313,6 @@ fun ForumPage(
         )
     }
 
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
     ForumContent(forumName, currentSortType, state, navigator, viewModel::send, snackbarHostState)
 }
 

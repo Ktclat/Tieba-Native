@@ -2,6 +2,9 @@
 
 package com.huanchengfly.tieba.post.ui.page.main.explore.personalized
 
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
@@ -88,6 +91,9 @@ fun PersonalizedPage(
     val error by viewModel.uiState.collectPartialAsState(PersonalizedUiState::error)
     val refreshPosition by viewModel.uiState.collectPartialAsState(PersonalizedUiState::refreshPosition)
     val hiddenThreadIds by viewModel.uiState.collectPartialAsState(PersonalizedUiState::hiddenThreadIds)
+    val visible = rememberVisibleItems(data) { blocksThread(it.thread.get()) }
+    val refreshBoundary = data.getOrNull(refreshPosition - 1)?.thread?.get { id }
+    val loadMore = { viewModel.send(PersonalizedUiIntent.LoadMore(currentPage + 1)) }
     val lazyListState = rememberLazyListState()
     val isEmpty by remember {
         derivedStateOf {
@@ -157,15 +163,17 @@ fun PersonalizedPage(
         ) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = { viewModel.send(PersonalizedUiIntent.LoadMore(currentPage + 1)) },
+                onLoadMore = loadMore,
                 loadEnd = false,
                 lazyListState = lazyListState,
-                isEmpty = data.isEmpty()
+                isEmpty = visible.isEmpty()
             ) {
                 FeedList(
                     state = lazyListState,
-                    dataProvider = { data },
-                    refreshPositionProvider = { refreshPosition },
+                    dataProvider = { visible },
+                    filteredAll = data.isNotEmpty() && visible.isEmpty(),
+                    onLoadMore = if (isLoadingMore || isRefreshing) null else loadMore,
+                    refreshBoundary = refreshBoundary,
                     hiddenThreadIdsProvider = { hiddenThreadIds },
                     onItemClick = {
                         navigator.navigate(
@@ -242,7 +250,9 @@ private fun BoxScope.RefreshTip(refreshCount: Int) {
 private fun FeedList(
     state: LazyListState,
     dataProvider: () -> ImmutableList<ThreadItemData>,
-    refreshPositionProvider: () -> Int,
+    filteredAll: Boolean,
+    onLoadMore: (() -> Unit)?,
+    refreshBoundary: Long?,
     hiddenThreadIdsProvider: () -> ImmutableList<Long>,
     onItemClick: (ThreadInfo) -> Unit,
     onItemReplyClick: (ThreadInfo) -> Unit,
@@ -253,7 +263,6 @@ private fun FeedList(
     onClickUser: (User) -> Unit = {},
 ) {
     val data = dataProvider()
-    val refreshPosition = refreshPositionProvider()
     val hiddenIds = hiddenThreadIdsProvider()
     val hiddenThreadIds = remember(hiddenIds) { hiddenIds.toHashSet() }
 
@@ -262,6 +271,7 @@ private fun FeedList(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
     ) {
+        if (filteredAll) item { FilteredPageNotice(onLoadMore) }
         itemsIndexed(
             items = data,
             key = { _, (item) -> "${item.get { id }}" },
@@ -273,9 +283,9 @@ private fun FeedList(
                     else -> "PlainText"
                 }
             }
-        ) { index, (item, blocked, personalized, hidden) ->
+        ) { _, (item, blocked, personalized, hidden) ->
             val isHidden = hidden || item.get { threadId } in hiddenThreadIds
-            val isRefreshPosition = index + 1 == refreshPosition
+            val isRefreshPosition = item.get { id } == refreshBoundary
             Container {
                 AnimatedVisibility(
                     visible = !isHidden,

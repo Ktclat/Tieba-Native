@@ -18,6 +18,8 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +33,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestinati
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.page.search.SearchResultHeading
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -51,13 +54,17 @@ fun SearchUserPage(
         viewModel.send(SearchUserUiIntent.Refresh(keyword))
     }
 
-    val exactMatch = state.exactMatch
-    val fuzzyMatch = state.fuzzyMatch
+    val rules = LocalContentBlockRules.current
+    fun blocked(user: SearchUserBean.UserBean) = rules.blocksUser(user.name, user.showNickname, user.userNickname)
+    val exactMatch = state.exactMatch?.takeUnless(::blocked)
+    val fuzzyMatch = remember(state.fuzzyMatch, rules) {
+        if (rules.isEmpty) state.fuzzyMatch else state.fuzzyMatch.filterNot(::blocked)
+    }
     val pullRefreshState = rememberPullToRefreshState()
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = !matchesKeyword || (exactMatch == null && fuzzyMatch.isEmpty()),
+        isEmpty = !matchesKeyword || (state.exactMatch == null && state.fuzzyMatch.isEmpty()),
         isError = matchesKeyword && state.error != null,
         isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) },
@@ -74,6 +81,7 @@ fun SearchUserPage(
                 .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) })
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (exactMatch == null && fuzzyMatch.isEmpty()) item { FilteredPageNotice() }
                 if (exactMatch != null) {
                     stickyHeader(key = "ExactMatchHeader") {
                         SearchResultHeading(stringResource(R.string.title_exact_match))

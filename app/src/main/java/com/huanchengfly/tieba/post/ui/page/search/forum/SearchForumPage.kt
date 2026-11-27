@@ -18,6 +18,8 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -30,6 +32,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.page.search.SearchResultHeading
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -48,13 +51,18 @@ fun SearchForumPage(
         viewModel.send(SearchForumUiIntent.Refresh(keyword))
     }
 
-    val exactMatchForum = state.exactMatchForum
-    val fuzzyMatchForumList = state.fuzzyMatchForumList
+    val rules = LocalContentBlockRules.current
+    fun blocked(forum: SearchForumBean.ForumInfoBean) =
+        rules.blocksForum(forum.forumName, forum.forumNameShow)
+    val exactMatchForum = state.exactMatchForum?.takeUnless(::blocked)
+    val fuzzyMatchForumList = remember(state.fuzzyMatchForumList, rules) {
+        if (rules.isEmpty) state.fuzzyMatchForumList else state.fuzzyMatchForumList.filterNot(::blocked)
+    }
     val pullRefreshState = rememberPullToRefreshState()
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = !matchesKeyword || (exactMatchForum == null && fuzzyMatchForumList.isEmpty()),
+        isEmpty = !matchesKeyword || (state.exactMatchForum == null && state.fuzzyMatchForumList.isEmpty()),
         isError = matchesKeyword && state.error != null,
         isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) },
@@ -71,6 +79,7 @@ fun SearchForumPage(
                 .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) })
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (exactMatchForum == null && fuzzyMatchForumList.isEmpty()) item { FilteredPageNotice() }
                 if (exactMatchForum != null) {
                     stickyHeader(key = "ExactMatchHeader") {
                         SearchResultHeading(stringResource(R.string.title_exact_match))

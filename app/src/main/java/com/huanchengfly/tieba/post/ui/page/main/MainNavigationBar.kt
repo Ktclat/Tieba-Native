@@ -3,7 +3,9 @@ package com.huanchengfly.tieba.post.ui.page.main
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
@@ -175,8 +178,22 @@ internal fun MainNavigationBar(
                     selected = selected,
                     onClick = { select(index) },
                     modifier = drag.destinationBadgeDescription(item),
-                    label = { Text(item.title(selected), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    icon = { DestinationIcon(item, selected) },
+                    label = null,
+                    // The item sizes its animated indicator and ripple around this slot.
+                    icon = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            DestinationIcon(item, selected)
+                            Text(
+                                item.title(selected),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    },
                 )
             }
         }

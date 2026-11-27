@@ -43,6 +43,8 @@ import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.getOrNull
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.models.blocksOrigin
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
@@ -53,6 +55,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCardPlaceholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
@@ -61,8 +64,10 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
+import com.huanchengfly.tieba.post.utils.LocalBlockRules
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +109,10 @@ fun UserPostPage(
         prop1 = UserPostUiState::posts,
         initial = persistentListOf()
     )
+    val rules = LocalContentBlockRules.current
+    val visiblePosts = remember(posts, rules) {
+        if (rules.isEmpty) posts else posts.mapNotNull { rules.visibleProfilePost(it) }.toImmutableList()
+    }
     val hidePost by viewModel.uiState.collectPartialAsState(
         prop1 = UserPostUiState::hidePost,
         initial = false
@@ -174,6 +183,11 @@ fun UserPostPage(
             }
         },
     ) {
+        val loadMore = { viewModel.send(UserPostUiIntent.LoadMore(uid, isThread, currentPage)) }
+        if (visiblePosts.isEmpty()) {
+            FilteredPageNotice(if (hasMore && !isLoadingMore) loadMore else null)
+            return@StateScreen
+        }
         val pullRefreshState = rememberPullToRefreshState()
 
         val lazyListState = rememberLazyListState()
@@ -184,14 +198,12 @@ fun UserPostPage(
         Box(modifier = pullRefreshModifier) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(UserPostUiIntent.LoadMore(uid, isThread, currentPage))
-                },
+                onLoadMore = loadMore,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState
             ) {
                 UserPostList(
-                    data = posts,
+                    data = visiblePosts,
                     fluid = fluid,
                     lazyListState = lazyListState,
                     onClickItem = { threadId, postId, isSubPost ->
@@ -253,6 +265,21 @@ fun UserPostPage(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
+    }
+}
+
+internal fun LocalBlockRules.visibleProfilePost(item: PostListItemData): PostListItemData? {
+    val post = item.data.get()
+    if (blocksForum(post.forum_name) || blocksUser(post.user_name, post.name_show) ||
+        post.origin_thread_info?.let(::blocksOrigin) == true
+    ) return null
+    if (item.isThread || item.contents.isEmpty()) return item
+
+    val visibleReplies = item.contents.filterNot { blocksComment(it.contentText) }
+    return when (visibleReplies.size) {
+        0 -> null
+        item.contents.size -> item
+        else -> item.copy(contents = visibleReplies.toImmutableList())
     }
 }
 

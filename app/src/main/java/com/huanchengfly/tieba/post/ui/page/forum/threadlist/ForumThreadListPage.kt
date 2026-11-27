@@ -1,5 +1,8 @@
 package com.huanchengfly.tieba.post.ui.page.forum.threadlist
 
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -136,6 +139,8 @@ private fun TopThreadItem(
 private fun ThreadList(
     state: LazyListState,
     items: ImmutableList<ThreadItemData>,
+    filteredAll: Boolean,
+    onLoadMore: (() -> Unit)?,
     onItemClicked: (ThreadInfo) -> Unit,
     onItemReplyClicked: (ThreadInfo) -> Unit,
     onAgree: (ThreadInfo) -> Unit,
@@ -167,6 +172,7 @@ private fun ThreadList(
                 )
             }
         }
+        if (filteredAll) item { FilteredPageNotice(onLoadMore) }
         itemsIndexed(
             items = items,
             key = { index, (holder) ->
@@ -301,6 +307,7 @@ fun ForumThreadListPage(
         prop1 = ForumThreadListUiState::threadList,
         initial = persistentListOf()
     )
+    val visible = rememberVisibleItems(threadList) { blocksThread(it.thread.get()) }
     val threadListIds by viewModel.uiState.collectPartialAsState(
         prop1 = ForumThreadListUiState::threadListIds,
         initial = persistentListOf()
@@ -309,6 +316,13 @@ fun ForumThreadListPage(
         prop1 = ForumThreadListUiState::goodClassifies,
         initial = persistentListOf()
     )
+    val loadNextPage = {
+        viewModel.send(ForumThreadListUiIntent.LoadMore(
+            forumId, forumName, currentPage, threadListIds,
+            sortType = if (isGood) 0 else sortType,
+            goodClassifyId = if (isGood) goodClassifyId ?: 0 else null,
+        ))
+    }
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -334,23 +348,17 @@ fun ForumThreadListPage(
 
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(
-                        ForumThreadListUiIntent.LoadMore(
-                            forumId, forumName, currentPage, threadListIds,
-                            sortType = if (isGood) 0 else sortType,
-                            goodClassifyId = if (isGood) goodClassifyId ?: 0 else null,
-                        )
-                    )
-                },
+                onLoadMore = loadNextPage,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState,
-                isEmpty = threadList.isEmpty(),
+                isEmpty = visible.isEmpty(),
                 modifier = Modifier.weight(1f)
             ) {
                 ThreadList(
                     state = lazyListState,
-                    items = threadList,
+                    items = visible,
+                    filteredAll = threadList.isNotEmpty() && visible.isEmpty(),
+                    onLoadMore = if (hasMore && !isLoadingMore && !isRefreshing) loadNextPage else null,
                     onItemClicked = {
                         navigator.navigate(
                             ThreadPageDestination(

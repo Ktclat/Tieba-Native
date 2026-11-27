@@ -82,6 +82,8 @@ import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.models.database.Block
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.user.edit.EditProfileActivity
 import com.huanchengfly.tieba.post.ui.page.user.likeforum.UserLikeForumPage
@@ -143,6 +145,11 @@ fun UserProfilePage(
         prop1 = UserProfileUiState::user,
         initial = null
     )
+    val rules = LocalContentBlockRules.current
+    if (user?.get { rules.blocksUser(name, nameShow) } == true) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_user_profile))
+        return
+    }
     val disableButton by viewModel.uiState.collectPartialAsState(
         prop1 = UserProfileUiState::disableButton,
         initial = false

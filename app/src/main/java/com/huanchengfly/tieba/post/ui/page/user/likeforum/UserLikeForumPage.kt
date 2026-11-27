@@ -27,11 +27,13 @@ import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.getOrNull
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
@@ -80,6 +82,7 @@ fun UserLikeForumPage(
         initial = persistentListOf()
     )
 
+    val visibleForums = rememberVisibleItems(forums) { blocksForum(it.name) }
     val isEmpty by remember {
         derivedStateOf { forums.isEmpty() }
     }
@@ -102,6 +105,11 @@ fun UserLikeForumPage(
         },
         errorScreen = { ErrorScreen(error = error.getOrNull()) },
     ) {
+        val loadMore = { viewModel.send(UserLikeForumUiIntent.LoadMore(uid, currentPage)) }
+        if (visibleForums.isEmpty()) {
+            FilteredPageNotice(if (hasMore && !isLoadingMore) loadMore else null)
+            return@StateScreen
+        }
         val pullRefreshState = rememberPullToRefreshState()
 
         val lazyListState = rememberLazyListState()
@@ -112,14 +120,12 @@ fun UserLikeForumPage(
         Box(modifier = pullRefreshModifier) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(UserLikeForumUiIntent.LoadMore(uid, currentPage))
-                },
+                onLoadMore = loadMore,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState
             ) {
                 UserLikeForumList(
-                    data = forums,
+                    data = visibleForums,
                     fluid = fluid,
                     onClickForum = { forumBean ->
                         forumBean.name?.let {

@@ -68,6 +68,7 @@ import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.collectPreferenceAsState
 import com.huanchengfly.tieba.post.dataStore
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
@@ -243,9 +244,9 @@ fun HomePage(
     val context = LocalContext.current
     val navigator = LocalNavigator.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val forums = state.forums
-    val topForums = state.topForums
-    val historyForums = state.historyForums
+    val forums = rememberVisibleItems(state.forums) { blocksForum(it.forumName) }
+    val topForums = rememberVisibleItems(state.topForums) { blocksForum(it.forumName) }
+    val historyForums = rememberVisibleItems(state.historyForums) { blocksForum(it.data) }
     val expandHistoryForum = state.expandHistoryForum
     val isLoading = state.isLoading
     val error = state.error

@@ -22,6 +22,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.SearchThreadList
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.spec.Direction
@@ -30,6 +31,8 @@ import kotlinx.collections.immutable.ImmutableList
 @Composable
 internal fun SearchThreadResults(
     data: ImmutableList<SearchThreadBean.ThreadInfoBean>,
+    filteredAll: Boolean,
+    onLoadNext: (() -> Unit)?,
     lazyListState: LazyListState,
     navigator: DestinationsNavigator,
     searchKeyword: String,
@@ -58,6 +61,9 @@ internal fun SearchThreadResults(
         searchKeyword = searchKeyword,
         header = header,
         footer = {
+            if (filteredAll) {
+                item { FilteredPageNotice(if (onRetryPage == null) onLoadNext else null) }
+            }
             if (onRetryPage != null) {
                 item(key = "search-page-retry") {
                     Row(

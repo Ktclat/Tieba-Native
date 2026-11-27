@@ -63,6 +63,8 @@ import com.huanchengfly.tieba.post.components.ClipBoardLink
 import com.huanchengfly.tieba.post.components.ClipBoardLinkDetector
 import com.huanchengfly.tieba.post.components.ClipBoardThreadLink
 import com.huanchengfly.tieba.post.services.NotifyJobService
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.utils.LocalBlockRuleStore
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppThemeName
 import com.huanchengfly.tieba.post.ui.page.NavGraphs
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
@@ -315,14 +317,16 @@ class MainActivityV2 : BaseComposeActivity() {
 
     @Composable
     private fun ClipBoardDetectDialog() {
-        val previewInfo by ClipBoardLinkDetector.previewInfoStateFlow.collectAsState()
+        val latest by ClipBoardLinkDetector.previewInfoStateFlow.collectAsState()
+        val rules = LocalContentBlockRules.current
+        val previewInfo = latest?.takeUnless { preview ->
+            rules.blocksForum(preview.forumName) || rules.blocksUser(preview.authorName, preview.authorNickname)
+        } ?: return
 
         val dialogState = rememberDialogState()
 
         LaunchedEffect(previewInfo) {
-            if (previewInfo != null) {
-                dialogState.show()
-            }
+            dialogState.show()
         }
 
         Dialog(
@@ -332,14 +336,12 @@ class MainActivityV2 : BaseComposeActivity() {
             },
             buttons = {
                 DialogPositiveButton(text = stringResource(id = R.string.button_open)) {
-                    previewInfo?.let {
-                        openClipBoardLink(it.clipBoardLink)
-                    }
+                    openClipBoardLink(previewInfo.clipBoardLink)
                 }
                 DialogNegativeButton(text = stringResource(id = R.string.btn_close))
             },
         ) {
-            previewInfo?.let {
+            previewInfo.let {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -385,8 +387,16 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     @Composable
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun Content() {
+        val storedRules by remember { LocalBlockRuleStore.rules(applicationContext) }.collectAsState(initial = null)
+        // Deep links and clipboard previews must use the saved rules on their first frame.
+        val rules = storedRules ?: return
+        CompositionLocalProvider(LocalContentBlockRules provides rules) { MainContent() }
+    }
+
+    @Composable
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    private fun MainContent() {
         val okSignAlertDialogState = rememberDialogState()
         ClipBoardDetectDialog()
         AlertDialog(

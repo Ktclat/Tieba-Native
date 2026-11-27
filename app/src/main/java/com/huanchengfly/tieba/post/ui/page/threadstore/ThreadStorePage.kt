@@ -44,6 +44,8 @@ import com.huanchengfly.tieba.post.ui.page.thread.ThreadSortType
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
@@ -95,6 +97,12 @@ fun ThreadStorePage(
         prop1 = ThreadStoreUiState::data,
         initial = emptyList()
     )
+    val rules = LocalContentBlockRules.current
+    val visibleFavorites = remember(rules, data) {
+        if (rules.isEmpty) data else data.filterNot {
+            rules.blocksForum(it.forumName) || rules.blocksUser(it.author.name, it.author.nameShow)
+        }
+    }
     val error by viewModel.uiState.collectPartialAsState(
         prop1 = ThreadStoreUiState::error,
         initial = null
@@ -148,6 +156,11 @@ fun ThreadStorePage(
                 }
             }
         ) {
+            val loadMore = { viewModel.send(ThreadStoreUiIntent.LoadMore(currentPage + 1)) }
+            if (visibleFavorites.isEmpty()) {
+                FilteredPageNotice(if (hasMore && !isLoadingMore) loadMore else null)
+                return@StateScreen
+            }
             val pullRefreshState = rememberPullToRefreshState()
 
             val lazyListState = rememberLazyListState()
@@ -155,13 +168,13 @@ fun ThreadStorePage(
             Box(modifier = Modifier.pullToRefresh(isRefreshing = isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(ThreadStoreUiIntent.Refresh) })) {
                 LoadMoreLayout(
                     isLoading = isLoadingMore,
-                    onLoadMore = { viewModel.send(ThreadStoreUiIntent.LoadMore(currentPage + 1)) },
+                    onLoadMore = loadMore,
                     loadEnd = !hasMore,
                     lazyListState = lazyListState
                 ) {
                     MyLazyColumn(state = lazyListState) {
                         items(
-                            items = data,
+                            items = visibleFavorites,
                             key = { it.threadId }
                         ) { info ->
                             StoreItem(

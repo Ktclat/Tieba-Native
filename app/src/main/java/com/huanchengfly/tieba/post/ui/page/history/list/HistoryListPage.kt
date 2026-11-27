@@ -63,6 +63,9 @@ import com.huanchengfly.tieba.post.arch.hiltViewModel
 import com.huanchengfly.tieba.post.fromJson
 import com.huanchengfly.tieba.post.models.ThreadHistoryInfoBean
 import com.huanchengfly.tieba.post.models.database.History
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
+import com.huanchengfly.tieba.post.utils.BlockRuleTarget
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
@@ -79,6 +82,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+private fun History.threadInfo(): ThreadHistoryInfoBean? = try {
+    extras?.fromJson<ThreadHistoryInfoBean>()
+} catch (_: JsonParseException) {
+    null
+}
+
 @Composable
 internal fun HistoryListPage(
     type: Int,
@@ -93,6 +102,15 @@ internal fun HistoryListPage(
     },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val rules = LocalContentBlockRules.current
+    val visibleRows = remember(state.rows, rules) {
+        val filterForums = rules.count(BlockRuleTarget.FORUM) > 0
+        if (!filterForums && rules.count(BlockRuleTarget.USER) == 0) state.rows else state.rows.filterNot { visit ->
+            if (visit.type == HistoryUtil.TYPE_FORUM) rules.blocksForum(visit.data) else {
+                rules.blocksUser(visit.username) || (filterForums && rules.blocksForum(visit.threadInfo()?.forumName))
+            }
+        }
+    }
     val context = LocalContext.current
     val navigator = LocalNavigator.current
     val showMessage by rememberUpdatedState(onMessage)
@@ -136,9 +154,12 @@ internal fun HistoryListPage(
                 }
             }
         }
+        visibleRows.isEmpty() -> FilteredPageNotice(
+            onLoadMore = if (state.hasMore && !state.isLoadingMore) viewModel::loadMore else null,
+        )
         else -> key(query) {
             HistoryRows(
-                state = state,
+                state = state.copy(rows = visibleRows),
                 onLoadMore = viewModel::loadMore,
                 onDelete = { viewModel.delete(it.id) },
                 onClick = { entry ->
@@ -147,11 +168,7 @@ internal fun HistoryListPage(
                     } else {
                         val tid = entry.data.toLongOrNull()
                         if (tid != null) {
-                            val extra = try {
-                                entry.extras?.fromJson<ThreadHistoryInfoBean>()
-                            } catch (_: JsonParseException) {
-                                null
-                            }
+                            val extra = entry.threadInfo()
                             navigator.navigate(
                                 ThreadPageDestination(
                                     threadId = tid,

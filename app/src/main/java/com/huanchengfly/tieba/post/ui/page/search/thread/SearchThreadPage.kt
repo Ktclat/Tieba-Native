@@ -2,6 +2,8 @@
 
 package com.huanchengfly.tieba.post.ui.page.search.thread
 
+import com.huanchengfly.tieba.post.ui.models.blocksSearchResult
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -34,6 +36,7 @@ fun SearchThreadPage(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val query = SearchThreadQuery(keyword, sortType)
     val matchesQuery = state.query == query
+    val visible = rememberVisibleItems(state.data) { blocksSearchResult(it) }
     val refresh = { viewModel.send(SearchThreadUiIntent.Refresh(query)) }
     LazyLoad(key = query, loaded = matchesQuery, onLoad = refresh)
     val pullRefreshState = rememberPullToRefreshState()
@@ -61,13 +64,16 @@ fun SearchThreadPage(
             LoadMoreLayout(
                 isLoading = state.isLoadingMore,
                 onLoadMore = loadNextPage,
+                isEmpty = visible.isEmpty(),
                 enableLoadMore = LocalShouldLoad.current && !state.isRefreshing,
                 loadEnd = !state.hasMore,
                 preloadCount = if (state.error == null) 1 else 0,
                 lazyListState = lazyListState,
             ) {
                 SearchThreadResults(
-                    data = state.data,
+                    data = visible,
+                    filteredAll = state.data.isNotEmpty() && visible.isEmpty(),
+                    onLoadNext = if (state.hasMore && !state.isRefreshing && !state.isLoadingMore) loadNextPage else null,
                     lazyListState = lazyListState,
                     navigator = navigator,
                     searchKeyword = keyword,

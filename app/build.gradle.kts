@@ -179,6 +179,7 @@ dependencies {
     implementation(retrofit2.core)
     implementation(retrofit2.converter.wire)
     implementation(google.gson)
+    implementation(google.re2j)
     implementation(org.litepal.android.kotlin)
     implementation(github.matisse)
     implementation(xx.permissions)

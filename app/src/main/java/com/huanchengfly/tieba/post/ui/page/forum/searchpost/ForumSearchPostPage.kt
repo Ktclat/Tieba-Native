@@ -2,9 +2,13 @@
 
 package com.huanchengfly.tieba.post.ui.page.forum.searchpost
 
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import com.huanchengfly.tieba.post.ui.models.blocksSearchResult
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,6 +69,10 @@ fun ForumSearchPostPage(
         listOf(ForumSearchPostUiIntent.Init(forumName))
     ),
 ) {
+    if (LocalContentBlockRules.current.blocksForum(forumName)) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_locally_blocked_forum))
+        return
+    }
     val currentKeyword by viewModel.uiState.collectPartialAsState(
         prop1 = ForumSearchPostUiState::keyword,
         initial = ""
@@ -106,6 +114,7 @@ fun ForumSearchPostPage(
         initial = persistentListOf()
     )
 
+    val visible = rememberVisibleItems(data) { blocksSearchResult(it) }
     val isEmpty by remember {
         derivedStateOf { data.isEmpty() }
     }
@@ -214,6 +223,7 @@ fun ForumSearchPostPage(
                         ) {
                             LoadMoreLayout(
                                 isLoading = isLoadingMore,
+                                isEmpty = visible.isEmpty(),
                                 onLoadMore = ::loadNextPage,
                                 enableLoadMore = !isRefreshing,
                                 preloadCount = if (error == null) 1 else 0,
@@ -221,7 +231,9 @@ fun ForumSearchPostPage(
                                 lazyListState = lazyListState,
                             ) {
                                 SearchThreadResults(
-                                    data = data,
+                                    data = visible,
+                                    filteredAll = data.isNotEmpty() && visible.isEmpty(),
+                                    onLoadNext = if (hasMore && !isRefreshing && !isLoadingMore) ::loadNextPage else null,
                                     lazyListState = lazyListState,
                                     navigator = navigator,
                                     hideForum = true,

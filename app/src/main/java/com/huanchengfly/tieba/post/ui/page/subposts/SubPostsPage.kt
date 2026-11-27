@@ -51,6 +51,8 @@ import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.arch.wrapImmutable
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
@@ -69,7 +71,13 @@ import com.huanchengfly.tieba.post.ui.page.thread.ReplyPrompt
 import com.huanchengfly.tieba.post.ui.page.thread.ReplyRecipient
 import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
 import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
+import com.huanchengfly.tieba.post.ui.page.thread.blocksAuthor
+import com.huanchengfly.tieba.post.ui.page.thread.blocksFloor
+import com.huanchengfly.tieba.post.ui.page.thread.blocksNestedReply
+import com.huanchengfly.tieba.post.ui.page.thread.visibleReplyBody
 import com.huanchengfly.tieba.post.ui.page.thread.splitDirectedReply
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
@@ -185,10 +193,34 @@ internal fun SubPostsContent(
         initial = true
     )
 
+    val rules = LocalContentBlockRules.current
+    val blockedParent = remember(rules, forum, thread, post, postContentRenders) {
+        rules.blocksForum(forum?.get { name }) || rules.blocksForum(thread?.get { forumName }) ||
+            rules.blocksForum(thread?.get { forumInfo?.name }) || rules.blocksAuthor(thread?.get { author }) ||
+            post?.get { rules.blocksFloor(this, postContentRenders) } == true
+    }
+    if (blockedParent) {
+        BlockedDestination(onBack = onNavigateUp)
+        return
+    }
+    val hideBlocked = LocalDisplayPreferences.current.hideBlockedContent
+    val visibleReplies = remember(rules, subPosts, hideBlocked) {
+        if (!hideBlocked && rules.isEmpty) return@remember subPosts
+        subPosts.mapNotNull { item ->
+            val blocked = item.blocked || rules.blocksNestedReply(item.subPost.get { author }) {
+                item.subPostContentRenders.visibleReplyBody()
+            }
+            when {
+                blocked && hideBlocked -> null
+                blocked != item.blocked -> item.copy(blocked = true)
+                else -> item
+            }
+        }
+    }
     val lazyListState = rememberLazyListState()
 
     val postedReplyId by viewModel.uiState.collectPartialAsState(SubPostsUiState::postedReplyId, initial = null)
-    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, subPosts)
+    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, visibleReplies)
 
     val confirmDeleteDialogState = rememberDialogState()
     var deleteSubPost by remember { mutableStateOf<ImmutableHolder<SubPostList>?>(null) }
@@ -241,6 +273,10 @@ internal fun SubPostsContent(
         args.copy(tbs = anti?.get { tbs }?.takeIf { viewModel.uiState.value.loadedAccountId == account?.uid }),
         account?.uid,
     )
+
+    fun loadMoreReplies() {
+        viewModel.send(SubPostsUiIntent.LoadMore(replyForumId, threadId, parentId, page = currentPage + 1))
+    }
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
@@ -306,20 +342,10 @@ internal fun SubPostsContent(
             LoadMoreLayout(
                 modifier = Modifier.padding(paddingValues),
                 isLoading = isLoading,
-                onLoadMore = {
-                    viewModel.send(
-                        SubPostsUiIntent.LoadMore(
-                            forumId,
-                            threadId,
-                            postId,
-//                            subPostId,
-                            page = currentPage + 1,
-                        )
-                    )
-                },
+                onLoadMore = ::loadMoreReplies,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState,
-                isEmpty = post == null && subPosts.isEmpty(),
+                isEmpty = visibleReplies.isEmpty() && (post == null || subPosts.isNotEmpty()),
             ) {
                 MyLazyColumn(state = lazyListState) {
                     item(key = "Post$postId") {
@@ -372,7 +398,12 @@ internal fun SubPostsContent(
                         }
                     }
                     stickyHeader(key = "SubPostsHeader") { SubPostsHeading(totalCount) }
-                    items(subPosts, key = { it.id }) { item ->
+                    if (visibleReplies.isEmpty() && subPosts.isNotEmpty()) {
+                        item(key = "FilteredReplies") {
+                            FilteredPageNotice(if (hasMore && !isLoading) ::loadMoreReplies else null)
+                        }
+                    }
+                    items(visibleReplies, key = { it.id }) { item ->
                         SubPostItem(
                             item = item,
                             canDelete = { it.author_id == account?.uid?.toLongOrNull() },
