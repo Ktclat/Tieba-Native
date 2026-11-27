@@ -183,8 +183,10 @@ class PixelForumGalleryTest {
         return images
     }
 
-    private fun awaitShareSheet(chooser: Intent) {
-        val component = checkNotNull(chooser.resolveActivity(target.packageManager))
+    private fun awaitForeground(packageName: String, label: String? = null) {
+        fun hasLabel(node: AccessibilityNodeInfo): Boolean =
+            node.text?.toString() == label || node.contentDescription?.toString() == label ||
+                (0 until node.childCount).any { i -> node.getChild(i)?.let(::hasLabel) == true }
         val originalFlags = device.serviceInfo.flags
         device.serviceInfo = device.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         try {
@@ -194,17 +196,19 @@ class PixelForumGalleryTest {
                 if (root?.packageName == "android" &&
                     root.findAccessibilityNodeInfosByViewId("android:id/immersive_cling_title").isNotEmpty()
                 ) {
-                    // Android may show its one-time full-screen tutorial above the real chooser.
+                    // A fresh system can show its one-time tutorial above the gallery or chooser.
                     // Dismiss only the framework's named confirmation, as a user would.
                     root.findAccessibilityNodeInfosByViewId("android:id/ok").firstOrNull()
                         ?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                } else if (root?.packageName == component.packageName) {
+                } else if (root?.packageName == packageName &&
+                    (label == null || hasLabel(root))
+                ) {
                     device.waitForIdle(350, 5_000)
-                    if (device.rootInActiveWindow?.packageName == component.packageName) return
+                    if (device.rootInActiveWindow?.packageName == packageName) return
                 }
                 SystemClock.sleep(100)
             } while (SystemClock.uptimeMillis() < end)
-            error("Expected ${component.flattenToShortString()}, found ${device.rootInActiveWindow?.packageName}")
+            error("Expected $packageName with label $label, found ${device.rootInActiveWindow?.packageName}")
         } finally {
             device.serviceInfo = device.serviceInfo.apply { flags = originalFlags }
         }
@@ -223,7 +227,8 @@ class PixelForumGalleryTest {
                 photoViewData = PhotoViewData(picItems = items), skipNetworkCheck = true)
         }
         compose.onNodeWithContentDescription("步道路线图").performTouchInput { click() }
-        awaitText("1 / 2")
+        awaitForeground(target.packageName, "1 / 2")
+        compose.onNodeWithText("1 / 2").assertIsDisplayed()
         capture("gallery-first", Color.rgb(247, 245, 237))
         val metrics = target.resources.displayMetrics
         val x = metrics.widthPixels
@@ -280,7 +285,7 @@ class PixelForumGalleryTest {
                 val stream = checkNotNull(send.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java))
                 assertEquals("content", stream.scheme)
                 assertArrayEquals(expected, target.contentResolver.openInputStream(stream)!!.use { it.readBytes() })
-                awaitShareSheet(chooser)
+                awaitForeground(checkNotNull(chooser.resolveActivity(target.packageManager)).packageName)
                 capture("gallery-share")
             } finally {
                 instrumentation.removeMonitor(monitor)

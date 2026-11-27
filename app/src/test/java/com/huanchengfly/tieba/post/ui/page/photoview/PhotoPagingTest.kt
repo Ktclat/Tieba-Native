@@ -12,8 +12,8 @@ class PhotoPagingTest {
     @Test fun repeatedPictureIdsRepresentDifferentPositionsAcrossPages() {
         fun photo(index: Int) = PhotoViewItem("duplicate", "image$index", null, index, 123)
         val state = PhotoViewUiState(data = persistentListOf(photo(2), photo(3)), hasNext = true, hasPrev = true)
-        val before = PhotoViewPartialChange.LoadPrev.Success(listOf(photo(1), photo(2)), false).reduce(state)
-        val after = PhotoViewPartialChange.LoadMore.Success(listOf(photo(3), photo(4)), false).reduce(before)
+        val before = state.withAdjacent(listOf(photo(1), photo(2)), 4, true)
+        val after = before.withAdjacent(listOf(photo(3), photo(4)), 4, false)
         assertEquals((1..4).map(::photo), after.data)
     }
 
@@ -32,10 +32,10 @@ class PhotoPagingTest {
             listOf(PicPageBean.PicBean("8", false, false, false, images, "123", null, null)),
         )
         val state = view.openRemotePage(page)
-        assertEquals(listOf(7, 8), state.items.map { it.overallIndex })
+        assertEquals(listOf(7, 8), state.data.map { it.overallIndex })
         assertEquals(1, state.initialIndex)
-        assertEquals(source, state.items[state.initialIndex].originUrl)
-        assertEquals(123L, state.items[state.initialIndex].postId)
+        assertEquals(source, state.data[state.initialIndex].originUrl)
+        assertEquals(123L, state.data[state.initialIndex].postId)
     }
     @Test fun mismatchedResponseKeepsTappedLocalPageAndAcceptsGenuineAlternateSizes() {
         val tapped = PicItem("selected-id", 2, "thumb.png", "original.png", false, 0, 123)
@@ -52,11 +52,11 @@ class PhotoPagingTest {
         }
         val unrelated = view.openRemotePage(page("other", "other.png"))
         assertEquals(1, unrelated.initialIndex)
-        assertEquals("original.png", unrelated.items[unrelated.initialIndex].originUrl)
+        assertEquals("original.png", unrelated.data[unrelated.initialIndex].originUrl)
         assertEquals(null, unrelated.loadPicPageData)
         for (related in listOf(page("selected-id", "other.png"), page("server-id", "thumb.png"))) {
             val result = view.openRemotePage(related)
-            val selected = result.items[result.initialIndex]
+            val selected = result.data[result.initialIndex]
             assertEquals(29, selected.overallIndex)
             assertEquals("cdn-full.png", selected.originUrl)
         }

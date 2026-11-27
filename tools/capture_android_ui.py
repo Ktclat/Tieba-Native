@@ -19,6 +19,10 @@ def configure_phone():
     adb("shell", "wm", "density", str(PHONE_DPI))
     adb("shell", "settings", "put", "system", "font_scale", "1.0")
     adb("shell", "cmd", "uimode", "night", "no")
+    # A fresh emulator otherwise places a SystemUI tutorial over the first full-screen gallery.
+    adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
+    if adb("shell", "settings", "get", "secure", "immersive_mode_confirmations").strip() != b"confirmed":
+        raise RuntimeError("Could not confirm the emulator's first-use immersive tutorial")
     overlay = "com.android.internal.systemui.navbar.gestural"
     adb("shell", "cmd", "overlay", "enable-exclusive", "--category", overlay)
     for setting in ("animator_duration_scale", "transition_animation_scale", "window_animation_scale"):

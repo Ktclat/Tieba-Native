@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Share
@@ -34,6 +34,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,7 +51,9 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivityWithParcelable
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -157,16 +160,14 @@ internal fun PhotoActionBar(
 }
 
 class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
-    private val viewModel: PhotoViewViewModel by viewModels()
+    private val viewModel: PhotoViewViewModel by viewModels {
+        viewModelFactory { initializer { PhotoViewViewModel(checkNotNull(data), createSavedStateHandle()) } }
+    }
 
     override val dataExtraKey: String = EXTRA_PHOTO_VIEW_DATA
 
     @Composable
     override fun Content(data: PhotoViewData) {
-        LazyLoad(loaded = viewModel.initialized) {
-            viewModel.send(PhotoViewUiIntent.Init(data))
-            viewModel.initialized = true
-        }
         val state by viewModel.uiState.collectAsState()
         val items = state.data
         val scope = rememberCoroutineScope()
@@ -175,29 +176,29 @@ class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
 
         Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
             if (items.isEmpty()) return@Surface
-            val pager = rememberPagerState(initialPage = state.initialIndex.coerceIn(items.indices)) { items.size }
+            val count by rememberUpdatedState(items.size)
+            val pager = remember(viewModel) {
+                PagerState(currentPage = viewModel.initialPage().coerceIn(items.indices)) { count }
+            }
             val current by remember(pager, items) {
                 derivedStateOf {
                     val page = pager.currentPage
                     val atIndex = items.getOrNull(page)
                     // A previous page may have arrived before the pager remeasures its anchor.
                     val displayedKey = pager.layoutInfo.visiblePagesInfo.firstOrNull { it.index == page }?.key
-                    if (displayedKey == null || atIndex?.overallIndex == displayedKey) atIndex
-                    else items.firstOrNull { it.overallIndex == displayedKey }
+                    if (displayedKey == null || atIndex?.pageKey == displayedKey) atIndex
+                    else items.firstOrNull { it.pageKey == displayedKey }
                 }
             }
-            LaunchedEffect(current?.overallIndex, items.size, state.loadPicPageData) {
-                val page = current ?: return@LaunchedEffect
-                val params = state.loadPicPageData ?: return@LaunchedEffect
-                if (page == items.first() && state.hasPrev) {
-                    viewModel.send(PhotoViewUiIntent.LoadPrev(page.picId, page.overallIndex, params))
-                } else if (page == items.last() && state.hasNext) {
-                    viewModel.send(PhotoViewUiIntent.LoadMore(page.picId, page.overallIndex, params))
+            LaunchedEffect(current, items.size, state.loadPicPageData, pager.isScrollInProgress) {
+                if (!pager.isScrollInProgress) current?.let { page ->
+                    viewModel.onViewed(page)
+                    viewModel.loadAdjacent(page)
                 }
             }
 
             Box(Modifier.fillMaxSize()) {
-                HorizontalPager(state = pager, key = { items[it].overallIndex }) { index ->
+                HorizontalPager(state = pager, key = { items[it].pageKey }) { index ->
                     ViewPhoto(
                         imageUri = items[index].originUrl,
                         modifier = Modifier.fillMaxSize(),
