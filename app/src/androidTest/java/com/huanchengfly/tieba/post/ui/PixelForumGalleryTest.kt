@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.Instrumentation
 import android.content.ContentUris
 import android.content.Intent
@@ -9,9 +10,12 @@ import android.net.Uri
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.KeyEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -144,8 +148,11 @@ class PixelForumGalleryTest {
         val info = ForumInfo(id = 63L, name = name, member_num = 502, post_num = 1296)
         val state = ForumPartialChange.Load.Success(info, tbs = null).reduce(ForumUiState())
         installContent {
-            ProvideShouldLoad(false) {
-                ForumContent(name, 0, state, EmptyDestinationsNavigator, {})
+            // The production navigation host supplies the surface behind this translucent page.
+            Surface(modifier = Modifier.fillMaxSize()) {
+                ProvideShouldLoad(false) {
+                    ForumContent(name, 0, state, EmptyDestinationsNavigator, {})
+                }
             }
         }
         val latest = target.getString(R.string.tab_forum_latest)
@@ -154,6 +161,7 @@ class PixelForumGalleryTest {
         compose.onNodeWithText(latest).assertIsDisplayed()
         tapText(good)
         tapText(latest)
+        compose.onNodeWithText(title).assertIsDisplayed()
         compose.waitForIdle()
         capture("forum-normal")
     }
@@ -173,6 +181,33 @@ class PixelForumGalleryTest {
             while (rows.moveToNext()) images.add(ContentUris.withAppendedId(collection, rows.getLong(0)))
         }
         return images
+    }
+
+    private fun awaitShareSheet(chooser: Intent) {
+        val component = checkNotNull(chooser.resolveActivity(target.packageManager))
+        val originalFlags = device.serviceInfo.flags
+        device.serviceInfo = device.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+        try {
+            val end = SystemClock.uptimeMillis() + 15_000
+            do {
+                val root = device.rootInActiveWindow
+                if (root?.packageName == "android" &&
+                    root.findAccessibilityNodeInfosByViewId("android:id/immersive_cling_title").isNotEmpty()
+                ) {
+                    // Android may show its one-time full-screen tutorial above the real chooser.
+                    // Dismiss only the framework's named confirmation, as a user would.
+                    root.findAccessibilityNodeInfosByViewId("android:id/ok").firstOrNull()
+                        ?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                } else if (root?.packageName == component.packageName) {
+                    device.waitForIdle(350, 5_000)
+                    if (device.rootInActiveWindow?.packageName == component.packageName) return
+                }
+                SystemClock.sleep(100)
+            } while (SystemClock.uptimeMillis() < end)
+            error("Expected ${component.flattenToShortString()}, found ${device.rootInActiveWindow?.packageName}")
+        } finally {
+            device.serviceInfo = device.serviceInfo.apply { flags = originalFlags }
+        }
     }
 
     @Test fun openTwoPhotosAndSaveAndShareTheVisibleImage() {
@@ -235,21 +270,17 @@ class PixelForumGalleryTest {
             instrumentation.addMonitor(monitor)
             try {
                 share.performTouchInput { click() }
-                val end = SystemClock.uptimeMillis() + 15_000
-                val chooserPackage = Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png"), null)
-                    .resolveActivity(target.packageManager).packageName
-                while (device.rootInActiveWindow?.packageName != chooserPackage && SystemClock.uptimeMillis() < end) {
-                    SystemClock.sleep(100)
-                }
-                assertEquals("System share sheet foreground", chooserPackage, device.rootInActiveWindow?.packageName?.toString())
-                val send = checkNotNull(observed.get()?.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java))
+                compose.waitUntil(10_000) { observed.get() != null }
+                val chooser = checkNotNull(observed.get())
+                assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+                val send = checkNotNull(chooser.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java))
                 assertEquals(Intent.ACTION_SEND, send.action)
                 assertEquals("image/png", send.type)
                 assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
                 val stream = checkNotNull(send.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java))
                 assertEquals("content", stream.scheme)
                 assertArrayEquals(expected, target.contentResolver.openInputStream(stream)!!.use { it.readBytes() })
-                device.waitForIdle(350, 5_000)
+                awaitShareSheet(chooser)
                 capture("gallery-share")
             } finally {
                 instrumentation.removeMonitor(monitor)

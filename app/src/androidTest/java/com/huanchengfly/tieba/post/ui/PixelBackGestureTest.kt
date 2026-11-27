@@ -2,6 +2,7 @@ package com.huanchengfly.tieba.post.ui
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.PointF
 import android.graphics.Rect
 import android.os.SystemClock
 import android.view.InputDevice
@@ -74,13 +75,19 @@ class PixelBackGestureTest {
         return bitmap
     }
 
-    private fun changedFraction(a: Bitmap, b: Bitmap): Float {
+    private fun changedFraction(a: Bitmap, b: Bitmap, arrowCenter: PointF? = null): Float {
         check(a.width == b.width && a.height == b.height)
         var changed = 0
         var samples = 0
-        // Exclude status/navigation bars and the system's back arrow at either edge.
+        val arrowRadius = 26 * context.resources.displayMetrics.density
+        // Compare the full content width. Only the held frame has a SystemUI arrow.
         for (y in a.height / 9 until a.height * 9 / 10 step 8) {
-            for (x in a.width / 12 until a.width * 11 / 12 step 8) {
+            for (x in 0 until a.width step 8) {
+                if (arrowCenter != null) {
+                    val dx = x - arrowCenter.x
+                    val dy = y - arrowCenter.y
+                    if (dx * dx + dy * dy <= arrowRadius * arrowRadius) continue
+                }
                 val old = a.getPixel(x, y)
                 val new = b.getPixel(x, y)
                 val difference = abs(Color.red(old) - Color.red(new)) + abs(Color.green(old) - Color.green(new)) +
@@ -115,7 +122,11 @@ class PixelBackGestureTest {
         SystemClock.sleep(650)
         val after = capture("$name-settled")
         try {
-            val duringChange = changedFraction(before, during)
+            // In this Pixel API 35 profile the 48dp system arrow is centered 40dp from the
+            // active edge and 64dp above the touch. Allow 2dp for its settling and antialiasing.
+            val dp = context.resources.displayMetrics.density
+            val arrowCenter = PointF(if (left) 40 * dp else before.width - 40 * dp, y - 64 * dp)
+            val duringChange = changedFraction(before, during, arrowCenter)
             val settled = changedFraction(before, after)
             val metrics = File(context.filesDir, "phone-review/gestures.tsv")
             if (!metrics.exists()) metrics.writeText("gesture\tdrag_changed_fraction\tsettled_changed_fraction\n")
