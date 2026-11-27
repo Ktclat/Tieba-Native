@@ -1,6 +1,7 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.user.edit
 
-import androidx.compose.material3.MaterialTheme
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -14,7 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,15 +27,21 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material3.TonalToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -54,17 +61,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.github.panpf.sketch.compose.AsyncImage
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.BaseActivity
@@ -75,12 +83,11 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BaseTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.CounterTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
-import com.huanchengfly.tieba.post.ui.widgets.compose.picker.ListSinglePicker
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.ColorUtils
@@ -93,13 +100,12 @@ import com.huanchengfly.tieba.post.utils.requestPermission
 import com.huanchengfly.tieba.post.utils.shouldUsePhotoPicker
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.collections.immutable.persistentListOf
+import java.io.File
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
-import java.io.File
 
 @AndroidEntryPoint
 class EditProfileActivity : BaseActivity() {
@@ -306,10 +312,11 @@ fun EditProfileCard(
                         .fillMaxSize(),
                     onClick = {
                         onUploadPortrait?.invoke()
-                    }
+                    },
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.PhotoCamera,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_photo_camera),
                         contentDescription = stringResource(id = R.string.upload_portrait),
                         modifier = Modifier
                             .size(24.dp)
@@ -319,148 +326,44 @@ fun EditProfileCard(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            ConstraintLayout(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val (
-                    nameTitle,
-                    nameContent,
-                    nickNameTitle,
-                    nickNameContent,
-                    sexTitle,
-                    sexContent,
-                    introTitle,
-                    introContent,
-                ) = createRefs()
-
-                val titleEndBarrier = createEndBarrier(
-                    nameTitle,
-                    nickNameTitle,
-                    sexTitle,
-                    introTitle,
-                    margin = 24.dp
-                )
-
-                Text(
-                    text = stringResource(id = R.string.title_username),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(nameTitle) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(nameContent.bottom)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Text(
-                    text = name,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier
-                        .constrainAs(nameContent) {
-                            top.linkTo(nameTitle.top)
-                            bottom.linkTo(nameTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading)
-                )
-
-                Text(
-                    text = stringResource(id = R.string.title_nickname),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(nickNameTitle) {
-                        top.linkTo(nameTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Row(
-                    modifier = Modifier
-                        .constrainAs(nickNameContent) {
-                            top.linkTo(nickNameTitle.top)
-                            bottom.linkTo(nickNameTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading)
-                ) {
-                    BaseTextField(
-                        value = nickName,
-                        onValueChange = { onNickNameChange?.invoke(it) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        maxLines = 1,
-                    )
-                }
-
-                Text(
-                    text = stringResource(id = R.string.profile_sex),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(sexTitle) {
-                        top.linkTo(nickNameTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                Row(
-                    modifier = Modifier
-                        .constrainAs(sexContent) {
-                            top.linkTo(sexTitle.top)
-                            bottom.linkTo(sexTitle.bottom)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onModifySex?.invoke() }
-                        .loadingPlaceholder(visible = loading)
-                ) {
-                    Text(
-                        text = stringResource(
-                            id = when (sex) {
-                                1 -> R.string.profile_sex_male
-                                2 -> R.string.profile_sex_female
-                                else -> R.string.profile_sex_unset
-                            }
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_round_chevron_right),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .align(Alignment.CenterVertically)
-                    )
-                }
-
-                Text(
-                    text = stringResource(id = R.string.title_intro),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    modifier = Modifier.constrainAs(introTitle) {
-                        top.linkTo(sexTitle.bottom, margin = 16.dp)
-                        start.linkTo(parent.start)
-                    }
-                )
-                CounterTextField(
-                    value = intro,
-                    onValueChange = { onIntroChange?.invoke(it) },
-                    maxLength = 500,
-                    countWhitespace = false,
-                    onLengthBeyondRestrict = { context.toastShort(R.string.toast_intro_length_beyond_restrict) },
-                    placeholder = { Text(text = stringResource(id = R.string.tip_no_intro)) },
-                    modifier = Modifier
-                        .constrainAs(introContent) {
-                            top.linkTo(introTitle.top)
-                            start.linkTo(titleEndBarrier)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                        }
-                        .loadingPlaceholder(visible = loading),
-                )
-            }
+            val rowColors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ListItem(
+                headlineContent = { Text(name, modifier = Modifier.loadingPlaceholder(visible = loading)) },
+                overlineContent = { Text(stringResource(R.string.title_username)) },
+                colors = rowColors,
+            )
+            OutlinedTextField(
+                value = nickName,
+                onValueChange = { onNickNameChange?.invoke(it) },
+                label = { Text(stringResource(R.string.title_nickname)) },
+                singleLine = true,
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ListItem(
+                modifier = Modifier.clickable(enabled = !loading) { onModifySex?.invoke() },
+                overlineContent = { Text(stringResource(R.string.profile_sex)) },
+                headlineContent = {
+                    Text(stringResource(when (sex) {
+                        1 -> R.string.profile_sex_male
+                        2 -> R.string.profile_sex_female
+                        else -> R.string.profile_sex_unset
+                    }))
+                },
+                trailingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_chevron_right), null) },
+                colors = rowColors,
+            )
+            CounterTextField(
+                value = intro,
+                onValueChange = { onIntroChange?.invoke(it) },
+                maxLength = 500,
+                countWhitespace = false,
+                enabled = !loading,
+                onLengthBeyondRestrict = { context.toastShort(R.string.toast_intro_length_beyond_restrict) },
+                label = { Text(stringResource(R.string.title_intro)) },
+                placeholder = { Text(stringResource(R.string.tip_no_intro)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -489,7 +392,7 @@ fun PageEditProfile(
                     navigationIcon = { BackNavigationIcon { onBackPressed() } },
                     actions = {
                         ActionItem(
-                            icon = ImageVector.vectorResource(id = R.drawable.ic_round_save_24),
+                            icon = ImageVector.vectorResource(id = R.drawable.ms_save),
                             contentDescription = stringResource(id = R.string.button_save_profile)
                         ) {
                             if (sex != uiState.sex ||
@@ -533,18 +436,26 @@ fun PageEditProfile(
                         DialogNegativeButton(text = stringResource(id = R.string.button_cancel))
                     }
                 ) {
-                    ListSinglePicker(
-                        itemTitles = persistentListOf(
-                            stringResource(id = R.string.profile_sex_male),
-                            stringResource(id = R.string.profile_sex_female)
-                        ),
-                        itemValues = persistentListOf(1, 2),
-                        selectedPosition = if (sex == 1) 0 else if (sex == 2) 1 else -1,
-                        onItemSelected = { _, _, value, _ ->
-                            sex = value
-                            dismiss()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    ) {
+                        listOf(1 to R.string.profile_sex_male, 2 to R.string.profile_sex_female).forEach { (value, label) ->
+                            TonalToggleButton(
+                                checked = sex == value,
+                                onCheckedChange = {
+                                    sex = value
+                                    dismiss()
+                                },
+                                shapes = if (value == 1) ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    else ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                                modifier = Modifier.weight(1f).semantics {
+                                    role = Role.RadioButton
+                                    selected = sex == value
+                                },
+                            ) { Text(stringResource(label)) }
                         }
-                    )
+                    }
                 }
                 Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.card_margin)))
                 EditProfileCard(

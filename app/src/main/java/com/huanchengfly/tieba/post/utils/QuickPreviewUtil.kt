@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.utils
 
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.DrawableRes
@@ -11,6 +10,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.ForumPageBean
 import com.huanchengfly.tieba.post.api.models.ThreadContentBean
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaException
 import com.huanchengfly.tieba.post.components.ClipBoardForumLink
 import com.huanchengfly.tieba.post.components.ClipBoardLink
@@ -18,9 +18,12 @@ import com.huanchengfly.tieba.post.components.ClipBoardThreadLink
 import com.huanchengfly.tieba.post.interfaces.CommonCallback
 import com.huanchengfly.tieba.post.repository.FrsPageRepository
 import com.huanchengfly.tieba.post.repository.PbPageRepository
-import com.huanchengfly.tieba.post.ui.page.forum.getSortType
+import com.huanchengfly.tieba.post.ui.page.forum.forumSortPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -109,7 +112,10 @@ object QuickPreviewUtil {
                                 threadContentBean.forum?.name,
                                 threadContentBean.thread?.replyNum
                             ),
-                            icon = Icon(threadContentBean.thread?.author?.portrait)
+                            icon = Icon(threadContentBean.thread?.author?.portrait),
+                            forumName = threadContentBean.forum?.name,
+                            authorName = threadContentBean.thread?.author?.name,
+                            authorNickname = threadContentBean.thread?.author?.nameShow,
                         )
                     )
                 }
@@ -133,7 +139,10 @@ object QuickPreviewUtil {
                         it.data_?.forum?.name,
                         it.data_?.thread?.replyNum?.toString()
                     ),
-                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.displayPortrait))
+                    icon = Icon(StringUtil.getAvatarUrl(it.data_?.thread?.author?.displayPortrait)),
+                    forumName = it.data_?.forum?.name,
+                    authorName = it.data_?.thread?.author?.name,
+                    authorNickname = it.data_?.thread?.author?.nameShow,
                 )
             }
             .catch { it.printStackTrace() }
@@ -177,8 +186,10 @@ object QuickPreviewUtil {
         link: ClipBoardForumLink,
         lifeCycle: Lifecycle? = null,
     ): Flow<PreviewInfo> =
-        FrsPageRepository.frsPage(link.forumName, 1, 1, getSortType(context, link.forumName))
-            .map {
+        flow {
+            val sort = forumSortPreference(context, link.forumName).first()
+            emitAll(FrsPageRepository.frsPage(link.forumName, 1, 1, sort))
+        }.map {
                 PreviewInfo(
                     clipBoardLink = link,
                     url = link.url,
@@ -213,7 +224,7 @@ object QuickPreviewUtil {
                 url = clipBoardLink.url,
                 title = clipBoardLink.url,
                 subtitle = context.getString(R.string.subtitle_link),
-                icon = Icon(R.drawable.ic_link)
+                icon = Icon(R.drawable.ms_link)
             )
         )
         return listOfNotNull(flow, detailFlow).merge()
@@ -235,7 +246,7 @@ object QuickPreviewUtil {
                     url = link.url,
                     title = link.url,
                     subtitle = context.getString(R.string.subtitle_link),
-                    icon = Icon(R.drawable.ic_link)
+                    icon = Icon(R.drawable.ms_link)
                 )
             )
         }
@@ -248,6 +259,9 @@ object QuickPreviewUtil {
         val title: String? = null,
         val subtitle: String? = null,
         val icon: Icon? = null,
+        val forumName: String? = (clipBoardLink as? ClipBoardForumLink)?.forumName,
+        val authorName: String? = null,
+        val authorNickname: String? = null,
     )
 
     @Immutable

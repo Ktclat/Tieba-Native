@@ -1,6 +1,7 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,15 +21,13 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar as M3TopAppBar
@@ -123,7 +122,7 @@ fun AccountNavIcon(
                                 )
                                 if (currentAccount.id == it.id) {
                                     Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
+                                        imageVector = ImageVector.vectorResource(R.drawable.ms_check_circle),
                                         contentDescription = stringResource(id = R.string.desc_current_account),
                                         tint = Color.White,
                                         modifier = Modifier
@@ -144,7 +143,7 @@ fun AccountNavIcon(
                     text = { Text(text = stringResource(R.string.title_new_account)) },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Rounded.Add,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_add),
                             contentDescription = stringResource(id = R.string.title_new_account),
                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier
@@ -176,7 +175,7 @@ fun ActionItem(
     onClick: () -> Unit
 ) {
     ProvideContentColor(color = toolbarContentColor()) {
-        IconButton(onClick = onClick) {
+        IconButton(shapes = IconButtonDefaults.shapes(), onClick = onClick) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription
@@ -188,9 +187,9 @@ fun ActionItem(
 @Composable
 fun BackNavigationIcon(onBackPressed: () -> Unit) {
     ProvideContentColor(color = toolbarContentColor()) {
-        IconButton(onClick = onBackPressed) {
+        IconButton(shapes = IconButtonDefaults.shapes(), onClick = onBackPressed) {
             Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_round_arrow_back),
+                imageVector = ImageVector.vectorResource(id = R.drawable.ms_arrow_back),
                 contentDescription = stringResource(id = R.string.button_back)
             )
         }
@@ -341,7 +340,6 @@ fun TopAppBarContainer(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onDoubleClick = {
-                        Log.i("TopAppBarContainer", "TopAppBarContainer: onDoubleClick")
                         coroutineScope.emitGlobalEvent(GlobalEvent.ScrollToTop)
                     },
                     onClick = {},

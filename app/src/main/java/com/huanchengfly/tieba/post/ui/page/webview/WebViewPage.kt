@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.webview
 
 import android.annotation.SuppressLint
@@ -14,7 +16,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,11 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
@@ -42,8 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
@@ -81,14 +82,14 @@ import com.huanchengfly.tieba.post.utils.appPreferences
 import com.huanchengfly.tieba.post.utils.compose.launchActivityForResult
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.lang.ref.WeakReference
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import java.lang.ref.WeakReference
-import java.util.UUID
 
 @Destination
 @Composable
@@ -174,8 +175,6 @@ private fun AccountWebView(
         }
     }
 
-    val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
-
     MyScaffold(
         topBar = {
             Toolbar(
@@ -239,7 +238,7 @@ private fun AccountWebView(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.MoreVert,
+                                imageVector = ImageVector.vectorResource(R.drawable.ms_more_vert),
                                 contentDescription = stringResource(id = R.string.btn_more)
                             )
                         }
@@ -270,8 +269,8 @@ private fun AccountWebView(
             )
 
             if (isLoading) {
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
+                LinearWavyProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -461,7 +460,7 @@ open class MyWebViewClient(
                 PermissionDialog.CustomPermission.PERMISSION_START_APP,
                 "${host}_${scheme}",
                 context.getString(R.string.title_start_app_permission, host, appName),
-                R.drawable.ic_round_exit_to_app
+                R.drawable.ms_exit_to_app
             )
         )
             .setOnGrantedCallback { context.startActivity(intent) }
@@ -548,7 +547,7 @@ class MyWebChromeClient(
                     origin,
                     context.getString(R.string.common_permission_location)
                 ),
-                R.drawable.ic_round_location_on
+                R.drawable.ms_location_on
             )
         )
             .setOnGrantedCallback { isForever: Boolean ->
@@ -631,7 +630,7 @@ class MyWebChromeClient(
                             R.string.title_ask_permission_clipboard_copy,
                             uri.host
                         ),
-                        R.drawable.ic_round_file_copy
+                        R.drawable.ms_file_copy
                     )
                 )
                     .setOnGrantedCallback { result.confirm() }

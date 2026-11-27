@@ -2,19 +2,14 @@
 
 package com.huanchengfly.tieba.post.ui.page.main
 
-import androidx.activity.BackEventCompat
-import androidx.compose.animation.core.Animatable
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import android.app.Application
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.view.View
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -37,7 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
-import com.huanchengfly.tieba.post.ui.utils.MainNavigationType
+import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
+import com.huanchengfly.tieba.post.ui.utils.DevicePosture
 import com.huanchengfly.tieba.post.ui.utils.MainNavigationContentPosition
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import androidx.compose.ui.Modifier
@@ -75,6 +71,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -107,10 +104,20 @@ class MainNavigationBarTest {
     private var originalViewportMeasures = 0
     private val refreshedPages = mutableListOf<Int>()
     private val titles = listOf("首页", "动态", "消息", "我")
+    private val icons = listOf(
+        R.drawable.ms_home to R.drawable.ms_home_filled,
+        R.drawable.ms_explore to R.drawable.ms_explore_filled,
+        R.drawable.ms_notifications to R.drawable.ms_notifications_filled,
+        R.drawable.ms_person to R.drawable.ms_person_filled,
+    )
     private val rowLabels = listOf("帖子", "动态", "消息", "收藏")
 
-    @OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalFoundationApi::class)
-    private fun show(layoutDirection: LayoutDirection = LayoutDirection.Ltr, compareOriginalViewport: Boolean = false) {
+    @OptIn(ExperimentalFoundationApi::class)
+    private fun show(
+        layoutDirection: LayoutDirection = LayoutDirection.Ltr,
+        compareOriginalViewport: Boolean = false,
+        floating: Boolean = false,
+    ) {
         compose.setContent {
             val currentView = LocalView.current
             SideEffect { view = currentView }
@@ -124,14 +131,12 @@ class MainNavigationBarTest {
             backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
             val items = remember {
                 listOf(
-                    R.string.title_main to R.drawable.ic_animated_rounded_inventory_2,
-                    R.string.title_explore to R.drawable.ic_animated_toy_fans,
-                    R.string.title_notifications to R.drawable.ic_animated_rounded_notifications,
-                    R.string.title_user to R.drawable.ic_animated_rounded_person,
-                ).mapIndexed { index, (title, icon) ->
+                    R.string.title_main, R.string.title_explore, R.string.title_notifications, R.string.title_user,
+                ).mapIndexed { index, title ->
                     NavigationItem(
                         id = index.toString(),
-                        icon = { AnimatedImageVector.animatedVectorResource(icon) },
+                        icon = icons[index].first,
+                        selectedIcon = icons[index].second,
                         title = { stringResource(title) },
                         badge = index == 2,
                         badgeText = if (index == 2) "217" else null,
@@ -159,6 +164,7 @@ class MainNavigationBarTest {
                                     onSelect = { index -> selection.activate(items[index]) { refreshedPages += index } },
                                     navigationItems = items,
                                     modifier = Modifier.testTag("navigation-bar"),
+                                    floating = floating,
                                 )
                             }
                         },
@@ -207,7 +213,8 @@ class MainNavigationBarTest {
             measures[index] = measures.getOrDefault(index, 0) + 1
             val child = measurable.measure(constraints)
             layout(child.width, child.height) { child.place(0, 0) }
-        }.testTag("page-$index").focusRequester(requester)
+        }
+            .testTag("page-$index").focusRequester(requester)
             .onFocusChanged { pageFocus[index] = it.isFocused }.focusable()) {
             FeedRows(index, tag = "feed")
         }
@@ -248,6 +255,7 @@ class MainNavigationBarTest {
         assertEquals(window.width, visible.width)
         assertEquals(window.bottom - 24.dp - visible.height, feed.getUnclippedBoundsInRoot().bottom)
         compose.captureReviewImage(view, "nav-visible.png")
+        assertIndicatorSurroundsIconAndLabel("nav-visible.png")
 
         dragFeed(-82f)
         val partial = compose.runOnIdle { hideFraction }
@@ -286,6 +294,41 @@ class MainNavigationBarTest {
         assertEquals(Offset.Zero, navScroll.onPostScroll(Offset(0f, dy), Offset.Zero, NestedScrollSource.UserInput))
     }
 
+    @Test fun floatingBarKeepsDestinationsTappableAndLeavesRoomForTheFeedAndSystemBar() {
+        show(floating = true)
+        val window = compose.onNodeWithTag("window").getUnclippedBoundsInRoot()
+        val bar = compose.onNodeWithTag("navigation-bar")
+        val initial = bar.getUnclippedBoundsInRoot()
+        val feed = compose.onNodeWithTag("feed")
+        assertTrue(initial.left - window.left >= 16.dp)
+        assertEquals(initial.left - window.left, window.right - initial.right)
+        assertEquals(window.bottom - 24.dp - 16.dp, initial.bottom)
+        assertTrue(initial.height in 48.dp..68.dp)
+        assertTrue(feed.getUnclippedBoundsInRoot().bottom <= initial.top)
+        val buttons = titles.map { title -> compose.onNode(hasText(title) and hasClickAction()) }
+        val bounds = buttons.map { it.assertIsDisplayed().getUnclippedBoundsInRoot() }
+        assertTrue(bounds.all { it.width >= 48.dp && it.height >= 48.dp && it.left >= initial.left && it.right <= initial.right })
+        assertTrue(bounds.zipWithNext().all { (left, right) -> left.right <= right.left })
+        compose.captureReviewImage(view, "nav-floating.png")
+        assertIndicatorSurroundsIconAndLabel("nav-floating.png")
+
+        buttons[1].performTouchInput { click() }.assertIsSelected()
+        buttons[1].performTouchInput { swipe(center, center + Offset(width * 1.2f, 0f), 400) }
+        buttons[2].assertIsSelected().performClick()
+        compose.onAllNodes(isSelected()).assertCountEquals(1)
+        compose.runOnIdle { assertEquals(listOf(2), refreshedPages) }
+        dragFeed(-82f)
+        val partial = bar.getUnclippedBoundsInRoot()
+        assertEquals(initial.width, partial.width)
+        assertEquals(initial.height, partial.height)
+        assertTrue(partial.top > initial.top)
+        dragFeed(-220f)
+        bar.assertDoesNotExist()
+        assertEquals(window.bottom - 24.dp, feed.getUnclippedBoundsInRoot().bottom)
+        dragFeed(240f)
+        assertEquals(initial, bar.getUnclippedBoundsInRoot())
+    }
+
     @Test fun dragChangesTheClipEveryFrameWithoutRemeasuringTheFeedEveryFrame() {
         show(compareOriginalViewport = true)
         val feed = compose.onNodeWithTag("feed")
@@ -316,22 +359,6 @@ class MainNavigationBarTest {
         compose.onNodeWithText("帖子 50").assertIsDisplayed()
     }
 
-    @Test fun reducedMotionDoesNotTransformThePageAndConfirmNeverScalesTheDestination() = runBlocking {
-        for (animate in listOf(true, false)) {
-            val preview = Animatable(0f)
-            var confirmations = 0
-            val events = flow {
-                emit(BackEventCompat(0f, 0f, 0.75f, BackEventCompat.EDGE_LEFT))
-                assertEquals(if (animate) 0.75f else 0f, preview.value)
-            }
-            handleMainTabBack(events, preview, animate) {
-                assertEquals(0f, preview.value)
-                confirmations++
-            }
-            assertEquals(1, confirmations)
-        }
-    }
-
     @Test fun flingUsesTheBufferedPageUntilTheListHitsAnEdgeOrFlingEnds() = runBlocking {
         val scroll = MainNavigationScrollState(100f)
         scroll.measuredBarHeightPx = 64
@@ -345,6 +372,20 @@ class MainNavigationBarTest {
         scroll.onPostFling(androidx.compose.ui.unit.Velocity.Zero, androidx.compose.ui.unit.Velocity.Zero)
         assertEquals(0, scroll.bufferedHeightPx)
         assertEquals(0.5f, scroll.hiddenFraction)
+    }
+
+    private fun assertIndicatorSurroundsIconAndLabel(screenshot: String) {
+        val selectedIcon = compose.onNodeWithTag("navigation-icon-0", useUnmergedTree = true)
+        val selectedLabel = compose.onNode(hasText(titles[0]) and hasAnyAncestor(isSelectable()), useUnmergedTree = true)
+        val inactiveLabel = compose.onNode(hasText(titles[1]) and hasAnyAncestor(isSelectable()), useUnmergedTree = true)
+        // Sample just outside the glyphs, keeping antialiased icon and text pixels out of the check.
+        fun backgroundBeside(node: SemanticsNodeInteraction): Int {
+            val bounds = node.fetchSemanticsNode().boundsInRoot
+            return screenshotPixel(screenshot, bounds.left.toInt() - 2, bounds.center.y.toInt())
+        }
+        val indicator = backgroundBeside(selectedIcon)
+        assertNotEquals(backgroundBeside(inactiveLabel), indicator)
+        assertEquals(indicator, backgroundBeside(selectedLabel))
     }
 
     private fun screenshotPixel(name: String, x: Int, y: Int): Int {
@@ -542,10 +583,10 @@ class MainNavigationBarTest {
         compose.onNode(hasText(titles[0]) and hasClickAction()).assertIsSelected()
     }
 
-    @OptIn(ExperimentalAnimationGraphicsApi::class)
     @Config(qualifiers = "zh-rCN-w960dp-h720dp-mdpi")
     @Test fun adaptiveNavigationPreservesSelectedPageWhenTheScreenWidens() {
-        var layout by mutableStateOf(MainNavigationType.NAVIGATION_RAIL)
+        var width by mutableStateOf(WindowWidthSizeClass.Compact)
+        var posture by mutableStateOf<DevicePosture>(DevicePosture.NormalPosture)
         var selected by mutableStateOf(0)
         val pageSessions = mutableListOf<Unit>()
         compose.setContent {
@@ -553,20 +594,17 @@ class MainNavigationBarTest {
             SideEffect { view = hostView }
             MaterialExpressiveTheme {
                 CompositionLocalProvider(LocalNavigator provides EmptyDestinationsNavigator) {
-                    val icons = listOf(
-                        R.drawable.ic_animated_rounded_inventory_2, R.drawable.ic_animated_toy_fans,
-                        R.drawable.ic_animated_rounded_notifications, R.drawable.ic_animated_rounded_person,
-                    )
                     val items = titles.mapIndexed { index, title ->
                         NavigationItem(
                             id = index.toString(),
                             title = { title },
-                            icon = { AnimatedImageVector.animatedVectorResource(icons[index]) },
+                            icon = icons[index].first,
+                            selectedIcon = icons[index].second,
                             badge = index == 2,
                             badgeText = "7",
                         )
                     }.toImmutableList()
-                    NavigationWrapper(selected, { selected = it }, items, layout, MainNavigationContentPosition.CENTER) {
+                    NavigationWrapper(selected, { selected = it }, items, mainNavigationType(width, posture), MainNavigationContentPosition.CENTER) {
                         DisposableEffect(Unit) {
                             pageSessions.add(Unit)
                             onDispose { }
@@ -576,12 +614,19 @@ class MainNavigationBarTest {
                 }
             }
         }
-        compose.onNode(hasText("动态") and hasClickAction()).performClick().assertIsSelected()
+        val destination = compose.onNode(hasText("动态") and hasClickAction())
+        destination.assertDoesNotExist()
+        compose.runOnIdle { width = WindowWidthSizeClass.Medium }
+        destination.performClick().assertIsSelected()
+        val railItemWidth = destination.getUnclippedBoundsInRoot().width
         compose.captureReviewImage(view, "nav-rail.png")
-        compose.runOnIdle { layout = MainNavigationType.PERMANENT_NAVIGATION_DRAWER }
-        compose.onNode(hasText("动态") and hasClickAction()).assertIsSelected()
+        compose.runOnIdle { width = WindowWidthSizeClass.Expanded }
+        destination.assertIsSelected()
+        assertTrue(destination.getUnclippedBoundsInRoot().width > railItemWidth)
         compose.onNodeWithTag("active-page").assertTextEquals("动态")
         compose.captureReviewImage(view, "nav-drawer.png")
+        compose.runOnIdle { posture = DevicePosture.BookPosture(Rect()) }
+        assertEquals(railItemWidth, destination.assertIsSelected().getUnclippedBoundsInRoot().width)
         compose.runOnIdle { assertEquals(1, pageSessions.size) }
     }
 

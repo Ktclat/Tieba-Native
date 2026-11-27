@@ -1,11 +1,14 @@
 package com.huanchengfly.tieba.post.ui.page.forum.threadlist
 
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -19,8 +22,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -29,13 +35,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.api.models.protos.OriginThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.abstractText
@@ -52,10 +58,8 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumRuleDetailPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
-import com.huanchengfly.tieba.post.ui.page.forum.getSortType
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
@@ -64,42 +68,19 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-private fun getFirstLoadIntent(
-    context: Context,
-    forumName: String,
-    isGood: Boolean = false,
-): ForumThreadListUiIntent {
+private fun getFirstLoadIntent(forumName: String, isGood: Boolean, sortType: Int): ForumThreadListUiIntent {
     return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, 0)
-    else ForumThreadListUiIntent.FirstLoad(forumName, getSortType(context, forumName), null)
+    else ForumThreadListUiIntent.FirstLoad(forumName, sortType, null)
 }
 
 private fun getRefreshIntent(
-    context: Context,
     forumName: String,
-    isGood: Boolean = false,
-    sortType: Int = getSortType(context, forumName),
-    goodClassifyId: Int? = if (isGood) 0 else null,
+    isGood: Boolean,
+    sortType: Int,
+    goodClassifyId: Int?,
 ): ForumThreadListUiIntent {
-    return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, goodClassifyId)
+    return if (isGood) ForumThreadListUiIntent.Refresh(forumName, -1, goodClassifyId ?: 0)
     else ForumThreadListUiIntent.Refresh(forumName, sortType, null)
-}
-
-private fun getLoadMoreIntent(
-    context: Context,
-    forumId: Long,
-    forumName: String,
-    page: Int,
-    threadListIds: List<Long>,
-    isGood: Boolean = false,
-): ForumThreadListUiIntent {
-    return if (isGood) ForumThreadListUiIntent.LoadMore(forumId, forumName, page, threadListIds, 0)
-    else ForumThreadListUiIntent.LoadMore(
-        forumId,
-        forumName,
-        page,
-        threadListIds,
-        getSortType(context, forumName)
-    )
 }
 
 private enum class ItemType {
@@ -107,23 +88,26 @@ private enum class ItemType {
 }
 
 @Composable
-private fun GoodClassifyTabs(
+internal fun GoodClassifyTabs(
     goodClassifyHolders: ImmutableList<ImmutableHolder<Classify>>,
     selectedItem: Int?,
     onSelected: (Int) -> Unit,
 ) {
+    if (goodClassifyHolders.isEmpty()) return
+
     LazyRow(
-        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = goodClassifyHolders,
             key = { it.get { "${class_id}_$class_name" } }
         ) { holder ->
-            Chip(
-                text = holder.get { class_name },
-                invertColor = selectedItem == holder.get { class_id },
-                onClick = { onSelected(holder.get { class_id }) }
+            val (classify) = holder
+            FilterChip(
+                label = { Text(classify.class_name) },
+                selected = selectedItem == classify.class_id,
+                onClick = { if (selectedItem != classify.class_id) onSelected(classify.class_id) },
             )
         }
     }
@@ -136,38 +120,33 @@ private fun TopThreadItem(
     modifier: Modifier = Modifier,
     type: String = stringResource(id = R.string.content_top),
 ) {
-    Row(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Chip(
-            text = type,
-            shape = RoundedCornerShape(3.dp)
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-            fontSize = 15.sp
-        )
-    }
+    ListItem(
+        modifier = modifier.clickable(role = Role.Button, onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Badge(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) { Text(type, style = MaterialTheme.typography.labelSmall) }
+        },
+        headlineContent = {
+            Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+    )
 }
 
 @Composable
 private fun ThreadList(
     state: LazyListState,
     items: ImmutableList<ThreadItemData>,
+    filteredAll: Boolean,
+    onLoadMore: (() -> Unit)?,
     onItemClicked: (ThreadInfo) -> Unit,
     onItemReplyClicked: (ThreadInfo) -> Unit,
     onAgree: (ThreadInfo) -> Unit,
     forumRuleTitle: String? = null,
     onOpenForumRule: (() -> Unit)? = null,
-    onOriginThreadClicked: (OriginThreadInfo) -> Unit = {},
+    onOriginThreadClicked: (threadId: Long, forumId: Long) -> Unit,
     onUserClicked: (User) -> Unit = {},
 ) {
     val windowSizeClass = LocalWindowSizeClass.current
@@ -193,6 +172,7 @@ private fun ThreadList(
                 )
             }
         }
+        if (filteredAll) item { FilteredPageNotice(onLoadMore) }
         itemsIndexed(
             items = items,
             key = { index, (holder) ->
@@ -254,6 +234,7 @@ fun ForumThreadListPage(
     forumId: Long,
     forumName: String,
     isGood: Boolean = false,
+    sortType: Int,
     onRefreshingChanged: (Boolean) -> Unit,
     viewModel: ForumThreadListViewModel = if (isGood) pageViewModel<GoodThreadListViewModel>() else pageViewModel<LatestThreadListViewModel>()
 ) {
@@ -264,13 +245,17 @@ fun ForumThreadListPage(
     val lazyListState = rememberLazyListState()
 
     LazyLoad(loaded = viewModel.initialized) {
-        viewModel.send(getFirstLoadIntent(context, forumName, isGood))
+        viewModel.send(getFirstLoadIntent(forumName, isGood, sortType))
         viewModel.initialized = true
     }
+    val goodClassifyId by viewModel.uiState.collectPartialAsState(
+        prop1 = ForumThreadListUiState::goodClassifyId,
+        initial = null
+    )
     onGlobalEvent<ForumThreadListUiEvent.Refresh>(
         filter = { it.isGood == isGood },
     ) {
-        viewModel.send(getRefreshIntent(context, forumName, isGood, it.sortType))
+        viewModel.send(getRefreshIntent(forumName, isGood, it.sortType, goodClassifyId))
     }
     onGlobalEvent<ForumThreadListUiEvent.BackToTop>(
         filter = { it.isGood == isGood },
@@ -322,18 +307,22 @@ fun ForumThreadListPage(
         prop1 = ForumThreadListUiState::threadList,
         initial = persistentListOf()
     )
+    val visible = rememberVisibleItems(threadList) { blocksThread(it.thread.get()) }
     val threadListIds by viewModel.uiState.collectPartialAsState(
         prop1 = ForumThreadListUiState::threadListIds,
         initial = persistentListOf()
-    )
-    val goodClassifyId by viewModel.uiState.collectPartialAsState(
-        prop1 = ForumThreadListUiState::goodClassifyId,
-        initial = null
     )
     val goodClassifies by viewModel.uiState.collectPartialAsState(
         prop1 = ForumThreadListUiState::goodClassifies,
         initial = persistentListOf()
     )
+    val loadNextPage = {
+        viewModel.send(ForumThreadListUiIntent.LoadMore(
+            forumId, forumName, currentPage, threadListIds,
+            sortType = if (isGood) 0 else sortType,
+            goodClassifyId = if (isGood) goodClassifyId ?: 0 else null,
+        ))
+    }
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -347,9 +336,9 @@ fun ForumThreadListPage(
                     onSelected = {
                         viewModel.send(
                             getRefreshIntent(
-                                context,
                                 forumName,
-                                true,
+                                isGood = true,
+                                sortType = sortType,
                                 goodClassifyId = it
                             )
                         )
@@ -359,26 +348,17 @@ fun ForumThreadListPage(
 
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(
-                        getLoadMoreIntent(
-                            context,
-                            forumId,
-                            forumName,
-                            currentPage,
-                            threadListIds,
-                            isGood
-                        )
-                    )
-                },
+                onLoadMore = loadNextPage,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState,
-                isEmpty = threadList.isEmpty(),
+                isEmpty = visible.isEmpty(),
                 modifier = Modifier.weight(1f)
             ) {
                 ThreadList(
                     state = lazyListState,
-                    items = threadList,
+                    items = visible,
+                    filteredAll = threadList.isNotEmpty() && visible.isEmpty(),
+                    onLoadMore = if (hasMore && !isLoadingMore && !isRefreshing) loadNextPage else null,
                     onItemClicked = {
                         navigator.navigate(
                             ThreadPageDestination(
@@ -410,13 +390,8 @@ fun ForumThreadListPage(
                     onOpenForumRule = {
                         navigator.navigate(ForumRuleDetailPageDestination(forumId))
                     },
-                    onOriginThreadClicked = {
-                        navigator.navigate(
-                            ThreadPageDestination(
-                                threadId = it.tid.toLong(),
-                                forumId = it.fid,
-                            )
-                        )
+                    onOriginThreadClicked = { threadId, sourceForumId ->
+                        navigator.navigate(ThreadPageDestination(threadId, forumId = sourceForumId))
                     }
                 ) { navigator.navigate(UserProfilePageDestination(it.id)) }
             }

@@ -1,11 +1,9 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.huanchengfly.tieba.post.ui.page.settings.block.blocklist
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,15 +15,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -41,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.google.gson.reflect.TypeToken
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -54,8 +51,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
-import androidx.compose.material3.PrimaryTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
+import com.huanchengfly.tieba.post.ui.widgets.compose.loadingPlaceholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.GsonUtil
@@ -145,55 +142,24 @@ fun BlockListPage(
             )
         },
         bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                addBlockCategory = Block.CATEGORY_BLACK_LIST
-                                dialogState.show()
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (category in listOf(Block.CATEGORY_BLACK_LIST, Block.CATEGORY_WHITE_LIST)) {
+                    val black = category == Block.CATEGORY_BLACK_LIST
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            addBlockCategory = category
+                            dialogState.show()
+                        },
+                        shapes = ButtonDefaults.shapes(),
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Block,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(id = R.string.title_add_black),
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                addBlockCategory = Block.CATEGORY_WHITE_LIST
-                                dialogState.show()
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(id = R.string.title_add_white),
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Icon(ImageVector.vectorResource(if (black) R.drawable.ms_block else R.drawable.ms_check_circle), null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(if (black) R.string.title_add_black else R.string.title_add_white))
                     }
                 }
             }
@@ -252,68 +218,31 @@ fun BlockListPage(
 
 @Composable
 private fun BlockItemPlaceholder() {
-    Row(
-        modifier = Modifier.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Block,
-            contentDescription = null,
-            modifier = Modifier.loadingPlaceholder(visible = true)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = stringResource(id = R.string.title_block_settings),
-            modifier = Modifier.loadingPlaceholder(visible = true)
-        )
-    }
+    ListItem(
+        leadingContent = { Icon(ImageVector.vectorResource(R.drawable.ms_block), null, Modifier.loadingPlaceholder(visible = true)) },
+        headlineContent = { Text(stringResource(R.string.title_block_settings), Modifier.loadingPlaceholder(visible = true)) },
+    )
 }
 
 @Composable
 private fun BlockItem(
     item: Block,
 ) {
-    Row(
-        modifier = Modifier.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = if (item.type == Block.TYPE_USER) Icons.Outlined.AccountCircle else ImageVector.vectorResource(
-                id = R.drawable.ic_comment_new
-            ),
-            contentDescription = if (item.type == Block.TYPE_USER) stringResource(
-                id = R.string.block_type_user
-            ) else stringResource(
-                id = R.string.block_type_keywords
-            )
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            if (item.type == Block.TYPE_USER) {
-                Text(
-                    text = "${item.username}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "UID: ${item.uid}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            } else {
-                val keywordsList: List<String> = runCatching {
-                    GsonUtil.getGson()
-                        .fromJson<List<String>>(
-                            item.keywords ?: "[]",
-                            object : TypeToken<List<String>>() {}.type
-                        )
-                }.getOrDefault(emptyList())
-                Text(
-                    text = keywordsList.joinToString(" "),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
+    val isUser = item.type == Block.TYPE_USER
+    val title = if (isUser) item.username.orEmpty() else remember(item.keywords) {
+        runCatching {
+            GsonUtil.getGson().fromJson<List<String>>(item.keywords ?: "[]", object : TypeToken<List<String>>() {}.type)
+                .orEmpty().joinToString(" ")
+        }.getOrDefault("")
     }
+    ListItem(
+        leadingContent = {
+            Icon(
+                imageVector = ImageVector.vectorResource(if (isUser) R.drawable.ms_account_circle else R.drawable.ms_chat_bubble),
+                contentDescription = stringResource(if (isUser) R.string.block_type_user else R.string.block_type_keywords),
+            )
+        },
+        headlineContent = { Text(title) },
+        supportingContent = if (isUser) {{ Text("UID: ${item.uid}") }} else null,
+    )
 }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.Layout
@@ -61,14 +62,14 @@ internal fun rememberMainTabSelection(initialId: String): MainTabSelection = rem
     saver = Saver(save = { it.id }, restore = { MainTabSelection(it) }),
 ) { MainTabSelection(initialId) }
 
-/** Unvisited tabs have no composition. Only the selected child is measured, placed and drawn. */
+/** Retain visited tabs and lay out only the selected tab. */
 @Composable
 internal fun MainTabHost(
     selectedId: String,
     navigationItems: ImmutableList<NavigationItem>,
     modifier: Modifier = Modifier,
 ) {
-    Layout(modifier = modifier, content = {
+    Layout(modifier = modifier.clipToBounds(), content = {
         navigationItems.forEach { item ->
             key(item.id) {
                 val active = item.id == selectedId
@@ -100,7 +101,7 @@ internal fun MainTabHost(
     }) { children, constraints ->
         val selected = children.firstOrNull { it.layoutId == selectedId }?.measure(constraints)
         layout(selected?.width ?: constraints.minWidth, selected?.height ?: constraints.minHeight) {
-            selected?.placeRelative(0, 0)
+            selected?.place(0, 0)
         }
     }
 }

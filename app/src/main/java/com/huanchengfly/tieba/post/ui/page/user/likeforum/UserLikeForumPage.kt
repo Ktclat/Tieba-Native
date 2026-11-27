@@ -3,17 +3,14 @@
 package com.huanchengfly.tieba.post.ui.page.user.likeforum
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -24,18 +21,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.api.models.UserLikeForumBean
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.getOrNull
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
@@ -84,6 +82,7 @@ fun UserLikeForumPage(
         initial = persistentListOf()
     )
 
+    val visibleForums = rememberVisibleItems(forums) { blocksForum(it.name) }
     val isEmpty by remember {
         derivedStateOf { forums.isEmpty() }
     }
@@ -106,6 +105,11 @@ fun UserLikeForumPage(
         },
         errorScreen = { ErrorScreen(error = error.getOrNull()) },
     ) {
+        val loadMore = { viewModel.send(UserLikeForumUiIntent.LoadMore(uid, currentPage)) }
+        if (visibleForums.isEmpty()) {
+            FilteredPageNotice(if (hasMore && !isLoadingMore) loadMore else null)
+            return@StateScreen
+        }
         val pullRefreshState = rememberPullToRefreshState()
 
         val lazyListState = rememberLazyListState()
@@ -116,14 +120,12 @@ fun UserLikeForumPage(
         Box(modifier = pullRefreshModifier) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(UserLikeForumUiIntent.LoadMore(uid, currentPage))
-                },
+                onLoadMore = loadMore,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState
             ) {
                 UserLikeForumList(
-                    data = forums,
+                    data = visibleForums,
                     fluid = fluid,
                     onClickForum = { forumBean ->
                         forumBean.name?.let {
@@ -161,9 +163,6 @@ private fun UserLikeForumList(
                     onClick = {
                         onClickForum(it)
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
         }
@@ -176,29 +175,13 @@ private fun UserLikeForumItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .then(modifier),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Avatar(
-            data = item.avatar,
-            size = Sizes.Medium,
-            contentDescription = null
-        )
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(text = item.name.orEmpty(), style = MaterialTheme.typography.titleMedium)
-            item.slogan.takeUnless { it.isNullOrEmpty() }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
+    val description = item.slogan
+    ListItem(
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        leadingContent = { Avatar(data = item.avatar, size = Sizes.Medium, contentDescription = null) },
+        headlineContent = { Text(item.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = description?.takeIf { it.isNotBlank() }?.let {
+            { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
+    )
 }

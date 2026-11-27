@@ -1,4 +1,4 @@
-"""Exercise guest login, navigation, font settings and persisted color choices on Android 15."""
+"""Review the installed Android app on a Pixel 9-sized Android 15 gesture-navigation device."""
 
 import argparse
 from collections import Counter
@@ -9,8 +9,38 @@ import struct
 import subprocess
 import time
 from xml.etree import ElementTree
+from capture_cold_start import record_cold_start
 
 PACKAGE = "com.huanchengfly.tieba.post"
+PHONE_WIDTH, PHONE_HEIGHT, PHONE_DPI = 1080, 2424, 420
+
+
+def configure_phone():
+    adb("shell", "wm", "size", f"{PHONE_WIDTH}x{PHONE_HEIGHT}")
+    adb("shell", "wm", "density", str(PHONE_DPI))
+    adb("shell", "settings", "put", "system", "font_scale", "1.0")
+    adb("shell", "cmd", "uimode", "night", "no")
+    # A fresh emulator otherwise places a SystemUI tutorial over the first full-screen gallery.
+    adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
+    if adb("shell", "settings", "get", "secure", "immersive_mode_confirmations").strip() != b"confirmed":
+        raise RuntimeError("Could not confirm the emulator's first-use immersive tutorial")
+    overlay = "com.android.internal.systemui.navbar.gestural"
+    adb("shell", "cmd", "overlay", "enable-exclusive", "--category", overlay)
+    for setting in ("animator_duration_scale", "transition_animation_scale", "window_animation_scale"):
+        adb("shell", "settings", "put", "global", setting, "1")
+    for setting in ("min_refresh_rate", "peak_refresh_rate"):
+        adb("shell", "settings", "put", "system", setting, "60.0")
+    # Leave system back animations enabled so the device verifies the app’s own opt-out.
+    adb("shell", "settings", "put", "global", "enable_back_animation", "1")
+    if "[x] " + overlay not in adb("shell", "cmd", "overlay", "list").decode():
+        raise RuntimeError("Gesture navigation overlay did not become active")
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if adb("shell", "settings", "get", "secure", "navigation_mode").strip() == b"2":
+            return
+        time.sleep(0.3)
+    raise RuntimeError("SystemUI did not switch to gesture navigation")
+
 
 
 def adb(*args, timeout=30):
@@ -54,7 +84,9 @@ def labelled_nodes(tree, label):
                 yield node
 
 
-def find_label(label, timeout=45, recover_launcher=False):
+def find_label(label, timeout=45, recover_launcher=False, *, alternate_labels=()):
+    labels = (label, *alternate_labels)
+
     def position(tree):
         nonlocal recover_launcher
         if recover_launcher:
@@ -68,13 +100,13 @@ def find_label(label, timeout=45, recover_launcher=False):
                 adb("shell", "input", "tap", *(str(v) for v in close))
                 adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
                 return None
-        return next((center(node) for node in labelled_nodes(tree, label)), None)
+        return next((center(node) for candidate in labels for node in labelled_nodes(tree, candidate)), None)
 
-    return wait_for_match(repr(label), position, timeout)
+    return wait_for_match(" or ".join(map(repr, labels)), position, timeout)
 
 
 def reveal(label):
-    # Theme options span more than one viewport when the user increases the font size.
+    # Scroll to theme options that are below the viewport.
     for direction in ("up", "down"):
         for _ in range(4):
             try:
@@ -120,8 +152,8 @@ def back_to(label):
     find_label(label)
 
 
-def capture(output, name, label):
-    find_label(label)
+def capture(output, name, label, *, alternate_labels=()):
+    find_label(label, alternate_labels=alternate_labels)
     image = adb("exec-out", "screencap", "-p")
     if not image.startswith(b"\x89PNG\r\n\x1a\n"):
         raise RuntimeError("screencap returned invalid PNG bytes")
@@ -264,75 +296,72 @@ def review_colors(output):
     return colors
 
 
-def run(apk, output):
+def run(apk, output, baseline):
     output.mkdir(parents=True, exist_ok=True)
     disconnect_emulator()
+    configure_phone()
     adb("install", "-r", "-g", str(apk), timeout=90)
-    adb("shell", "wm", "size", "1080x2340")
-    adb("shell", "wm", "density", "420")
     adb("shell", "input", "keyevent", "KEYCODE_WAKEUP")
     adb("shell", "wm", "dismiss-keyguard")
-    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
-    find_label("随便看看", recover_launcher=True)
+    if baseline:
+        adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+        find_label("随便看看", recover_launcher=True)
+    else:
+        record_cold_start(output / "cold-start", PACKAGE, adb, lambda: find_label("随便看看", recover_launcher=True))
     capture(output, "01-home", "随便看看")
-    review_guest_login(output)
+    tap("动态")
+    find_label("热榜")
+    time.sleep(3.5)  # Let the transient network toast clear before reviewing the persistent error state.
+    capture(output, "01-explore-offline", "热榜")
+    if baseline:
+        # Capture the old installed APK at its real top-right search entry.
+        tap("搜索")
+        capture(output, "search-empty", "返回")
+        tap("返回")
+        find_label("热榜")
+    tap("消息")
+    capture(output, "01-notifications", "登录后查看消息", alternate_labels=("回复我的",) if baseline else ())
+    tap("首页")
+    if baseline:
+        tap("我")
+        capture(output, "02-profile", "请先登录")
+    else:
+        review_guest_login(output)
     tap("设置")
     capture(output, "03-settings", "个性化")
     tap("个性化")
     capture(output, "04-appearance", "字体大小")
+    if baseline:
+        return
     tap("字体大小")
-    capture(output, "05-font-preview", "阅读预览")
-    tap("放大一级")
-    capture(output, "06-font-larger", "105%")
-    tap("保存字号")
-    find_label("夜间模式主题")
+    capture(output, "05-font-preview", "100%")
+    back_to("夜间模式主题")
     back_to("个性化")
     back_to("主题选择")
     tap("主题选择")
     tap_option("自定义颜色")
-    capture(output, "06a-custom-theme", "设置自定义主题")
-    back_to("主题选择")
-    tap_option("透明主题")
-    x, y = find_label("界面设置")
-    adb("shell", "input", "swipe", str(x), str(y), str(x), str(y // 3), "500")
-    capture(output, "06b-wallpaper-controls", "模糊度")
+    capture(output, "06-custom-theme", "设置自定义主题")
     back_to("主题选择")
     colors = review_colors(output)
     back_to("设置")
-    tap("设置")
-    tap("个性化")
-    tap("字体大小")
-    find_label("105%")
-    for _ in range(5):
-        tap("放大一级")
-    find_label("130%")
-    tap("保存字号")
-    find_label("夜间模式主题")
-
-    # Relaunch with the system in night mode on a 320dp-wide display.
-    adb("shell", "am", "force-stop", PACKAGE)
+    restart_home()
     adb("shell", "cmd", "uimode", "night", "yes")
-    adb("shell", "wm", "size", "840x2058")
-    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
-    capture(output, "07-home-compact-dark-130", "随便看看")
+    restart_home()
+    capture(output, "07-home-dark", "随便看看")
     colors["custom_after_night_mode"] = login_button_color()
     if colors["custom_after_night_mode"] != "#78D9AF":
         raise RuntimeError(f"Night mode lost the saved custom color: {colors}")
     (output / "theme-colors.json").write_text(json.dumps(colors, indent=2) + "\n")
-    tap("我")
-    tap("设置")
-    tap("个性化")
-    tap("字体大小")
-    capture(output, "08-font-compact-dark-130", "阅读预览")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--baseline", action="store_true", help="Capture the former home, profile and settings.")
     args = parser.parse_args()
     try:
-        run(args.apk, args.output)
+        run(args.apk, args.output, args.baseline)
     except Exception:
         save_diagnostic(args.output, "failure.png", "exec-out", "screencap", "-p")
         save_diagnostic(args.output, "last-window.xml", "exec-out", "cat", "/sdcard/window.xml")

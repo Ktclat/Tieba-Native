@@ -1,6 +1,10 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.main.explore.personalized
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.models.blocksThread
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
@@ -8,27 +12,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -39,8 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
@@ -67,6 +69,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -88,6 +91,9 @@ fun PersonalizedPage(
     val error by viewModel.uiState.collectPartialAsState(PersonalizedUiState::error)
     val refreshPosition by viewModel.uiState.collectPartialAsState(PersonalizedUiState::refreshPosition)
     val hiddenThreadIds by viewModel.uiState.collectPartialAsState(PersonalizedUiState::hiddenThreadIds)
+    val visible = rememberVisibleItems(data) { blocksThread(it.thread.get()) }
+    val refreshBoundary = data.getOrNull(refreshPosition - 1)?.thread?.get { id }
+    val loadMore = { viewModel.send(PersonalizedUiIntent.LoadMore(currentPage + 1)) }
     val lazyListState = rememberLazyListState()
     val isEmpty by remember {
         derivedStateOf {
@@ -151,21 +157,23 @@ fun PersonalizedPage(
             }
         }
     ) {
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
+        PullToRefreshLayout(
+            refreshing = isRefreshing,
             onRefresh = { viewModel.send(PersonalizedUiIntent.Refresh) },
         ) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = { viewModel.send(PersonalizedUiIntent.LoadMore(currentPage + 1)) },
+                onLoadMore = loadMore,
                 loadEnd = false,
                 lazyListState = lazyListState,
-                isEmpty = data.isEmpty()
+                isEmpty = visible.isEmpty()
             ) {
                 FeedList(
                     state = lazyListState,
-                    dataProvider = { data },
-                    refreshPositionProvider = { refreshPosition },
+                    dataProvider = { visible },
+                    filteredAll = data.isNotEmpty() && visible.isEmpty(),
+                    onLoadMore = if (isLoadingMore || isRefreshing) null else loadMore,
+                    refreshBoundary = refreshBoundary,
                     hiddenThreadIdsProvider = { hiddenThreadIds },
                     onItemClick = {
                         navigator.navigate(
@@ -224,20 +232,16 @@ fun PersonalizedPage(
 
 @Composable
 private fun BoxScope.RefreshTip(refreshCount: Int) {
-    Box(
-        modifier = Modifier
-            .padding(top = 72.dp)
-            .clip(RoundedCornerShape(100))
-            .background(
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(100)
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .align(Alignment.TopCenter)
+    Surface(
+        modifier = Modifier.align(Alignment.TopCenter).padding(top = 72.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.inverseSurface,
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
     ) {
         Text(
-            text = stringResource(id = R.string.toast_feed_refresh, refreshCount),
-            color = MaterialTheme.colorScheme.onPrimary
+            text = stringResource(R.string.toast_feed_refresh, refreshCount),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
         )
     }
 }
@@ -246,7 +250,9 @@ private fun BoxScope.RefreshTip(refreshCount: Int) {
 private fun FeedList(
     state: LazyListState,
     dataProvider: () -> ImmutableList<ThreadItemData>,
-    refreshPositionProvider: () -> Int,
+    filteredAll: Boolean,
+    onLoadMore: (() -> Unit)?,
+    refreshBoundary: Long?,
     hiddenThreadIdsProvider: () -> ImmutableList<Long>,
     onItemClick: (ThreadInfo) -> Unit,
     onItemReplyClick: (ThreadInfo) -> Unit,
@@ -257,14 +263,15 @@ private fun FeedList(
     onClickUser: (User) -> Unit = {},
 ) {
     val data = dataProvider()
-    val refreshPosition = refreshPositionProvider()
-    val hiddenThreadIds = hiddenThreadIdsProvider()
+    val hiddenIds = hiddenThreadIdsProvider()
+    val hiddenThreadIds = remember(hiddenIds) { hiddenIds.toHashSet() }
 
     MyLazyColumn(
         state = state,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
     ) {
+        if (filteredAll) item { FilteredPageNotice(onLoadMore) }
         itemsIndexed(
             items = data,
             key = { _, (item) -> "${item.get { id }}" },
@@ -276,15 +283,9 @@ private fun FeedList(
                     else -> "PlainText"
                 }
             }
-        ) { index, (item, blocked, personalized, hidden) ->
-            val isHidden =
-                remember(
-                    hiddenThreadIds,
-                    item,
-                    hidden
-                ) { hiddenThreadIds.contains(item.get { threadId }) || hidden }
-            val isRefreshPosition =
-                remember(index, refreshPosition) { index + 1 == refreshPosition }
+        ) { _, (item, blocked, personalized, hidden) ->
+            val isHidden = hidden || item.get { threadId } in hiddenThreadIds
+            val isRefreshPosition = item.get { id } == refreshBoundary
             Container {
                 AnimatedVisibility(
                     visible = !isHidden,
@@ -335,22 +336,15 @@ private fun FeedList(
 private fun RefreshTip(
     onRefresh: () -> Unit
 ) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onRefresh)
-            .padding(8.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Refresh,
-            contentDescription = null
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = stringResource(id = R.string.tip_refresh),
-            style = MaterialTheme.typography.titleMedium
-        )
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        TextButton(onClick = onRefresh, shapes = ButtonDefaults.shapes()) {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.ms_refresh),
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.tip_refresh))
+        }
     }
 }

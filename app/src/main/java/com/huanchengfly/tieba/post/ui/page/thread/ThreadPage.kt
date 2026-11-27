@@ -2,25 +2,21 @@
 
 package com.huanchengfly.tieba.post.ui.page.thread
 
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,52 +33,41 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TonalToggleButton
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.material.icons.rounded.AlignVerticalTop
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Face6
-import androidx.compose.material.icons.rounded.FaceRetouchingOff
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Report
-import androidx.compose.material.icons.rounded.RocketLaunch
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TonalToggleButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,13 +77,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -106,10 +93,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.booleanToString
@@ -118,6 +101,7 @@ import com.huanchengfly.tieba.post.api.models.protos.SimpleForum
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.ThreadInfo
 import com.huanchengfly.tieba.post.api.models.protos.User
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.api.models.protos.plainText
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
@@ -133,23 +117,33 @@ import com.huanchengfly.tieba.post.models.database.History
 import com.huanchengfly.tieba.post.toJson
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.PbContentRender
-import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import com.huanchengfly.tieba.post.ui.common.PbContentText
+import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.LocalThreadTabs
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTab
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.TrackThreadTab
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.threadTabAnchorIndex
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.restoreThreadTabAnchor
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.withReadingPosition
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.CopyTextDialogPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
-import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
-import com.huanchengfly.tieba.post.ui.page.reply.openReply
-import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
+import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
+import com.huanchengfly.tieba.post.ui.page.reply.openReply
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.ui.models.blocksOrigin
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -157,13 +151,13 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.OriginThreadCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
+import com.huanchengfly.tieba.post.ui.widgets.compose.QuotedThread
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
+import com.huanchengfly.tieba.post.ui.widgets.compose.StateIllustration
 import com.huanchengfly.tieba.post.ui.widgets.compose.TextWithMinWidth
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
@@ -171,6 +165,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
@@ -179,13 +174,13 @@ import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlin.math.max
 
 @Composable
 fun PostAgreeBtn(
@@ -204,13 +199,14 @@ fun PostAgreeBtn(
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = 112.dp)
             .semantics { selected = hasAgreed },
+        shapes = ButtonDefaults.shapes(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = if (hasAgreed) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                imageVector = ImageVector.vectorResource(if (hasAgreed) R.drawable.ms_favorite_filled else R.drawable.ms_favorite),
                 contentDescription = stringResource(id = R.string.title_agree),
                 tint = animatedColor,
                 modifier = Modifier.size(16.dp)
@@ -256,6 +252,7 @@ object ThreadPageFrom {
     const val FROM_STORE = "store_thread"
     const val FROM_PERSONALIZED = "personalized"
     const val FROM_HISTORY = "history"
+    const val FROM_TABS = "tabs"
 }
 
 @Serializable
@@ -263,6 +260,13 @@ sealed interface ThreadPageExtra
 
 @Serializable
 data object ThreadPageNoExtra : ThreadPageExtra
+
+@Serializable
+data class ThreadPageFromTabsExtra(
+    val scrollOffset: Int,
+    val latest: Boolean,
+    val floor: Int,
+) : ThreadPageExtra
 
 @Serializable
 data class ThreadPageFromStoreExtra(
@@ -292,9 +296,8 @@ private fun ThreadLoadMoreIndicator(
             ProvideTextStyle(value = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(
+                        LoadingIndicator(
                             modifier = Modifier.size(24.dp),
-                            strokeWidth = 3.dp,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -464,6 +467,36 @@ fun ThreadPage(
         initial = persistentListOf()
     )
 
+    val rules = LocalContentBlockRules.current
+    val topic = thread?.get() ?: threadInfo
+    val blockedThread = remember(rules, forum, topic, author, firstPost) {
+        rules.blocksForum(forum?.get { name }) || rules.blocksForum(topic?.forumName) ||
+            rules.blocksForum(topic?.forumInfo?.name) || rules.blocksAuthor(author?.get()) ||
+            rules.blocksAuthor(topic?.author) || rules.blocksAuthor(firstPost?.get { this.author })
+    }
+    val tabs = LocalThreadTabs.current
+    if (blockedThread) {
+        val saved = tabs?.find(threadId)
+        LaunchedEffect(saved?.generation, rules, forum, topic, author, firstPost) {
+            if (saved != null && tabs != null) {
+                val forumName = listOf(forum?.get { name }, topic?.forumName, topic?.forumInfo?.name)
+                    .firstOrNull { rules.blocksForum(it) }
+                val blockedAuthor = listOf(author?.get(), topic?.author, firstPost?.get { this.author })
+                    .firstOrNull { rules.blocksAuthor(it) }
+                tabs.describe(saved.copy(
+                    forumName = forumName ?: saved.forumName,
+                    authorName = blockedAuthor?.name ?: saved.authorName,
+                    authorAlias = blockedAuthor?.nameShow ?: saved.authorAlias,
+                ), saved.generation)
+            }
+        }
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_thread))
+        return
+    }
+
+    val hideBlocked = LocalDisplayPreferences.current.hideBlockedContent || isImmersiveMode
+    val visibleFloors = remember(rules, data, hideBlocked) { rules.displayFloors(data, hideBlocked) }
+    val visibleLatest = remember(rules, latestPosts, hideBlocked) { rules.displayFloors(latestPosts, hideBlocked) }
     val isEmpty by remember {
         derivedStateOf { data.isEmpty() && firstPost == null }
     }
@@ -516,6 +549,35 @@ fun ThreadPage(
     val firstFloor = remember(firstPost) {
         firstPost?.get { ThreadFloorKey(id, floor) }?.takeIf { it.postId > 0L }
     }
+    val tabAnchor = extra as? ThreadPageFromTabsExtra
+    var restoringTab by rememberSaveable(threadId, postId) {
+        mutableStateOf(from == ThreadPageFrom.FROM_TABS && postId > 0)
+    }
+    val currentTab = ThreadTab(
+        threadId = threadId, title = threadTitle.ifBlank { threadInfo?.title.orEmpty() },
+        forumName = curForumName ?: topic?.forumName.orEmpty(), forumId = curForumId,
+        postId = postId, onlyAuthor = isSeeLz, sortType = curSortType,
+        floor = tabAnchor?.floor ?: 0, scrollOffset = tabAnchor?.scrollOffset ?: 0, latest = tabAnchor?.latest == true,
+        authorName = (author?.get() ?: topic?.author)?.name.orEmpty(),
+        authorAlias = (author?.get() ?: topic?.author)?.nameShow.orEmpty(),
+    )
+    val recordTabPosition = !restoringTab && !isRefreshing && currentPageMax > 0
+    TrackThreadTab(currentTab, lazyListState, firstFloor, recordPosition = recordTabPosition)
+    LaunchedEffect(restoringTab, currentPageMax, isRefreshing, firstFloor, visibleFloors, visibleLatest, curSortType) {
+        if (!restoringTab || currentPageMax <= 0 || isRefreshing || isEmpty) return@LaunchedEffect
+        val replies = visibleFloors.map { it.post.get { id } }
+        val latest = visibleLatest.map { it.post.get { id } }
+        val descending = curSortType == ThreadSortType.SORT_TYPE_DESC
+        val exact = threadTabAnchorIndex(postId, firstFloor?.postId, replies, latest, descending, tabAnchor?.latest == true)
+        // A deleted or locally blocked anchor can disappear between visits. Resume at the
+        // first reply of the page returned for that PID, or at the topic in an empty thread.
+        val firstReply = (if (descending) latest.firstOrNull() else null) ?: replies.firstOrNull() ?: latest.firstOrNull()
+        val index = exact ?: firstReply?.let {
+            threadTabAnchorIndex(it, firstFloor?.postId, replies, latest, descending)
+        } ?: 0
+        lazyListState.restoreThreadTabAnchor(index, if (exact != null) tabAnchor?.scrollOffset ?: 0 else 0)
+        restoringTab = false
+    }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     fun closeBottomSheet() {
@@ -525,17 +587,18 @@ fun ThreadPage(
     }
 
     viewModel.onEvent<ThreadUiEvent.ScrollToFirstReply> {
-        lazyListState.scrollToDiscussionItem(1)
+        if (from != ThreadPageFrom.FROM_TABS || !it.initial) lazyListState.scrollToDiscussionItem(1)
     }
     viewModel.onEvent<ThreadUiEvent.ScrollToLatestReply> {
         if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
-            lazyListState.scrollToDiscussionItem(2 + data.size)
+            lazyListState.scrollToDiscussionItem(2 + visibleFloors.size)
         } else {
             lazyListState.scrollToDiscussionItem(1)
         }
     }
     viewModel.onEvent<ThreadUiEvent.LoadSuccess> {
-        if (it.page > 1 || waitLoadSuccessAndScrollToFirstReply) {
+        val openingTab = from == ThreadPageFrom.FROM_TABS && it.postId == postId
+        if (!openingTab && (it.page > 1 || waitLoadSuccessAndScrollToFirstReply)) {
             waitLoadSuccessAndScrollToFirstReply = false
             lazyListState.scrollToDiscussionItem(1)
         }
@@ -816,6 +879,33 @@ fun ThreadPage(
         )
     }
 
+    fun loadMorePosts() {
+        if (hasMore) {
+            viewModel.send(
+                ThreadUiIntent.LoadMore(
+                    threadId = threadId,
+                    page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
+                    else currentPageMax + 1,
+                    forumId = forumId,
+                    postId = nextPagePostId,
+                    seeLz = isSeeLz,
+                    sortType = curSortType,
+                    postIds = data.map { it.post.get { id } }
+                )
+            )
+        } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
+            viewModel.send(
+                ThreadUiIntent.LoadLatestPosts(
+                    threadId = threadId,
+                    curLatestPostId = data.last().post.get { id },
+                    forumId = curForumId,
+                    seeLz = isSeeLz,
+                    sortType = curSortType
+                )
+            )
+        }
+    }
+
     fun LazyListScope.replyFloors(posts: ImmutableList<PostItemData>, latest: Boolean = false) {
         itemsIndexed(
             items = posts,
@@ -832,7 +922,7 @@ fun ThreadPage(
     }
 
     fun LazyListScope.latestPosts(desc: Boolean) {
-        if (latestPosts.isNotEmpty()) {
+        if (visibleLatest.isNotEmpty()) {
             if (!desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -846,7 +936,7 @@ fun ThreadPage(
                     }
                 }
             }
-            replyFloors(latestPosts, latest = true)
+            replyFloors(visibleLatest, latest = true)
             if (desc) {
                 item("LatestPostsTip") {
                     Container {
@@ -864,194 +954,199 @@ fun ThreadPage(
     }
 
     ProvideNavigator(navigator = navigator) {
-        StateScreen(
-            modifier = Modifier.fillMaxSize(),
-            isEmpty = isEmpty,
-            isError = isError,
-            isLoading = isRefreshing,
-            errorScreen = {
-                error?.let {
-                    val (e) = it
-                    ErrorScreen(error = e)
-                }
-            },
-            onReload = {
-                viewModel.send(
-                    ThreadUiIntent.Load(
-                        threadId,
-                        page = 0,
-                        postId = postId,
-                        forumId = forumId,
-                        seeLz = seeLz,
-                        sortType = sortType
-                    )
+        MyScaffold(
+            snackbarHostState = snackbarHostState,
+            topBar = {
+                ThreadTopBar(
+                    forum = forum,
+                    onBack = ::leaveThread,
+                    actions = {
+                        ThreadTabsButton(navigator, threadId, currentTab = {
+                            if (recordTabPosition) currentTab.withReadingPosition(lazyListState, firstFloor) else currentTab
+                        })
+                    },
+                    onForumClick = {
+                        val forumName = forum?.get { name }
+                        if (forumName != null) navigator.navigate(
+                            ForumPageDestination(
+                                forumName
+                            )
+                        )
+                    }
                 )
-            }
-        ) {
-            MyScaffold(
-                snackbarHostState = snackbarHostState,
-                topBar = {
-                    TopBar(
-                        forum = forum,
-                        onBack = ::leaveThread,
-                        onForumClick = {
-                            val forumName = forum?.get { name }
-                            if (forumName != null) navigator.navigate(
-                                ForumPageDestination(
-                                    forumName
+            },
+            bottomBar = {
+                if (!isEmpty) ThreadBottomBar(
+                    user = user,
+                    signedIn = currentAccount != null,
+                    onClickReply = {
+                        openReply(
+                            ReplyArgs(
+                                forumId = curForumId ?: 0,
+                                forumName = forum?.get { name }.orEmpty(),
+                                threadId = threadId,
+                            )
+                        )
+                    },
+                    onAgree = {
+                        val firstPostId =
+                            thread?.get { firstPostId }.takeIf { it != 0L }
+                                ?: firstPost?.get { id }
+                                ?: 0L
+                        if (firstPostId != 0L) viewModel.send(
+                            ThreadUiIntent.AgreeThread(
+                                threadId,
+                                firstPostId,
+                                !hasThreadAgreed
+                            )
+                        )
+                    },
+                    onClickMore = { menuOpen = true },
+                    hasAgreed = hasThreadAgreed,
+                    agreeNum = threadAgreeNum,
+                )
+            },
+        ) { paddingValues ->
+            if (menuOpen) {
+                ModalBottomSheet(
+                    onDismissRequest = { menuOpen = false },
+                    sheetState = bottomSheetState,
+                ) {
+                    ThreadMenu(
+                        isSeeLz = isSeeLz,
+                        isCollected = isCollected,
+                        isImmersiveMode = isImmersiveMode,
+                        isDesc = curSortType == ThreadSortType.SORT_TYPE_DESC,
+                        canDelete = { author?.get { id } == user.get { id } },
+                        onSeeLzClick = {
+                            viewModel.send(
+                                ThreadUiIntent.LoadFirstPage(
+                                    threadId,
+                                    forumId,
+                                    !isSeeLz,
+                                    curSortType
                                 )
                             )
-                        }
-                    )
-                },
-                bottomBar = {
-                    ThreadBottomBar(
-                        user = user,
-                        signedIn = currentAccount != null,
-                        onClickReply = {
-                            openReply(
-                                ReplyArgs(
-                                    forumId = curForumId ?: 0,
-                                    forumName = forum?.get { name }.orEmpty(),
-                                    threadId = threadId,
+                            closeBottomSheet()
+                        },
+                        onCollectClick = {
+                            if (isCollected) {
+                                val fid = forum?.get { id } ?: forumId
+                                val tbs = anti?.get { tbs }
+                                if (fid != null) {
+                                    viewModel.send(
+                                        ThreadUiIntent.RemoveFavorite(
+                                            threadId,
+                                            fid,
+                                            tbs
+                                        )
+                                    )
+                                }
+                            } else {
+                                val readItem = lazyListState.lastVisibleFloor(firstFloor)
+                                if (readItem != null) {
+                                    viewModel.send(
+                                        ThreadUiIntent.AddFavorite(
+                                            threadId,
+                                            readItem.postId,
+                                            readItem.floor
+                                        )
+                                    )
+                                }
+                            }
+                            closeBottomSheet()
+                        },
+                        onImmersiveModeClick = {
+                            if (!isImmersiveMode && !isSeeLz) {
+                                viewModel.send(
+                                    ThreadUiIntent.LoadFirstPage(
+                                        threadId,
+                                        forumId,
+                                        true,
+                                        curSortType
+                                    )
                                 )
+                            }
+                            viewModel.send(ThreadUiIntent.ToggleImmersiveMode(!isImmersiveMode))
+                            closeBottomSheet()
+                        },
+                        onDescClick = {
+                            viewModel.send(
+                                ThreadUiIntent.LoadFirstPage(
+                                    threadId,
+                                    forumId,
+                                    isSeeLz,
+                                    if (curSortType != ThreadSortType.SORT_TYPE_DESC) ThreadSortType.SORT_TYPE_DESC else ThreadSortType.SORT_TYPE_DEFAULT
+                                )
+                            )
+                            closeBottomSheet()
+                        },
+                        onJumpPageClick = {
+                            closeBottomSheet()
+                            jumpToPageDialogState.show()
+                        },
+                        onShareClick = {
+                            TiebaUtil.shareText(
+                                context,
+                                "https://tieba.baidu.com/p/$threadId",
+                                threadTitle
                             )
                         },
-                        onAgree = {
+                        onCopyLinkClick = {
+                            TiebaUtil.copyText(
+                                context,
+                                "https://tieba.baidu.com/p/$threadId?see_lz=${isSeeLz.booleanToString()}"
+                            )
+                        },
+                        onReportClick = {
                             val firstPostId =
                                 thread?.get { firstPostId }.takeIf { it != 0L }
                                     ?: firstPost?.get { id }
                                     ?: 0L
-                            if (firstPostId != 0L) viewModel.send(
-                                ThreadUiIntent.AgreeThread(
-                                    threadId,
-                                    firstPostId,
-                                    !hasThreadAgreed
+                            coroutineScope.launch {
+                                TiebaUtil.reportPost(
+                                    context,
+                                    navigator,
+                                    firstPostId.toString()
                                 )
-                            )
+                            }
                         },
-                        onClickMore = { menuOpen = true },
-                        hasAgreed = hasThreadAgreed,
-                        agreeNum = threadAgreeNum,
+                        onDeleteClick = {
+                            deletePost = null
+                            confirmDeleteDialogState.show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
                     )
-                },
-            ) { paddingValues ->
-                if (menuOpen) {
-                    ModalBottomSheet(
-                        onDismissRequest = { menuOpen = false },
-                        sheetState = bottomSheetState,
-                    ) {
-                        ThreadMenu(
-                            isSeeLz = isSeeLz,
-                            isCollected = isCollected,
-                            isImmersiveMode = isImmersiveMode,
-                            isDesc = curSortType == ThreadSortType.SORT_TYPE_DESC,
-                            canDelete = { author?.get { id } == user.get { id } },
-                            onSeeLzClick = {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadFirstPage(
-                                        threadId,
-                                        forumId,
-                                        !isSeeLz,
-                                        curSortType
-                                    )
-                                )
-                                closeBottomSheet()
-                            },
-                            onCollectClick = {
-                                if (isCollected) {
-                                    val fid = forum?.get { id } ?: forumId
-                                    val tbs = anti?.get { tbs }
-                                    if (fid != null) {
-                                        viewModel.send(
-                                            ThreadUiIntent.RemoveFavorite(
-                                                threadId,
-                                                fid,
-                                                tbs
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    val readItem = lazyListState.lastVisibleFloor(firstFloor)
-                                    if (readItem != null) {
-                                        viewModel.send(
-                                            ThreadUiIntent.AddFavorite(
-                                                threadId,
-                                                readItem.postId,
-                                                readItem.floor
-                                            )
-                                        )
-                                    }
-                                }
-                                closeBottomSheet()
-                            },
-                            onImmersiveModeClick = {
-                                if (!isImmersiveMode && !isSeeLz) {
-                                    viewModel.send(
-                                        ThreadUiIntent.LoadFirstPage(
-                                            threadId,
-                                            forumId,
-                                            true,
-                                            curSortType
-                                        )
-                                    )
-                                }
-                                viewModel.send(ThreadUiIntent.ToggleImmersiveMode(!isImmersiveMode))
-                                closeBottomSheet()
-                            },
-                            onDescClick = {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadFirstPage(
-                                        threadId,
-                                        forumId,
-                                        isSeeLz,
-                                        if (curSortType != ThreadSortType.SORT_TYPE_DESC) ThreadSortType.SORT_TYPE_DESC else ThreadSortType.SORT_TYPE_DEFAULT
-                                    )
-                                )
-                                closeBottomSheet()
-                            },
-                            onJumpPageClick = {
-                                closeBottomSheet()
-                                jumpToPageDialogState.show()
-                            },
-                            onShareClick = {
-                                TiebaUtil.shareText(
-                                    context,
-                                    "https://tieba.baidu.com/p/$threadId",
-                                    threadTitle
-                                )
-                            },
-                            onCopyLinkClick = {
-                                TiebaUtil.copyText(
-                                    context,
-                                    "https://tieba.baidu.com/p/$threadId?see_lz=${isSeeLz.booleanToString()}"
-                                )
-                            },
-                            onReportClick = {
-                                val firstPostId =
-                                    thread?.get { firstPostId }.takeIf { it != 0L }
-                                        ?: firstPost?.get { id }
-                                        ?: 0L
-                                coroutineScope.launch {
-                                    TiebaUtil.reportPost(
-                                        context,
-                                        navigator,
-                                        firstPostId.toString()
-                                    )
-                                }
-                            },
-                            onDeleteClick = {
-                                deletePost = null
-                                confirmDeleteDialogState.show()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp)
-                        )
-                    }
                 }
+            }
+            StateScreen(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                isEmpty = isEmpty,
+                isError = isError,
+                isLoading = isRefreshing,
+                errorScreen = {
+                    error?.let {
+                        val (e) = it
+                        ErrorScreen(error = e)
+                    }
+                },
+                onReload = {
+                    viewModel.send(
+                        ThreadUiIntent.Load(
+                            threadId,
+                            page = 0,
+                            postId = postId,
+                            forumId = forumId,
+                            seeLz = seeLz,
+                            sortType = sortType
+                        )
+                    )
+                }
+            ) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues)
+                    modifier = Modifier.fillMaxSize()
                         .pullToRefresh(
                             isRefreshing = isRefreshing, state = pullRefreshState,
                             enabled = enablePullRefresh, onRefresh = refreshPosts,
@@ -1059,32 +1154,7 @@ fun ThreadPage(
                 ) {
                     LoadMoreLayout(
                         isLoading = isLoadingMore,
-                        onLoadMore = {
-                            if (hasMore) {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadMore(
-                                        threadId = threadId,
-                                        page = if (curSortType == ThreadSortType.SORT_TYPE_DESC) totalPage - currentPageMax
-                                        else currentPageMax + 1,
-                                        forumId = forumId,
-                                        postId = nextPagePostId,
-                                        seeLz = isSeeLz,
-                                        sortType = curSortType,
-                                        postIds = data.map { it.post.get { id } }
-                                    )
-                                )
-                            } else if (data.isNotEmpty() && curSortType != ThreadSortType.SORT_TYPE_DESC) {
-                                viewModel.send(
-                                    ThreadUiIntent.LoadLatestPosts(
-                                        threadId = threadId,
-                                        curLatestPostId = data.last().post.get { id },
-                                        forumId = curForumId,
-                                        seeLz = isSeeLz,
-                                        sortType = curSortType
-                                    )
-                                )
-                            }
-                        },
+                        onLoadMore = ::loadMorePosts,
                         loadEnd = loadMoreEnd,
                         indicator = { isLoading, loadMoreEnd, willLoad ->
                             ThreadLoadMoreIndicator(
@@ -1095,7 +1165,7 @@ fun ThreadPage(
                             )
                         },
                         lazyListState = lazyListState,
-                        isEmpty = data.isEmpty(),
+                        isEmpty = visibleFloors.isEmpty(),
                         preloadCount = loadMorePreloadCount,
                     ) {
                         MyLazyColumn(
@@ -1157,23 +1227,16 @@ fun ThreadPage(
 
                                             thread?.getNullableImmutable { origin_thread_info }
                                                 .takeIf { thread?.get { is_share_thread } == 1 }
+                                                ?.takeUnless { rules.blocksOrigin(it.get()) }
                                                 ?.let {
-                                                    OriginThreadCard(
-                                                        originThreadInfo = it,
+                                                    QuotedThread(
+                                                        thread = it,
+                                                        onOpen = { id, fid ->
+                                                            navigator.navigate(ThreadPageDestination(id, forumId = fid))
+                                                        },
                                                         modifier = Modifier
                                                             .padding(horizontal = 16.dp)
-                                                            .padding(bottom = 16.dp)
-                                                            .clip(RoundedCornerShape(6.dp))
-                                                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                                                            .clickable {
-                                                                navigator.navigate(
-                                                                    ThreadPageDestination(
-                                                                        threadId = it.get { tid.toLong() },
-                                                                        forumId = it.get { fid },
-                                                                    )
-                                                                )
-                                                            }
-                                                            .padding(16.dp)
+                                                            .padding(bottom = 16.dp),
                                                     )
                                                 }
 
@@ -1217,66 +1280,58 @@ fun ThreadPage(
                                 latestPosts(true)
                             }
                             item(key = "LoadPreviousBtn") {
-                                if (hasPrevious) {
+                                if (hasPrevious && data.isNotEmpty()) {
                                     Container {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    viewModel.send(
-                                                        ThreadUiIntent.LoadPrevious(
-                                                            threadId,
-                                                            max(currentPageMax - 1, 1),
-                                                            forumId,
-                                                            postId = data
-                                                                .first()
-                                                                .post
-                                                                .get { id },
-                                                            seeLz = isSeeLz,
-                                                            sortType = curSortType,
-                                                            postIds = data.map { it.post.get { id } }
-                                                        )
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.send(
+                                                    ThreadUiIntent.LoadPrevious(
+                                                        threadId,
+                                                        max(currentPageMax - 1, 1),
+                                                        forumId,
+                                                        postId = data
+                                                            .first()
+                                                            .post
+                                                            .get { id },
+                                                        seeLz = isSeeLz,
+                                                        sortType = curSortType,
+                                                        postIds = data.map { it.post.get { id } }
                                                     )
-                                                }
-                                                .padding(8.dp),
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalAlignment = Alignment.CenterVertically
+                                                )
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shapes = ButtonDefaults.shapes(),
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Rounded.AlignVerticalTop,
+                                                imageVector = ImageVector.vectorResource(R.drawable.ms_align_vertical_top),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(16.dp))
                                             Text(
-                                                text = stringResource(id = R.string.btn_load_previous),
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
+                                                text = stringResource(id = R.string.btn_load_previous)
                                             )
                                         }
                                     }
                                 }
                             }
-                            if (!isRefreshing && data.isEmpty()) {
+                            if (!isRefreshing && visibleFloors.isEmpty() && visibleLatest.isEmpty() &&
+                                (data.isNotEmpty() || latestPosts.isNotEmpty())
+                            ) {
+                                item(key = "FilteredReplies") {
+                                    FilteredPageNotice(if (hasMore && !isLoadingMore) ::loadMorePosts else null)
+                                }
+                            } else if (!isRefreshing && data.isEmpty() && latestPosts.isEmpty()) {
                                 item(key = "EmptyTip") {
                                     Container {
                                         TipScreen(
-                                            title = { Text(text = stringResource(id = R.string.title_empty)) },
+                                            title = { Text(stringResource(R.string.title_empty)) },
                                             image = {
-                                                val composition by rememberLottieComposition(
-                                                    LottieCompositionSpec.RawRes(R.raw.lottie_empty_box)
-                                                )
-                                                LottieAnimation(
-                                                    composition = composition,
-                                                    iterations = LottieConstants.IterateForever,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .aspectRatio(2f)
-                                                )
+                                                StateIllustration(ImageVector.vectorResource(R.drawable.ms_chat))
                                             },
                                             actions = {
                                                 if (canReload) {
-                                                    Button(onClick = { reload() }) {
+                                                    Button(onClick = { reload() }, shapes = ButtonDefaults.shapes()) {
                                                         Text(text = stringResource(id = R.string.btn_refresh))
                                                     }
                                                 }
@@ -1287,7 +1342,7 @@ fun ThreadPage(
                                     }
                                 }
                             } else {
-                                replyFloors(data)
+                                replyFloors(visibleFloors)
                             }
                             if (curSortType != ThreadSortType.SORT_TYPE_DESC) {
                                 latestPosts(false)
@@ -1307,48 +1362,42 @@ fun ThreadPage(
 }
 
 @Composable
-private fun TopBar(
+internal fun ThreadTopBar(
     forum: ImmutableHolder<SimpleForum>?,
     onBack: () -> Unit,
     onForumClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
 ) {
     TitleCentredToolbar(
         title = {
             forum?.let {
                 if (forum.get { name }.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .height(IntrinsicSize.Min)
-                            .clip(RoundedCornerShape(100))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable(onClick = onForumClick)
-                            .padding(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Avatar(
-                            data = forum.get { avatar },
-                            contentDescription = it.get { name },
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .aspectRatio(1f)
-                        )
-
-                        Text(
-                            text = stringResource(id = R.string.title_forum, it.get { name }),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    AssistChip(
+                        onClick = onForumClick,
+                        label = {
+                            Text(
+                                stringResource(R.string.title_forum, it.get { name }),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        leadingIcon = {
+                            Avatar(
+                                data = it.get { avatar }, contentDescription = null,
+                                modifier = Modifier.size(AssistChipDefaults.IconSize),
+                            )
+                        },
+                        shape = MaterialTheme.shapes.large,
+                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        border = null,
+                    )
                 }
             }
         },
         navigationIcon = {
             BackNavigationIcon(onBack)
         },
+        actions = { actions() },
         modifier = modifier
     )
 }
@@ -1359,14 +1408,14 @@ internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange
     val scheme = MaterialTheme.colorScheme
     Surface(color = scheme.surface) {
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = stringResource(R.string.title_thread_header, replyCount.toString()),
                 modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
             )
             Row(
                 modifier = Modifier.selectableGroup(),
@@ -1379,13 +1428,20 @@ internal fun ThreadRepliesHeader(replyCount: Int, seeLz: Boolean, onFilterChange
                         onCheckedChange = { if (it) onFilterChange(onlyAuthor) },
                         shapes = if (onlyAuthor) ButtonGroupDefaults.connectedTrailingButtonShapes()
                             else ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.semantics {
-                            role = Role.RadioButton
-                            selected = isSelected
-                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.minimumInteractiveComponentSize()
+                            .height(ButtonDefaults.ExtraSmallContainerHeight)
+                            .sizeIn(minWidth = 48.dp)
+                            .semantics {
+                                role = Role.RadioButton
+                                selected = isSelected
+                            },
                     ) {
-                        Text(stringResource(if (onlyAuthor) R.string.title_see_lz else R.string.text_all))
+                        Text(
+                            stringResource(if (onlyAuthor) R.string.title_see_lz else R.string.text_all),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                        )
                     }
                 }
             }
@@ -1412,27 +1468,11 @@ internal fun ThreadBottomBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (!LocalContext.current.appPreferences.hideReply) {
-                    FilledTonalButton(
-                        onClick = onClickReply,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        if (signedIn) {
-                            Avatar(
-                                data = StringUtil.getAvatarUrl(user.get { displayPortrait }),
-                                size = Sizes.Tiny, contentDescription = null,
-                            )
-                        }
-                        Text(
-                            text = stringResource(if (signedIn) R.string.tip_reply_thread else R.string.login_to_reply),
-                            modifier = Modifier.weight(1f).padding(start = 8.dp),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    ReplyPrompt(signedIn, user.get { displayPortrait }, onClickReply, Modifier.weight(1f))
                 } else Spacer(Modifier.weight(1f))
                 PostAgreeBtn(hasAgreed, agreeNum, onClick = onAgree)
-                IconButton(onClick = onClickMore) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                IconButton(onClick = onClickMore, shapes = IconButtonDefaults.shapes()) {
+                    Icon(ImageVector.vectorResource(R.drawable.ms_more_vert), contentDescription = stringResource(R.string.btn_more))
                 }
             }
             Spacer(
@@ -1440,6 +1480,25 @@ internal fun ThreadBottomBar(
                     .windowInsetsBottomHeight(WindowInsets.navigationBars)
             )
         }
+    }
+}
+
+@Composable
+internal fun ReplyPrompt(signedIn: Boolean, portrait: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        shapes = ButtonDefaults.shapes(),
+    ) {
+        if (signedIn) {
+            Avatar(data = StringUtil.getAvatarUrl(portrait.orEmpty()), size = Sizes.Tiny, contentDescription = null)
+        }
+        Text(
+            text = stringResource(if (signedIn) R.string.tip_reply_thread else R.string.login_to_reply),
+            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -1480,13 +1539,13 @@ internal fun ThreadReadingMarkDialog(
                     }
                     onLeave()
                 }
-            }) {
-                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            }, shapes = ButtonDefaults.shapes()) {
+                if (saving) LoadingIndicator(Modifier.size(20.dp))
                 else Text(stringResource(R.string.save_reading_mark_and_return))
             }
         },
         dismissButton = {
-            TextButton(enabled = !saving, onClick = onLeave) {
+            TextButton(enabled = !saving, onClick = onLeave, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.return_without_saving_reading_mark))
             }
         },
@@ -1548,9 +1607,20 @@ internal fun PostCard(
         post.agree?.diffAgreeNum ?: 0L
     }
     val menuState = rememberMenuState()
-    val hideBlockedContent = context.appPreferences.hideBlockedContent || immersiveMode
-    val visibleSubPosts = remember(subPosts, hideBlockedContent) {
-        if (hideBlockedContent) subPosts.filterNot { it.blocked } else subPosts
+    val rules = LocalContentBlockRules.current
+    val hideBlockedContent = LocalDisplayPreferences.current.hideBlockedContent || immersiveMode
+    val visibleSubPosts = remember(subPosts, hideBlockedContent, rules) {
+        if (!hideBlockedContent && rules.isEmpty) return@remember subPosts
+        subPosts.mapNotNull { item ->
+            val blockedReply = item.blocked || rules.blocksNestedReply(item.subPost.get { author }) {
+                item.subPostContent.visibleReplyBody()
+            }
+            when {
+                blockedReply && hideBlockedContent -> null
+                blockedReply != item.blocked -> item.copy(blocked = true)
+                else -> item
+            }
+        }
     }
     val moreReplies = post.sub_post_number > subPosts.size
     BlockableContent(
@@ -1567,8 +1637,11 @@ internal fun PostCard(
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
-        LongClickMenu(
+        CommentLongClickMenu(
             menuState = menuState,
+            phraseSource = if (discussionRole == DiscussionRole.Topic || post.floor == 1) null else {
+                { contentRenders.joinToString("") }
+            },
             indication = null,
             onClick = {
                 onReplyClick(post)
@@ -1651,7 +1724,7 @@ internal fun PostCard(
                             invertColor = true,
                             prefixIcon = {
                                 Icon(
-                                    imageVector = Icons.Rounded.Star,
+                                    imageVector = ImageVector.vectorResource(R.drawable.ms_star_filled),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -1688,14 +1761,13 @@ internal fun PostCard(
                                 }
                             }
                             if (moreReplies) {
-                                Text(
-                                    text = stringResource(R.string.open_all_sub_posts, post.sub_post_number),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable { onOpenSubPosts(0) }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                )
+                                TextButton(
+                                    onClick = { onOpenSubPosts(0) },
+                                    shapes = ButtonDefaults.shapes(),
+                                    modifier = Modifier.padding(start = 4.dp),
+                                ) {
+                                    Text(stringResource(R.string.open_all_sub_posts, post.sub_post_number))
+                                }
                             }
                         }
                     }
@@ -1729,8 +1801,9 @@ internal fun SubPostItem(
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val menuState = rememberMenuState()
-    LongClickMenu(
+    CommentLongClickMenu(
         menuState = menuState,
+        phraseSource = { subPostContent.visibleReplyBody() },
         menuContent = {
             if (!context.appPreferences.hideReply && onReplyClick != null) {
                 DropdownMenuItem(
@@ -1760,7 +1833,6 @@ internal fun SubPostItem(
                 }
             )
         },
-        shape = RoundedCornerShape(0),
         onClick = {
             onOpenSubPosts(subPostList.get { id })
         }
@@ -1843,7 +1915,7 @@ internal fun ThreadMenu(
                     onClick = onSeeLzClick,
                     icon = {
                         Icon(
-                            imageVector = if (isSeeLz) Icons.Rounded.Face6 else Icons.Rounded.FaceRetouchingOff,
+                            imageVector = ImageVector.vectorResource(if (isSeeLz) R.drawable.ms_face_6 else R.drawable.ms_face_retouching_off),
                             contentDescription = null
                         )
                     },
@@ -1864,7 +1936,7 @@ internal fun ThreadMenu(
                     onClick = onCollectClick,
                     icon = {
                         Icon(
-                            imageVector = if (isCollected) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                            imageVector = ImageVector.vectorResource(if (isCollected) R.drawable.ms_star_filled else R.drawable.ms_star),
                             contentDescription = null
                         )
                     },
@@ -1885,7 +1957,7 @@ internal fun ThreadMenu(
                     onClick = onImmersiveModeClick,
                     icon = {
                         Icon(
-                            imageVector = if (isImmersiveMode) Icons.AutoMirrored.Rounded.ChromeReaderMode else Icons.AutoMirrored.Outlined.ChromeReaderMode,
+                            imageVector = ImageVector.vectorResource(if (isImmersiveMode) R.drawable.ms_chrome_reader_mode_filled else R.drawable.ms_chrome_reader_mode),
                             contentDescription = null
                         )
                     },
@@ -1906,7 +1978,7 @@ internal fun ThreadMenu(
                     onClick = onDescClick,
                     icon = {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Sort,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_sort),
                             contentDescription = null
                         )
                     },
@@ -1916,28 +1988,28 @@ internal fun ThreadMenu(
         }
         Column {
             ListMenuItem(
-                icon = Icons.Rounded.RocketLaunch,
+                icon = ImageVector.vectorResource(R.drawable.ms_rocket_launch),
                 text = stringResource(id = R.string.title_jump_page),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onJumpPageClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.Share,
+                icon = ImageVector.vectorResource(R.drawable.ms_share),
                 text = stringResource(id = R.string.title_share),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onShareClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.ContentCopy,
+                icon = ImageVector.vectorResource(R.drawable.ms_content_copy),
                 text = stringResource(id = R.string.title_copy_link),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onCopyLinkClick,
                 modifier = Modifier.fillMaxWidth(),
             )
             ListMenuItem(
-                icon = Icons.Rounded.Report,
+                icon = ImageVector.vectorResource(R.drawable.ms_report),
                 text = stringResource(id = R.string.title_report),
                 iconColor = MaterialTheme.colorScheme.onSurface,
                 onClick = onReportClick,
@@ -1945,7 +2017,7 @@ internal fun ThreadMenu(
             )
             if (canDelete()) {
                 ListMenuItem(
-                    icon = Icons.Rounded.Delete,
+                    icon = ImageVector.vectorResource(R.drawable.ms_delete),
                     text = stringResource(id = R.string.title_delete),
                     iconColor = MaterialTheme.colorScheme.onSurface,
                     onClick = onDeleteClick,

@@ -27,7 +27,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="start"
                 android:contentDescription="@string/button_back"
-                app:icon="@drawable/ic_round_arrow_back" />
+                app:icon="@drawable/ms_arrow_back" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_finish"
@@ -37,7 +37,7 @@
                 android:layout_gravity="end"
                 android:contentDescription="@string/button_finish"
                 android:visibility="gone"
-                app:icon="@drawable/ic_round_check" />
+                app:icon="@drawable/ms_check" />
         </FrameLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -84,7 +84,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/title_select_pic"
-                app:icon="@drawable/ic_round_image" />
+                app:icon="@drawable/ms_image" />
 
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/color_theme"
@@ -136,7 +136,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/title_custom_color"
-                    app:icon="@drawable/ic_round_create" />
+                    app:icon="@drawable/ms_edit" />
             </LinearLayout>
 
             <com.google.android.material.textview.MaterialTextView
@@ -188,7 +188,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/title_translucent_theme_experimental_feature"
-                app:icon="@drawable/ic_round_help_green" />
+                app:icon="@drawable/ms_help" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

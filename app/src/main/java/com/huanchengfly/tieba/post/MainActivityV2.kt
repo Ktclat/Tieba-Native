@@ -1,25 +1,29 @@
 package com.huanchengfly.tieba.post
 
 import android.annotation.SuppressLint
-import android.app.job.JobInfo
-import android.app.job.JobScheduler
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -60,10 +65,18 @@ import com.huanchengfly.tieba.post.components.ClipBoardLink
 import com.huanchengfly.tieba.post.components.ClipBoardLinkDetector
 import com.huanchengfly.tieba.post.components.ClipBoardThreadLink
 import com.huanchengfly.tieba.post.services.NotifyJobService
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.PredictiveBackKey
+import com.huanchengfly.tieba.post.ui.common.ProvideBackDispatcher
+import com.huanchengfly.tieba.post.utils.LocalBlockRuleStore
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppThemeName
+import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.LocalThreadTabs
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.rememberThreadTabs
 import com.huanchengfly.tieba.post.ui.page.NavGraphs
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import com.huanchengfly.tieba.post.ui.utils.DevicePosture
 import com.huanchengfly.tieba.post.ui.utils.isBookPosture
 import com.huanchengfly.tieba.post.ui.utils.isSeparating
@@ -77,7 +90,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.ClientUtils
-import com.huanchengfly.tieba.post.utils.JobServiceUtil
 import com.huanchengfly.tieba.post.utils.PermissionUtils
 import com.huanchengfly.tieba.post.utils.PickMediasRequest
 import com.huanchengfly.tieba.post.utils.QuickPreviewUtil
@@ -91,7 +103,8 @@ import com.huanchengfly.tieba.post.utils.registerPickMediasLauncher
 import com.huanchengfly.tieba.post.utils.requestIgnoreBatteryOptimizations
 import com.huanchengfly.tieba.post.utils.requestPermission
 import com.ramcosta.composedestinations.DestinationsNavHost
-import com.ramcosta.composedestinations.navigation.navigate
+import com.ramcosta.composedestinations.animations.defaults.RootNavGraphDefaultAnimations
+import com.ramcosta.composedestinations.rememberNavHostEngine
 import com.ramcosta.composedestinations.spec.DestinationSpec
 import com.ramcosta.composedestinations.spec.Direction
 import com.ramcosta.composedestinations.utils.currentDestinationAsState
@@ -105,6 +118,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -119,11 +133,13 @@ val LocalDevicePosture =
 val LocalNavController =
     staticCompositionLocalOf<NavHostController> { throw IllegalStateException("not allowed here!") }
 val LocalDestination = compositionLocalOf<DestinationSpec<*>?> { null }
+internal val LocalVisibleMainTabs = compositionLocalOf { MainNavigationPreferences.visibleIds(MainNavigationPreferences.options.keys) }
 
 @AndroidEntryPoint
 class MainActivityV2 : BaseComposeActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val newMessageReceiver: BroadcastReceiver = NewMessageReceiver()
+    private var messageReceiverRegistered = false
 
     private val notificationCountFlow: MutableSharedFlow<Int> =
         MutableSharedFlow(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -176,7 +192,7 @@ class MainActivityV2 : BaseComposeActivity() {
                         .take(1)
                         .collect {
                             if (waitingNavCollectorToNavigate.get() && direction != null) {
-                                value.navigate(direction!!)
+                                value.navigate(direction!!.route)
                                 waitingNavCollectorToNavigate.set(false)
                                 direction = null
                             }
@@ -190,7 +206,7 @@ class MainActivityV2 : BaseComposeActivity() {
             waitingNavCollectorToNavigate.set(true)
             this.direction = direction
         } else {
-            myNavController?.navigate(direction)
+            myNavController?.navigate(direction.route)
         }
     }
 
@@ -214,13 +230,9 @@ class MainActivityV2 : BaseComposeActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent?.let {
-            if (!checkIntent(it)) {
-                myNavController?.handleDeepLink(it)
-            }
-        }
+        if (!checkIntent(intent)) myNavController?.handleDeepLink(intent)
     }
 
     private fun fetchAccount() {
@@ -247,41 +259,41 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     private fun initAutoSign() {
-        runCatching {
-            TiebaUtil.initAutoSign(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { TiebaUtil.initAutoSign(applicationContext) }
         }
     }
 
     override fun onStart() {
         super.onStart()
-        runCatching {
-            ContextCompat.registerReceiver(
-                this,
-                newMessageReceiver,
-                newIntentFilter(NotifyJobService.ACTION_NEW_MESSAGE),
-                ContextCompat.RECEIVER_NOT_EXPORTED
-            )
-            startService(Intent(this, NotifyJobService::class.java))
-            val builder = JobInfo.Builder(
-                JobServiceUtil.getJobId(this),
-                ComponentName(this, NotifyJobService::class.java)
-            )
-                .setPersisted(true)
-                .setPeriodic(30 * 60 * 1000L)
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-            val jobScheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-            jobScheduler.schedule(builder.build())
-        }
+        ContextCompat.registerReceiver(
+            this,
+            newMessageReceiver,
+            newIntentFilter(NotifyJobService.ACTION_NEW_MESSAGE).apply { addAction(AccountUtil.ACTION_SWITCH_ACCOUNT) },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        messageReceiverRegistered = true
+        updateNotificationJob()
         handler.postDelayed({
             requestNotificationPermission()
         }, 100)
     }
 
+    override fun onStop() {
+        if (messageReceiverRegistered) {
+            unregisterReceiver(newMessageReceiver)
+            messageReceiverRegistered = false
+        }
+        super.onStop()
+    }
+
+    private fun updateNotificationJob() {
+        NotifyJobService.updateSchedule(this, AccountUtil.currentAccount?.uid)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        window.decorView.setBackgroundColor(0)
-        window.setBackgroundDrawable(ColorDrawable(0))
         launch {
             ClientUtils.setActiveTimestamp()
         }
@@ -301,7 +313,7 @@ class MainActivityV2 : BaseComposeActivity() {
             }
 
             is ClipBoardForumLink -> {
-                myNavController?.navigate(Uri.parse("tblite://forum/${link.forumName}"))
+                navigate(ForumPageDestination(link.forumName))
             }
 
             else -> {
@@ -312,14 +324,16 @@ class MainActivityV2 : BaseComposeActivity() {
 
     @Composable
     private fun ClipBoardDetectDialog() {
-        val previewInfo by ClipBoardLinkDetector.previewInfoStateFlow.collectAsState()
+        val latest by ClipBoardLinkDetector.previewInfoStateFlow.collectAsState()
+        val rules = LocalContentBlockRules.current
+        val previewInfo = latest?.takeUnless { preview ->
+            rules.blocksForum(preview.forumName) || rules.blocksUser(preview.authorName, preview.authorNickname)
+        } ?: return
 
         val dialogState = rememberDialogState()
 
         LaunchedEffect(previewInfo) {
-            if (previewInfo != null) {
-                dialogState.show()
-            }
+            dialogState.show()
         }
 
         Dialog(
@@ -329,14 +343,12 @@ class MainActivityV2 : BaseComposeActivity() {
             },
             buttons = {
                 DialogPositiveButton(text = stringResource(id = R.string.button_open)) {
-                    previewInfo?.let {
-                        openClipBoardLink(it.clipBoardLink)
-                    }
+                    openClipBoardLink(previewInfo.clipBoardLink)
                 }
                 DialogNegativeButton(text = stringResource(id = R.string.btn_close))
             },
         ) {
-            previewInfo?.let {
+            previewInfo.let {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -382,7 +394,28 @@ class MainActivityV2 : BaseComposeActivity() {
     }
 
     @Composable
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun Content() {
+        val storedRules by remember { LocalBlockRuleStore.rules(applicationContext) }.collectAsState(initial = null)
+        val visibleTabs by remember {
+            dataStore.data.map { MainNavigationPreferences.visibleIds(it) }.distinctUntilChanged()
+        }.collectAsState(initial = null)
+        val rules = storedRules
+        val tabs = visibleTabs
+        if (rules == null || tabs == null) {
+            // Draw an opaque first frame while the local rules are read. Links and previews
+            // must wait for those rules before displaying any content.
+            Surface(modifier = Modifier.fillMaxSize()) {
+                Box(contentAlignment = Alignment.Center) { LoadingIndicator() }
+            }
+        } else {
+            CompositionLocalProvider(LocalContentBlockRules provides rules, LocalVisibleMainTabs provides tabs) { MainContent() }
+        }
+    }
+
+    @Composable
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    private fun MainContent() {
         val okSignAlertDialogState = rememberDialogState()
         ClipBoardDetectDialog()
         AlertDialog(
@@ -426,15 +459,40 @@ class MainActivityV2 : BaseComposeActivity() {
             )
         }
         TiebaLiteLocalProvider {
-            TranslucentThemeBackground {
+            TranslucentThemeBackground(modifier = Modifier.fillMaxSize()) {
                 val navController = rememberNavController()
                 val currentDestination by navController.currentDestinationAsState()
 
                 CompositionLocalProvider(
+                    LocalThreadTabs provides rememberThreadTabs(LocalAccount.current?.uid),
                     LocalNavController provides navController,
                     LocalDestination provides currentDestination,
                 ) {
-                    DestinationsNavHost(navController = navController, navGraph = NavGraphs.root)
+                    val predictiveBack = dataStore.collectPreferenceAsState(PredictiveBackKey, false)
+                    val motion = MaterialTheme.motionScheme.fastEffectsSpec<IntOffset>()
+                    val transitions = remember(motion, predictiveBack) {
+                        RootNavGraphDefaultAnimations(
+                            enterTransition = { slideIntoContainer(SlideDirection.Start, motion) },
+                            exitTransition = { slideOutOfContainer(SlideDirection.Start, motion) },
+                            // Adjacent pages share the same distance and timing, including when
+                            // AndroidX seeks the transition backwards after a cancelled gesture.
+                            popEnterTransition = {
+                                if (predictiveBack.value) slideIntoContainer(SlideDirection.End, tween(240, easing = LinearEasing))
+                                else fadeIn(tween(140, delayMillis = 70))
+                            },
+                            popExitTransition = {
+                                if (predictiveBack.value) slideOutOfContainer(SlideDirection.End, tween(240, easing = LinearEasing))
+                                else fadeOut(tween(70))
+                            },
+                        )
+                    }
+                    ProvideBackDispatcher(predictiveBack.value) {
+                        DestinationsNavHost(
+                            navController = navController,
+                            navGraph = NavGraphs.root,
+                            engine = rememberNavHostEngine(rootDefaultAnimations = transitions),
+                        )
+                    }
                 }
 
                 SideEffect {
@@ -483,6 +541,11 @@ class MainActivityV2 : BaseComposeActivity() {
     private inner class NewMessageReceiver : BroadcastReceiver() {
         @SuppressLint("RestrictedApi")
         override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == AccountUtil.ACTION_SWITCH_ACCOUNT) {
+                notificationCountFlow.tryEmit(0)
+                updateNotificationJob()
+                return
+            }
             if (intent.action == NotifyJobService.ACTION_NEW_MESSAGE) {
                 val channel = intent.getStringExtra("channel")
                 val count = intent.getIntExtra("count", 0)

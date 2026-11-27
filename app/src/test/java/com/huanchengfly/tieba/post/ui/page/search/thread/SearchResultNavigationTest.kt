@@ -2,9 +2,13 @@ package com.huanchengfly.tieba.post.ui.page.search.thread
 
 import android.app.Application
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean
+import com.huanchengfly.tieba.post.utils.LocalBlockRules
+import com.huanchengfly.tieba.post.ui.models.blocksSearchResult
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,6 +28,24 @@ class SearchResultNavigationTest {
     )
     private val reply = thread.copy(pid = "21", mainPost = mainPost)
     private val subreply = reply.copy(cid = "30", postInfo = parent)
+
+    @Test
+    fun commentRulesApplyToReplySearchResultsAndQuotedRepliesOnly() {
+        val rules = LocalBlockRules.fromText(comment = "引流|代购")
+        assertFalse(rules.blocksSearchResult(thread.copy(content = "代购")))
+        assertTrue(rules.blocksSearchResult(reply.copy(content = "请联系代购")))
+        assertTrue(rules.blocksSearchResult(subreply.copy(postInfo = parent.copy(content = "引流"))))
+        assertFalse(rules.blocksSearchResult(reply.copy(mainPost = mainPost.copy(content = "代购"))))
+    }
+
+    @Test
+    fun hiddenAuthorsAndForumsAlsoMatchEmbeddedSearchMetadata() {
+        val rules = LocalBlockRules.fromText(forum = "^摄影吧$", user = "^推广.*")
+        assertTrue(rules.blocksSearchResult(thread.copy(forumInfo = thread.forumInfo.copy(forumName = "摄影"))))
+        assertTrue(rules.blocksSearchResult(thread.copy(user = author.copy(showNickname = "推广账号"))))
+        assertTrue(rules.blocksSearchResult(reply.copy(mainPost = mainPost.copy(user = author.copy(userName = "推广2")))))
+        assertFalse(rules.blocksSearchResult(subreply))
+    }
 
     @Test
     fun tappingCommentCountOpensRepliesAndKeepsTheMatchedFloorOrSubreply() {

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.font
 
 import androidx.compose.foundation.layout.Arrangement
@@ -13,16 +15,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -33,8 +33,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -71,8 +73,8 @@ internal fun FontSizeScreen(
                 title = { Text(stringResource(R.string.title_custom_font_size)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !saving,
-                        modifier = Modifier.semantics { testTag = "font-back" }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.button_back))
+                        modifier = Modifier.semantics { testTag = "font-back" }, shapes = IconButtonDefaults.shapes()) {
+                        Icon(ImageVector.vectorResource(R.drawable.ms_arrow_back), stringResource(R.string.button_back))
                     }
                 },
             )
@@ -101,6 +103,7 @@ internal fun FontSizeScreen(
                             enabled = !saving && index != savedIndex,
                             modifier = Modifier.fillMaxWidth().semantics { testTag = "font-save" },
                             contentPadding = PaddingValues(vertical = 14.dp, horizontal = 24.dp),
+                            shapes = ButtonDefaults.shapes(),
                         ) {
                             Text(stringResource(if (saving) R.string.native_font_saving else R.string.native_font_save))
                         }
@@ -161,11 +164,13 @@ internal fun FontSizeScreen(
                                     FilledTonalIconButton(
                                         onClick = { onDraftChange(index - 1) }, enabled = !saving && index > 0,
                                         modifier = Modifier.semantics { testTag = "font-decrease" },
-                                    ) { Icon(Icons.Rounded.Remove, stringResource(R.string.native_font_decrease)) }
+                                        shapes = IconButtonDefaults.shapes(),
+                                    ) { Icon(ImageVector.vectorResource(R.drawable.ms_remove), stringResource(R.string.native_font_decrease)) }
                                     FilledTonalIconButton(
                                         onClick = { onDraftChange(index + 1) }, enabled = !saving && index < FontScaleSteps.LAST_INDEX,
                                         modifier = Modifier.semantics { testTag = "font-increase" },
-                                    ) { Icon(Icons.Rounded.Add, stringResource(R.string.native_font_increase)) }
+                                        shapes = IconButtonDefaults.shapes(),
+                                    ) { Icon(ImageVector.vectorResource(R.drawable.ms_add), stringResource(R.string.native_font_increase)) }
                                 }
                             }
                             Slider(
@@ -186,6 +191,7 @@ internal fun FontSizeScreen(
                                 enabled = !saving && index != FontScaleSteps.DEFAULT_INDEX,
                                 modifier = Modifier.fillMaxWidth().semantics { testTag = "font-reset" },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                shapes = ButtonDefaults.shapes(),
                             ) {
                                 Text(
                                     stringResource(R.string.native_font_reset),

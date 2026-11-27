@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.activities
 
 import android.os.Bundle
@@ -7,8 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,10 +69,10 @@ class AppFontSizeActivity : BaseComposeActivity() {
                     if (loadFailed) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(stringResource(R.string.native_font_load_failed))
-                            Button(onClick = ::loadScale) { Text(stringResource(R.string.native_font_retry)) }
-                            Button(onClick = { finish() }) { Text(stringResource(R.string.button_back)) }
+                            Button(onClick = ::loadScale, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.native_font_retry)) }
+                            Button(onClick = { finish() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_back)) }
                         }
-                    } else CircularProgressIndicator()
+                    } else LoadingIndicator()
                 }
             }
             return

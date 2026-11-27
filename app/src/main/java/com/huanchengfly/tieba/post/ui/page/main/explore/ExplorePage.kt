@@ -9,12 +9,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -22,7 +19,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
@@ -34,9 +33,11 @@ import com.huanchengfly.tieba.post.ui.page.destinations.SearchPageDestination
 import com.huanchengfly.tieba.post.ui.page.main.explore.concern.ConcernPage
 import com.huanchengfly.tieba.post.ui.page.main.explore.hot.HotPage
 import com.huanchengfly.tieba.post.ui.page.main.explore.personalized.PersonalizedPage
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
-import androidx.compose.material3.PrimaryTabRow
+import com.huanchengfly.tieba.post.ui.widgets.compose.LocalShouldLoad
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.accountNavIconIfCompact
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
@@ -131,11 +132,12 @@ fun ExplorePage() {
                 navigationIcon = accountNavIconIfCompact(),
                 actions = {
                     ActionItem(
-                        icon = Icons.Rounded.Search,
+                        icon = ImageVector.vectorResource(R.drawable.ms_search),
                         contentDescription = stringResource(id = R.string.title_search)
                     ) {
                         navigator.navigate(SearchPageDestination)
                     }
+                    ThreadTabsButton(navigator)
                 },
             ) {
                 ExplorePageTab(pagerState = pagerState, pages = pages)

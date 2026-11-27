@@ -1,6 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.main.notifications.list
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,12 +24,16 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.MessageListBean.MessageInfoBean
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.utils.LocalBlockRules
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -42,9 +46,10 @@ import com.ramcosta.composedestinations.spec.Direction
 @Composable
 fun NotificationsListPage(
     type: NotificationsType,
+    accountId: String,
     viewModel: NotificationsListViewModel = when (type) {
-        NotificationsType.ReplyMe -> pageViewModel<NotificationsListUiIntent, ReplyMeListViewModel>()
-        NotificationsType.AtMe -> pageViewModel<NotificationsListUiIntent, AtMeListViewModel>()
+        NotificationsType.ReplyMe -> pageViewModel<NotificationsListUiIntent, ReplyMeListViewModel>(key = "ReplyMeListViewModel:$accountId")
+        NotificationsType.AtMe -> pageViewModel<NotificationsListUiIntent, AtMeListViewModel>(key = "AtMeListViewModel:$accountId")
     }
 ) {
     LazyLoad(loaded = viewModel.initialized) {
@@ -57,15 +62,30 @@ fun NotificationsListPage(
     val hasMore by viewModel.uiState.collectPartialAsState(NotificationsListUiState::hasMore)
     val data by viewModel.uiState.collectPartialAsState(NotificationsListUiState::data)
     val currentPage by viewModel.uiState.collectPartialAsState(NotificationsListUiState::currentPage)
-    val rowKeys = remember(data) { notificationKeys(data) }
+    val rules = LocalContentBlockRules.current
+    val hideBlocked = LocalDisplayPreferences.current.hideBlockedContent
+    val visibleMessages = remember(data, rules, hideBlocked) {
+        if (!hideBlocked && rules.isEmpty) return@remember data
+        data.mapNotNull { item ->
+            val blocked = item.blocked || rules.blocksNotification(item.info)
+            when {
+                blocked && hideBlocked -> null
+                blocked != item.blocked -> item.copy(blocked = true)
+                else -> item
+            }
+        }
+    }
+    val rowKeys = remember(visibleMessages) { notificationKeys(visibleMessages) }
     val lazyListState = rememberLazyListState()
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
+    fun loadMore() { viewModel.send(NotificationsListUiIntent.LoadMore(currentPage + 1)) }
+    PullToRefreshLayout(
+        refreshing = isRefreshing,
         onRefresh = { viewModel.send(NotificationsListUiIntent.Refresh) },
     ) {
         LoadMoreLayout(
             isLoading = isLoadingMore,
-            onLoadMore = { viewModel.send(NotificationsListUiIntent.LoadMore(currentPage + 1)) },
+            onLoadMore = ::loadMore,
+            isEmpty = visibleMessages.isEmpty(),
             loadEnd = !hasMore,
             lazyListState = lazyListState,
         ) {
@@ -73,7 +93,12 @@ fun NotificationsListPage(
                 contentPadding = PaddingValues(vertical = 4.dp),
                 state = lazyListState,
             ) {
-                itemsIndexed(data, key = { index, _ -> rowKeys[index] }) { _, (info, blocked) ->
+                if (visibleMessages.isEmpty() && data.isNotEmpty()) {
+                    item(key = "FilteredMessages") {
+                        FilteredPageNotice(if (hasMore && !isLoadingMore) ::loadMore else null)
+                    }
+                }
+                itemsIndexed(visibleMessages, key = { index, _ -> rowKeys[index] }) { _, (info, blocked) ->
                     NotificationCard(type, info, blocked) { navigator.navigate(it) }
                 }
             }
@@ -115,6 +140,11 @@ internal fun NotificationCard(
                 },
             )
             val quotedReply = type == NotificationsType.ReplyMe && isFloor
+            val rules = LocalContentBlockRules.current
+            val quoteBlocked = remember(rules, info, quotedReply) {
+                rules.blocksUser(info.quoteUser?.name, info.quoteUser?.nameShow) ||
+                    (quotedReply && rules.blocksComment(info.quoteContent))
+            }
             val quoteText = if (quotedReply) info.quoteContent else info.title
             CommentLayout(
                 modifier = Modifier.fillMaxWidth().then(rowClick).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -144,7 +174,9 @@ internal fun NotificationCard(
                 } else if (quoteText.isNullOrBlank()) {
                     Text(stringResource(R.string.notification_content_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (!quoteText.isNullOrBlank()) {
+                if (!quoteText.isNullOrBlank() && quoteBlocked) {
+                    BlockableContent(blocked = true) {}
+                } else if (!quoteText.isNullOrBlank()) {
                     val label = when {
                         quotedReply -> R.string.notification_quoted_reply
                         type == NotificationsType.ReplyMe -> R.string.notification_replied_thread
@@ -186,6 +218,10 @@ internal fun NotificationCard(
         }
     }
 }
+
+internal fun LocalBlockRules.blocksNotification(info: MessageInfoBean): Boolean =
+    blocksForum(info.forumName) || blocksUser(info.replyer?.name, info.replyer?.nameShow) ||
+        blocksComment(info.content)
 
 private fun String?.positiveLong(): Long? = this?.toLongOrNull()?.takeIf { it > 0 }
 

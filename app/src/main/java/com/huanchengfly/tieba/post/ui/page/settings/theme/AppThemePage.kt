@@ -1,20 +1,14 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.theme
 
 import android.os.Build
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Switch
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.runtime.rememberCoroutineScope
-import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
-import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
-import com.huanchengfly.tieba.post.ui.common.theme.compose.appColorScheme
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -27,25 +21,27 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,9 +50,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -70,6 +68,9 @@ import com.huanchengfly.tieba.post.activities.TranslucentThemeActivity
 import com.huanchengfly.tieba.post.collectPreferenceAsState
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.goToActivity
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
+import com.huanchengfly.tieba.post.ui.common.theme.compose.appColorScheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
@@ -78,6 +79,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Destination
 @Composable
@@ -156,7 +158,7 @@ fun AppThemePage(navigator: DestinationsNavigator) {
                                 label = { Text(stringResource(label)) },
                                 leadingIcon = {
                                     Box(Modifier.size(18.dp).clip(CircleShape).background(scheme.primary), contentAlignment = Alignment.Center) {
-                                        if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(14.dp), tint = scheme.onPrimary)
+                                        if (selected) Icon(ImageVector.vectorResource(R.drawable.ms_check), null, Modifier.size(14.dp), tint = scheme.onPrimary)
                                     }
                                 },
                             )
@@ -226,7 +228,7 @@ private fun ThemeOption(
         headlineContent = { Text(name) },
         leadingContent = swatch,
         trailingContent = {
-            if (opensEditor && !selected) Icon(Icons.Rounded.Edit, contentDescription = null)
+            if (opensEditor && !selected) Icon(ImageVector.vectorResource(R.drawable.ms_edit), contentDescription = null)
             else RadioButton(selected = selected, onClick = null)
         },
     )
@@ -294,11 +296,11 @@ internal fun CustomColorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { save(color.toArgb(), toolbar, darkIcons) }, enabled = validHex) {
+            TextButton(onClick = { save(color.toArgb(), toolbar, darkIcons) }, enabled = validHex, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.button_finish))
             }
         },
-        dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.button_cancel)) } },
+        dismissButton = { TextButton(onClick = dismiss, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_cancel)) } },
     )
 }
 

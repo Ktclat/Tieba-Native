@@ -10,13 +10,13 @@ import android.util.Log;
 import android.view.MenuItem;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import com.huanchengfly.tieba.post.R;
 import com.huanchengfly.tieba.post.ui.common.theme.interfaces.Tintable;
 import com.huanchengfly.tieba.post.ui.common.theme.utils.ThemeUtils;
 
-public class TintToolbar extends Toolbar implements Tintable {
+public class TintToolbar extends MaterialToolbar implements Tintable {
     public static final String TAG = "TintToolbar";
 
     private int mBackgroundTintResId;
@@ -61,8 +61,6 @@ public class TintToolbar extends Toolbar implements Tintable {
     }
 
     private void applyTintColor() {
-        setTitleTextAppearance(getContext(), R.style.TextAppearance_Title);
-        setSubtitleTextAppearance(getContext(), R.style.TextAppearance_Subtitle);
         fixColor();
         tintBackground();
         tintNavigationIcon();

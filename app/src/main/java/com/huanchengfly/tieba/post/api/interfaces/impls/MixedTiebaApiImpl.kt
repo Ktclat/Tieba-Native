@@ -472,10 +472,10 @@ object MixedTiebaApiImpl : ITiebaApi {
             AccountUtil.getUid()
         )
 
-    override fun threadStoreFlow(page: Int, pageSize: Int): Flow<ThreadStoreBean> =
+    override fun threadStoreAtOffsetFlow(offset: Int, pageSize: Int): Flow<ThreadStoreBean> =
         RetrofitTiebaApi.OFFICIAL_TIEBA_API.threadStoreFlow(
             pageSize,
-            pageSize * page
+            offset
         )
 
     override fun removeStore(threadId: String, tbs: String): Call<CommonResponse> =

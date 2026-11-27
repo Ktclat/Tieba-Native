@@ -2,10 +2,10 @@ package com.huanchengfly.tieba.post.arch
 
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import com.huanchengfly.tieba.post.utils.PickMediasRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -89,10 +89,7 @@ inline fun <reified Event : UiEvent> CoroutineScope.onGlobalEvent(
                 filter(it)
             }
             .cancellable()
-            .collect {
-                Log.i("GlobalEvent", "onGlobalEvent: $it")
-                listener(it)
-            }
+            .collect { listener(it) }
     }
 }
 
@@ -102,8 +99,13 @@ inline fun <reified Event : UiEvent> onGlobalEvent(
     noinline filter: (Event) -> Boolean = { true },
     noinline listener: suspend (Event) -> Unit,
 ) {
-    DisposableEffect(filter, listener) {
-        val job = coroutineScope.onGlobalEvent(filter, listener)
+    val currentFilter = rememberUpdatedState(filter)
+    val currentListener = rememberUpdatedState(listener)
+    DisposableEffect(coroutineScope, Event::class) {
+        val job = coroutineScope.onGlobalEvent<Event>(
+            filter = { event -> currentFilter.value(event) },
+            listener = { event -> currentListener.value(event) },
+        )
         onDispose {
             job.cancel()
         }

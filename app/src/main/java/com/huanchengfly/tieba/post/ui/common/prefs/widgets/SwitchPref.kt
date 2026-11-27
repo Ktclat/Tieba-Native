@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -32,9 +32,7 @@ fun SwitchPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val checked = prefs?.get(selectionKey) ?: defaultChecked
+    val checked by datastore.collectPreferenceAsState(selectionKey, defaultChecked)
 
     fun edit(newState: Boolean) = run {
         onCheckedChange?.invoke(newState)

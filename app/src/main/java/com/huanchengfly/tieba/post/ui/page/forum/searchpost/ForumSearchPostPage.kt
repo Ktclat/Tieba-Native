@@ -2,27 +2,27 @@
 
 package com.huanchengfly.tieba.post.ui.page.forum.searchpost
 
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.core.animateFloatAsState
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import com.huanchengfly.tieba.post.ui.models.blocksSearchResult
+import com.huanchengfly.tieba.post.ui.models.rememberVisibleItems
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -35,35 +35,28 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumSearchPostPageDestination
 import com.huanchengfly.tieba.post.ui.page.search.SearchHistorySection
-import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
+import com.huanchengfly.tieba.post.ui.page.search.SearchTopBar
+import com.huanchengfly.tieba.post.ui.page.search.thread.SearchThreadResults
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyBackHandler
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.page.search.SearchTopBar
-import com.huanchengfly.tieba.post.ui.page.search.thread.SearchThreadResults
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarContainer
-import com.huanchengfly.tieba.post.ui.widgets.compose.picker.ListSinglePicker
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Destination
@@ -76,7 +69,10 @@ fun ForumSearchPostPage(
         listOf(ForumSearchPostUiIntent.Init(forumName))
     ),
 ) {
-    val context = LocalContext.current
+    if (LocalContentBlockRules.current.blocksForum(forumName)) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_locally_blocked_forum))
+        return
+    }
     val currentKeyword by viewModel.uiState.collectPartialAsState(
         prop1 = ForumSearchPostUiState::keyword,
         initial = ""
@@ -118,6 +114,7 @@ fun ForumSearchPostPage(
         initial = persistentListOf()
     )
 
+    val visible = rememberVisibleItems(data) { blocksSearchResult(it) }
     val isEmpty by remember {
         derivedStateOf { data.isEmpty() }
     }
@@ -173,40 +170,28 @@ fun ForumSearchPostPage(
         showHistory()
     }
 
-    val sortTypeMapping = remember {
-        mapOf(
-            ForumSearchPostSortType.NEWEST to context.getString(R.string.title_search_post_sort_by_time),
-            ForumSearchPostSortType.RELATIVE to context.getString(R.string.title_search_post_sort_by_relevant),
-        )
-    }
-    val filterTypeMapping = remember {
-        mapOf(
-            ForumSearchPostFilterType.ALL to context.getString(R.string.title_search_filter_all),
-            ForumSearchPostFilterType.ONLY_THREAD to context.getString(R.string.title_search_filter_only_thread),
-        )
+    fun changeOptions(sortType: Int, filterType: Int) {
+        if (sortType != currentSortType || filterType != currentFilterType) {
+            viewModel.requestSearch(
+                ForumSearchPostUiIntent.Refresh(currentKeyword, forumName, forumId, sortType, filterType)
+            )
+        }
     }
 
     MyScaffold(
         topBar = {
             TopAppBarContainer(
                 topBar = {
-                    Box(
-                        modifier = Modifier
-                            .height(64.dp)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        SearchTopBar(
-                            keyword = inputKeyword,
-                            onKeywordChange = {
-                                inputKeyword = it
-                                if (it.isEmpty()) showHistory()
-                            },
-                            onKeywordSubmit = ::submitKeyword,
-                            onBack = { if (isKeywordEmpty) navigator.navigateUp() else showHistory() },
-                            hint = stringResource(R.string.hint_search_in_ba, forumName),
-                        )
-                    }
+                    SearchTopBar(
+                        keyword = inputKeyword,
+                        onKeywordChange = {
+                            inputKeyword = it
+                            if (it.isEmpty()) showHistory()
+                        },
+                        onKeywordSubmit = ::submitKeyword,
+                        onBack = { if (isKeywordEmpty) navigator.navigateUp() else showHistory() },
+                        hint = stringResource(R.string.hint_search_in_ba, forumName),
+                    )
                 }
             )
         }
@@ -238,6 +223,7 @@ fun ForumSearchPostPage(
                         ) {
                             LoadMoreLayout(
                                 isLoading = isLoadingMore,
+                                isEmpty = visible.isEmpty(),
                                 onLoadMore = ::loadNextPage,
                                 enableLoadMore = !isRefreshing,
                                 preloadCount = if (error == null) 1 else 0,
@@ -245,7 +231,9 @@ fun ForumSearchPostPage(
                                 lazyListState = lazyListState,
                             ) {
                                 SearchThreadResults(
-                                    data = data,
+                                    data = visible,
+                                    filteredAll = data.isNotEmpty() && visible.isEmpty(),
+                                    onLoadNext = if (hasMore && !isRefreshing && !isLoadingMore) ::loadNextPage else null,
                                     lazyListState = lazyListState,
                                     navigator = navigator,
                                     hideForum = true,
@@ -253,115 +241,7 @@ fun ForumSearchPostPage(
                                     onRetryPage = if (error == null) null else if (hasMore) ::loadNextPage else ::refresh,
                                 ) {
                                     stickyHeader(key = "Sort&Filter") {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colorScheme.surface)
-                                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                                .clickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
-                                                    indication = null,
-                                                    onClick = {}
-                                                )
-                                        ) {
-                                            val menuState = rememberMenuState()
-
-                                            val rotate by animateFloatAsState(
-                                                targetValue = if (menuState.expanded) 180f else 0f,
-                                                label = "ArrowIndicatorRotate"
-                                            )
-
-                                            ClickMenu(
-                                                menuContent = {
-                                                    ListSinglePicker(
-                                                        itemTitles = sortTypeMapping.values.toImmutableList(),
-                                                        itemValues = sortTypeMapping.keys.toImmutableList(),
-                                                        selectedPosition = sortTypeMapping.keys.indexOf(
-                                                            currentSortType
-                                                        ),
-                                                        onItemSelected = { _, _, newSortType, changed ->
-                                                            if (changed) {
-                                                                viewModel.requestSearch(
-                                                                    ForumSearchPostUiIntent.Refresh(
-                                                                        currentKeyword,
-                                                                        forumName,
-                                                                        forumId,
-                                                                        newSortType,
-                                                                        currentFilterType
-                                                                    )
-                                                                )
-                                                            }
-                                                            dismiss()
-                                                        }
-                                                    )
-                                                },
-                                                menuState = menuState,
-                                                indication = null
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-//                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                ) {
-                                                    Text(
-                                                        text = sortTypeMapping[currentSortType]
-                                                            ?: "",
-                                                        fontSize = 13.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.ArrowDropDown,
-                                                        contentDescription = null,
-                                                        modifier = Modifier
-                                                            .size(16.dp)
-                                                            .rotate(rotate)
-                                                    )
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.height(IntrinsicSize.Min)
-                                            ) {
-                                                filterTypeMapping.keys.map<Int, @Composable () -> Unit> { type ->
-                                                    {
-                                                        Text(
-                                                            text = filterTypeMapping[type] ?: "",
-                                                            fontSize = 13.sp,
-                                                            fontWeight = if (type == currentFilterType) {
-                                                                FontWeight.Bold
-                                                            } else {
-                                                                FontWeight.Normal
-                                                            },
-                                                            modifier = Modifier.clickable(
-                                                                interactionSource = remember { MutableInteractionSource() },
-                                                                indication = null,
-                                                                role = Role.RadioButton,
-                                                                onClick = {
-                                                                    if (type != currentFilterType) {
-                                                                        viewModel.requestSearch(
-                                                                            ForumSearchPostUiIntent.Refresh(
-                                                                                currentKeyword,
-                                                                                forumName,
-                                                                                forumId,
-                                                                                currentSortType,
-                                                                                type
-                                                                            )
-                                                                        )
-                                                                    }
-                                                                }
-                                                            )
-                                                        )
-                                                    }
-                                                }.forEachIndexed { index, composable ->
-                                                    composable()
-                                                    if (index < filterTypeMapping.size - 1) {
-                                                        VerticalDivider(
-                                                            modifier = Modifier.padding(horizontal = 8.dp).height(16.dp)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        ForumSearchOptions(currentSortType, currentFilterType, ::changeOptions)
                                     }
                                 }
                             }
@@ -385,5 +265,49 @@ fun ForumSearchPostPage(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ForumSearchOptions(sortType: Int, filterType: Int, onChange: (Int, Int) -> Unit) {
+    val newest = stringResource(R.string.title_search_post_sort_by_time)
+    val relevant = stringResource(R.string.title_search_post_sort_by_relevant)
+    var menuOpen by remember { mutableStateOf(false) }
+    val onlyThreads = filterType == ForumSearchPostFilterType.ONLY_THREAD
+
+    Row(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box {
+            AssistChip(
+                onClick = { menuOpen = true },
+                label = { Text(if (sortType == ForumSearchPostSortType.NEWEST) newest else relevant) },
+                trailingIcon = { Icon(ImageVector.vectorResource(R.drawable.ms_arrow_drop_down), contentDescription = null) },
+            )
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                listOf(ForumSearchPostSortType.NEWEST to newest, ForumSearchPostSortType.RELATIVE to relevant)
+                    .forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            trailingIcon = { if (sortType == value) Icon(ImageVector.vectorResource(R.drawable.ms_check), null) },
+                            onClick = {
+                                menuOpen = false
+                                onChange(value, filterType)
+                            },
+                        )
+                    }
+            }
+        }
+        FilterChip(
+            selected = onlyThreads,
+            onClick = {
+                onChange(sortType, if (onlyThreads) ForumSearchPostFilterType.ALL else ForumSearchPostFilterType.ONLY_THREAD)
+            },
+            label = { Text(stringResource(R.string.title_search_filter_only_thread)) },
+            leadingIcon = if (onlyThreads) ({ Icon(ImageVector.vectorResource(R.drawable.ms_check), contentDescription = null) }) else null,
+        )
     }
 }

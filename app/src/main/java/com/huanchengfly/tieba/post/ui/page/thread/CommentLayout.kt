@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.thread
 
 import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import android.content.Context
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,11 +36,11 @@ import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.bawuType
 import com.huanchengfly.tieba.post.ui.common.ProvideCommentLinkColor
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.Badge
 import androidx.compose.material3.LocalContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.StringUtil
-import com.huanchengfly.tieba.post.utils.Util
 
 private val User.hidesCommentIdentity: Boolean get() = userhide != 0 || is_mask != 0
 
@@ -265,35 +264,21 @@ internal fun CommentAuthorName(
             )
         }
         if (userLevel > 0) {
-            CommentBadge(
-                "Lv.$userLevel",
-                Color(Util.getIconColorByLevel(userLevel.toString())),
-                textColor,
-            )
+            CommentBadge("Lv.$userLevel", scheme.secondaryContainer, scheme.onSecondaryContainer)
         }
         val authorLabel = stringResource(R.string.tip_lz)
         if (bawu.isNotEmpty() && !(isLz && bawu == authorLabel)) {
-            CommentBadge(bawu, scheme.primary, textColor)
+            CommentBadge(bawu, scheme.primaryContainer, scheme.onPrimaryContainer)
         }
         if (isLz) {
-            Text(
-                authorLabel,
-                modifier = Modifier.background(scheme.tertiaryContainer, MaterialTheme.shapes.extraSmall)
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
-                color = scheme.onTertiaryContainer,
-                style = MaterialTheme.typography.labelSmall,
-            )
+            CommentBadge(authorLabel, scheme.tertiaryContainer, scheme.onTertiaryContainer)
         }
     }
 }
 
 @Composable
-private fun CommentBadge(text: String, tint: Color, textColor: Color) {
-    Text(
-        text,
-        modifier = Modifier.background(tint.copy(alpha = 0.18f), MaterialTheme.shapes.extraSmall)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
-        style = MaterialTheme.typography.labelSmall,
-        color = textColor,
-    )
+private fun CommentBadge(text: String, containerColor: Color, contentColor: Color) {
+    Badge(containerColor = containerColor, contentColor = contentColor) {
+        Text(text, style = MaterialTheme.typography.labelSmall)
+    }
 }

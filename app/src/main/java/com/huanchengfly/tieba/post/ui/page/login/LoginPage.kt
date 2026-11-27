@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.login
 
 import android.annotation.SuppressLint
@@ -22,15 +24,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,7 +51,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,17 +67,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.withResumed
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.ClientUtils
-import com.huanchengfly.tieba.post.toastShort
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.coroutines.resume
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 private fun currentLoginCookies() = existingLoginCookies(CookieManager.getInstance()::getCookie)
 
@@ -96,6 +100,10 @@ internal class LoginPageViewModel : ViewModel() {
     fun restartBrowser(previous: List<String>) {
         flow.restartWith(previous)
         initialized = true
+    }
+
+    override fun onCleared() {
+        flow.cancel()
     }
 }
 
@@ -215,7 +223,8 @@ fun LoginPage(navigator: DestinationsNavigator) {
     LaunchedEffect(stage, owner) {
         if (stage == LoginStage.Complete) owner.lifecycle.withResumed { navigator.navigateUp() }
     }
-    BackHandler {
+    // Let the NavHost preview the preceding screen when there is no web history to consume.
+    BackHandler(enabled = stage == LoginStage.Verifying || stage == LoginStage.Browsing && browser.canGoBack) {
         if (stage == LoginStage.Browsing && browser.canGoBack) browser.view?.goBack() else close()
     }
     MyScaffold(topBar = {
@@ -232,8 +241,8 @@ fun LoginPage(navigator: DestinationsNavigator) {
             navigationIcon = { BackNavigationIcon(onBackPressed = ::close) },
             actions = {
                 if (stage !in setOf(LoginStage.Verifying, LoginStage.Complete)) Box {
-                    IconButton(onClick = { menuOpen = true }, enabled = !switching) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                    IconButton(onClick = { menuOpen = true }, enabled = !switching, shapes = IconButtonDefaults.shapes()) {
+                        Icon(ImageVector.vectorResource(R.drawable.ms_more_vert), contentDescription = stringResource(R.string.btn_more))
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(text = { Text(stringResource(if (alternate) R.string.login_mobile_page else R.string.login_alternative_page)) },
@@ -253,7 +262,7 @@ fun LoginPage(navigator: DestinationsNavigator) {
                 }
             }
             if (stage == LoginStage.Browsing && browser.progress in 1..99) {
-                LinearProgressIndicator(progress = { browser.progress / 100f }, modifier = Modifier.fillMaxWidth())
+                LinearWavyProgressIndicator(progress = { browser.progress / 100f }, modifier = Modifier.fillMaxWidth())
             }
             if (stage != LoginStage.Browsing) {
                 Surface(Modifier.fillMaxSize()) {
@@ -277,21 +286,42 @@ fun LoginPage(navigator: DestinationsNavigator) {
                             )
                         }
                         when (stage) {
-                            LoginStage.Verifying, LoginStage.Complete -> CircularProgressIndicator()
-                            LoginStage.PageFailed -> Button(onClick = {
-                                request(network.pending ?: LoginAttempt.OpenPage)
-                            }) { Text(stringResource(R.string.button_retry)) }
+                            LoginStage.Verifying, LoginStage.Complete -> LoadingIndicator()
+                            LoginStage.PageFailed -> Button(
+                                onClick = { request(network.pending ?: LoginAttempt.OpenPage) },
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text(stringResource(R.string.button_retry)) }
                             LoginStage.VerificationFailed -> {
-                                Button(onClick = { request(LoginAttempt.Verify) }) { Text(stringResource(R.string.button_retry)) }
-                                TextButton(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.Verify) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.button_retry)) }
+                                TextButton(
+                                    onClick = { request(LoginAttempt.OpenPage) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_restart)) }
                             }
                             LoginStage.MissingSession -> {
-                                Button(onClick = { request(LoginAttempt.OpenPage) }) { Text(stringResource(R.string.login_restart)) }
-                                TextButton(onClick = { request(LoginAttempt.CheckSession) }) { Text(stringResource(R.string.login_check_again)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.OpenPage) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_restart)) }
+                                TextButton(
+                                    onClick = { request(LoginAttempt.CheckSession) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_check_again)) }
                             }
                             LoginStage.ExistingSession -> {
-                                Button(onClick = { request(LoginAttempt.Confirm) }, enabled = !switching) { Text(stringResource(R.string.login_use_current)) }
-                                TextButton(enabled = !switching, onClick = { request(LoginAttempt.ChangeAccount) }) { Text(stringResource(R.string.login_other_account)) }
+                                Button(
+                                    onClick = { request(LoginAttempt.Confirm) },
+                                    enabled = !switching,
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_use_current)) }
+                                TextButton(
+                                    enabled = !switching,
+                                    onClick = { request(LoginAttempt.ChangeAccount) },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.login_other_account)) }
                             }
                             else -> Unit
                         }

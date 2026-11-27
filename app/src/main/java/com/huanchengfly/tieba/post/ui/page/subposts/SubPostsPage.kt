@@ -1,10 +1,10 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.subposts
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,33 +19,30 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.SubPostList
@@ -54,6 +51,8 @@ import com.huanchengfly.tieba.post.arch.ImmutableHolder
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.arch.wrapImmutable
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 import com.huanchengfly.tieba.post.ui.common.TextContentRender
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
@@ -62,32 +61,36 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyArgs
 import com.huanchengfly.tieba.post.ui.page.reply.openReply
-import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
-import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
-import com.huanchengfly.tieba.post.ui.page.thread.PostCard
-import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
-import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
 import com.huanchengfly.tieba.post.ui.page.thread.CommentHeader
 import com.huanchengfly.tieba.post.ui.page.thread.CommentLayout
+import com.huanchengfly.tieba.post.ui.page.thread.CommentLongClickMenu
 import com.huanchengfly.tieba.post.ui.page.thread.CommentMetadata
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionRole
+import com.huanchengfly.tieba.post.ui.page.thread.PostAgreeBtn
+import com.huanchengfly.tieba.post.ui.page.thread.PostCard
+import com.huanchengfly.tieba.post.ui.page.thread.ReplyPrompt
 import com.huanchengfly.tieba.post.ui.page.thread.ReplyRecipient
+import com.huanchengfly.tieba.post.ui.page.thread.commentDisplayName
+import com.huanchengfly.tieba.post.ui.page.thread.commentMentionPortrait
+import com.huanchengfly.tieba.post.ui.page.thread.blocksAuthor
+import com.huanchengfly.tieba.post.ui.page.thread.blocksFloor
+import com.huanchengfly.tieba.post.ui.page.thread.blocksNestedReply
+import com.huanchengfly.tieba.post.ui.page.thread.visibleReplyBody
 import com.huanchengfly.tieba.post.ui.page.thread.splitDirectedReply
-import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
-import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
-import com.huanchengfly.tieba.post.utils.StringUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.appPreferences
 import com.ramcosta.composedestinations.annotation.Destination
@@ -190,10 +193,34 @@ internal fun SubPostsContent(
         initial = true
     )
 
+    val rules = LocalContentBlockRules.current
+    val blockedParent = remember(rules, forum, thread, post, postContentRenders) {
+        rules.blocksForum(forum?.get { name }) || rules.blocksForum(thread?.get { forumName }) ||
+            rules.blocksForum(thread?.get { forumInfo?.name }) || rules.blocksAuthor(thread?.get { author }) ||
+            post?.get { rules.blocksFloor(this, postContentRenders) } == true
+    }
+    if (blockedParent) {
+        BlockedDestination(onBack = onNavigateUp)
+        return
+    }
+    val hideBlocked = LocalDisplayPreferences.current.hideBlockedContent
+    val visibleReplies = remember(rules, subPosts, hideBlocked) {
+        if (!hideBlocked && rules.isEmpty) return@remember subPosts
+        subPosts.mapNotNull { item ->
+            val blocked = item.blocked || rules.blocksNestedReply(item.subPost.get { author }) {
+                item.subPostContentRenders.visibleReplyBody()
+            }
+            when {
+                blocked && hideBlocked -> null
+                blocked != item.blocked -> item.copy(blocked = true)
+                else -> item
+            }
+        }
+    }
     val lazyListState = rememberLazyListState()
 
     val postedReplyId by viewModel.uiState.collectPartialAsState(SubPostsUiState::postedReplyId, initial = null)
-    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, subPosts)
+    PositionSubPostOnOpen(lazyListState, postedReplyId ?: subPostId, visibleReplies)
 
     val confirmDeleteDialogState = rememberDialogState()
     var deleteSubPost by remember { mutableStateOf<ImmutableHolder<SubPostList>?>(null) }
@@ -247,6 +274,10 @@ internal fun SubPostsContent(
         account?.uid,
     )
 
+    fun loadMoreReplies() {
+        viewModel.send(SubPostsUiIntent.LoadMore(replyForumId, threadId, parentId, page = currentPage + 1))
+    }
+
     StateScreen(
         modifier = Modifier.fillMaxSize(),
         isEmpty = post == null && !isRefreshing,
@@ -256,40 +287,9 @@ internal fun SubPostsContent(
         MyScaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                TitleCentredToolbar(
-                    title = {
-                        Text(text = post?.let {
-                            stringResource(
-                                id = R.string.title_sub_posts,
-                                it.get { floor })
-                        } ?: stringResource(id = R.string.title_sub_posts_default),
-                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateUp) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(id = R.string.button_back)
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = {
-                            navigator.navigate(
-                                ThreadPageDestination(
-                                    forumId = forumId,
-                                    threadId = threadId,
-                                    postId = postId
-                                )
-                            )
-                        }) {
-                            Icon(
-                                imageVector = Icons.Rounded.OpenInBrowser,
-                                contentDescription = stringResource(id = R.string.btn_open_origin_thread)
-                            )
-                        }
-                    }
-                )
+                SubPostsTopBar(post?.get { floor }, onNavigateUp) {
+                    navigator.navigate(ThreadPageDestination(forumId = forumId, threadId = threadId, postId = postId))
+                }
             },
             bottomBar = {
                 if (!LocalContext.current.appPreferences.hideReply) {
@@ -303,44 +303,27 @@ internal fun SubPostsContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (account != null) {
-                                Avatar(
-                                    data = StringUtil.getAvatarUrl(account.portrait),
-                                    size = Sizes.Tiny,
-                                    contentDescription = account.name,
-                                )
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp)
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .clickable {
-                                        val forumName = forum?.get { name }
-                                        if (!forumName.isNullOrEmpty()) {
-                                            openReply(
-                                                ReplyArgs(
-                                                    forumId = replyForumId,
-                                                    forumName = forumName,
-                                                    threadId = threadId,
-                                                    postId = parentId,
-                                                    replyUserId = post?.get { author?.id?.takeIf { it > 0L } ?: author_id },
-                                                    replyUserName = post?.get { author?.commentDisplayName(context) },
-                                                    replyUserPortrait = post?.get { author?.commentMentionPortrait },
-                                                )
+                            ReplyPrompt(
+                                signedIn = account != null,
+                                portrait = account?.portrait,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    val forumName = forum?.get { name }
+                                    if (!forumName.isNullOrEmpty()) {
+                                        openReply(
+                                            ReplyArgs(
+                                                forumId = replyForumId,
+                                                forumName = forumName,
+                                                threadId = threadId,
+                                                postId = parentId,
+                                                replyUserId = post?.get { author?.id?.takeIf { it > 0L } ?: author_id },
+                                                replyUserName = post?.get { author?.commentDisplayName(context) },
+                                                replyUserPortrait = post?.get { author?.commentMentionPortrait },
                                             )
-                                        }
+                                        )
                                     }
-                                    .heightIn(min = 48.dp).padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = stringResource(if (account != null) R.string.tip_reply_thread else R.string.login_to_reply),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
+                                },
+                            )
                         }
 
                         Box(
@@ -359,20 +342,10 @@ internal fun SubPostsContent(
             LoadMoreLayout(
                 modifier = Modifier.padding(paddingValues),
                 isLoading = isLoading,
-                onLoadMore = {
-                    viewModel.send(
-                        SubPostsUiIntent.LoadMore(
-                            forumId,
-                            threadId,
-                            postId,
-//                            subPostId,
-                            page = currentPage + 1,
-                        )
-                    )
-                },
+                onLoadMore = ::loadMoreReplies,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState,
-                isEmpty = post == null && subPosts.isEmpty(),
+                isEmpty = visibleReplies.isEmpty() && (post == null || subPosts.isNotEmpty()),
             ) {
                 MyLazyColumn(state = lazyListState) {
                     item(key = "Post$postId") {
@@ -425,7 +398,12 @@ internal fun SubPostsContent(
                         }
                     }
                     stickyHeader(key = "SubPostsHeader") { SubPostsHeading(totalCount) }
-                    items(subPosts, key = { it.id }) { item ->
+                    if (visibleReplies.isEmpty() && subPosts.isNotEmpty()) {
+                        item(key = "FilteredReplies") {
+                            FilteredPageNotice(if (hasMore && !isLoading) ::loadMoreReplies else null)
+                        }
+                    }
+                    items(visibleReplies, key = { it.id }) { item ->
                         SubPostItem(
                             item = item,
                             canDelete = { it.author_id == account?.uid?.toLongOrNull() },
@@ -477,6 +455,27 @@ internal fun SubPostsContent(
             }
         }
     }
+}
+
+@Composable
+internal fun SubPostsTopBar(floor: Int?, onNavigateUp: () -> Unit, onOpenThread: () -> Unit) {
+    TitleCentredToolbar(
+        title = {
+            val title = floor?.let { stringResource(R.string.title_sub_posts, it) }
+                ?: stringResource(R.string.title_sub_posts_default)
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateUp, shapes = IconButtonDefaults.shapes()) {
+                Icon(ImageVector.vectorResource(R.drawable.ms_arrow_back), contentDescription = stringResource(R.string.button_back))
+            }
+        },
+        actions = {
+            IconButton(onClick = onOpenThread, shapes = IconButtonDefaults.shapes()) {
+                Icon(ImageVector.vectorResource(R.drawable.ms_open_in_browser), contentDescription = stringResource(R.string.btn_open_origin_thread))
+            }
+        },
+    )
 }
 
 @Composable
@@ -540,7 +539,8 @@ internal fun SubPostItem(
         blockedTip = { BlockTip(text = { Text(text = stringResource(id = R.string.tip_blocked_sub_post)) }) },
         modifier = rowPadding,
     ) {
-        LongClickMenu(
+        CommentLongClickMenu(
+            phraseSource = { contentRenders.visibleReplyBody() },
             modifier = Modifier.fillMaxWidth(),
             menuState = menuState,
             indication = null,

@@ -14,6 +14,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,7 +45,8 @@ private val dataStoreInstance by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) 
                     override suspend fun shouldMigrate(currentData: Preferences): Boolean {
                         return currentData[stringPreferencesKey("dark_theme")] == "dark"
                     }
-                }
+                },
+                MainNavigationPreferences,
             )
         }
     )
@@ -76,25 +78,11 @@ fun <T> rememberPreferenceAsMutableState(
 fun <T> rememberPreferenceAsState(
     key: Preferences.Key<T>,
     defaultValue: T
-): State<T> {
-    val dataStore = LocalContext.current.dataStore
-    val state = remember { mutableStateOf(defaultValue) }
-
-    LaunchedEffect(Unit) {
-        dataStore.data.map { it[key] ?: defaultValue }.distinctUntilChanged()
-            .collect { state.value = it }
-    }
-
-    LaunchedEffect(state.value) {
-        dataStore.edit { it[key] = state.value }
-    }
-
-    return state
-}
+): State<T> = LocalContext.current.dataStore.collectPreferenceAsState(key, defaultValue)
 
 @Composable
 fun <T> DataStore<Preferences>.collectPreferenceAsState(
-    key: Preferences.Key<T>,
+    key: Preferences.Key<out T>,
     defaultValue: T,
     initialValue: T = defaultValue,
 ): State<T> {

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.search.thread
 
 import androidx.compose.foundation.layout.Arrangement
@@ -6,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -19,6 +22,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.SearchThreadList
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.spec.Direction
@@ -27,6 +31,8 @@ import kotlinx.collections.immutable.ImmutableList
 @Composable
 internal fun SearchThreadResults(
     data: ImmutableList<SearchThreadBean.ThreadInfoBean>,
+    filteredAll: Boolean,
+    onLoadNext: (() -> Unit)?,
     lazyListState: LazyListState,
     navigator: DestinationsNavigator,
     searchKeyword: String,
@@ -55,6 +61,9 @@ internal fun SearchThreadResults(
         searchKeyword = searchKeyword,
         header = header,
         footer = {
+            if (filteredAll) {
+                item { FilteredPageNotice(if (onRetryPage == null) onLoadNext else null) }
+            }
             if (onRetryPage != null) {
                 item(key = "search-page-retry") {
                     Row(
@@ -63,7 +72,7 @@ internal fun SearchThreadResults(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(stringResource(R.string.text_load_failed))
-                        TextButton(onClick = onRetryPage) { Text(stringResource(R.string.button_retry)) }
+                        TextButton(onClick = onRetryPage, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.button_retry)) }
                     }
                 }
             }

@@ -3,29 +3,27 @@
 package com.huanchengfly.tieba.post.ui.page.search.user
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchUserBean
@@ -33,8 +31,9 @@ import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
+import com.huanchengfly.tieba.post.ui.page.search.SearchResultHeading
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -55,13 +54,17 @@ fun SearchUserPage(
         viewModel.send(SearchUserUiIntent.Refresh(keyword))
     }
 
-    val exactMatch = state.exactMatch
-    val fuzzyMatch = state.fuzzyMatch
+    val rules = LocalContentBlockRules.current
+    fun blocked(user: SearchUserBean.UserBean) = rules.blocksUser(user.name, user.showNickname, user.userNickname)
+    val exactMatch = state.exactMatch?.takeUnless(::blocked)
+    val fuzzyMatch = remember(state.fuzzyMatch, rules) {
+        if (rules.isEmpty) state.fuzzyMatch else state.fuzzyMatch.filterNot(::blocked)
+    }
     val pullRefreshState = rememberPullToRefreshState()
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = !matchesKeyword || (exactMatch == null && fuzzyMatch.isEmpty()),
+        isEmpty = !matchesKeyword || (state.exactMatch == null && state.fuzzyMatch.isEmpty()),
         isError = matchesKeyword && state.error != null,
         isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) },
@@ -78,19 +81,10 @@ fun SearchUserPage(
                 .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(SearchUserUiIntent.Refresh(keyword)) })
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (exactMatch == null && fuzzyMatch.isEmpty()) item { FilteredPageNotice() }
                 if (exactMatch != null) {
                     stickyHeader(key = "ExactMatchHeader") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Chip(
-                                text = stringResource(id = R.string.title_exact_match),
-                                invertColor = true
-                            )
-                        }
+                        SearchResultHeading(stringResource(R.string.title_exact_match))
                     }
                     item(key = "ExactMatch") {
                         SearchUserItem(
@@ -106,17 +100,7 @@ fun SearchUserPage(
                 }
                 if (fuzzyMatch.isNotEmpty()) {
                     stickyHeader(key = "FuzzyMatchHeader") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Chip(
-                                text = stringResource(id = R.string.title_fuzzy_match_user),
-                                invertColor = false
-                            )
-                        }
+                        SearchResultHeading(stringResource(R.string.title_fuzzy_match_user))
                     }
                     items(fuzzyMatch) {
                         SearchUserItem(
@@ -146,39 +130,13 @@ private fun SearchUserItem(
     item: SearchUserBean.UserBean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Avatar(
-            data = StringUtil.getAvatarUrl(item.portrait),
-            size = Sizes.Medium,
-            contentDescription = item.name
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = StringUtil.getUsernameAnnotatedString(
-                    LocalContext.current,
-                    item.name.orEmpty(),
-                    item.showNickname
-                ),
-                style = MaterialTheme.typography.titleMedium
-            )
-            if (!item.intro.isNullOrEmpty()) {
-                Text(
-                    text = item.intro,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-            }
-        }
-    }
+    val description = item.intro
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        leadingContent = { Avatar(data = StringUtil.getAvatarUrl(item.portrait), size = Sizes.Medium, contentDescription = null) },
+        headlineContent = { Text(StringUtil.getUsernameAnnotatedString(LocalContext.current, item.name.orEmpty(), item.showNickname), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = description?.takeIf { it.isNotBlank() }?.let {
+            { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
+    )
 }

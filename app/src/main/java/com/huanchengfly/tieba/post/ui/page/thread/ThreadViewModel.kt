@@ -97,14 +97,14 @@ class ThreadViewModel @Inject constructor() :
 
     override fun dispatchEvent(partialChange: ThreadPartialChange): UiEvent? {
         return when (partialChange) {
-            is ThreadPartialChange.Init.Success -> if (partialChange.postId != 0L) ThreadUiEvent.ScrollToFirstReply else null
-            ThreadPartialChange.LoadPrevious.Start -> ThreadUiEvent.ScrollToFirstReply
+            is ThreadPartialChange.Init.Success -> if (partialChange.postId != 0L) ThreadUiEvent.ScrollToFirstReply(initial = true) else null
+            ThreadPartialChange.LoadPrevious.Start -> ThreadUiEvent.ScrollToFirstReply(initial = false)
             is ThreadPartialChange.AddFavorite.Success -> ThreadUiEvent.AddFavoriteSuccess(
                 partialChange.floor
             )
 
             ThreadPartialChange.RemoveFavorite.Success -> ThreadUiEvent.RemoveFavoriteSuccess
-            is ThreadPartialChange.Load.Success -> ThreadUiEvent.LoadSuccess(partialChange.currentPage)
+            is ThreadPartialChange.Load.Success -> ThreadUiEvent.LoadSuccess(partialChange.currentPage, partialChange.postId)
 
             is ThreadPartialChange.LoadMyLatestReply.Success -> ThreadUiEvent.ScrollToLatestReply.takeIf {
                 partialChange.hasNewPost
@@ -915,21 +915,18 @@ sealed interface ThreadPartialChange : PartialChange<ThreadUiState> {
                 Start -> oldState.copy(isLoadingLatestReply = true)
                 is Success -> {
                     val continuous = isContinuous || page == oldState.currentPageMax
-                    val replacePostIndexes = oldState.data.mapIndexedNotNull { index, item ->
-                        val replaceItemIndex =
-                            posts.indexOfFirst { it.post.get { id } == item.post.get { id } }
-                        if (replaceItemIndex != -1) index to replaceItemIndex else null
+                    val refreshedById = HashMap<Long, PostItemData>(posts.size)
+                    for (post in posts) refreshedById.putIfAbsent(post.post.get { id }, post)
+                    val existingIds = HashSet<Long>(oldState.data.size)
+                    val newPost = oldState.data.map { oldItem ->
+                        val id = oldItem.post.get { id }
+                        existingIds.add(id)
+                        refreshedById[id] ?: oldItem
                     }
-                    val newPost = oldState.data.mapIndexed { index, oldItem ->
-                        val replaceIndex = replacePostIndexes.firstOrNull { it.first == index }
-                        if (replaceIndex != null) posts[replaceIndex.second] else oldItem
-                    }
-                    val addPosts = posts.filter {
-                        !newPost.any { item -> item.post.get { id } == it.post.get { id } }
-                    }
+                    val addPosts = posts.filter { it.post.get { id } !in existingIds }
                     val updated = when {
                         updatedParentId != null -> {
-                            val parent = posts.firstOrNull { it.post.get { id } == updatedParentId }
+                            val parent = refreshedById[updatedParentId]
                             oldState.copy(
                                 isLoadingLatestReply = false,
                                 data = newPost.toImmutableList(),
@@ -1262,13 +1259,11 @@ data class ThreadUiState(
 ) : UiState
 
 sealed interface ThreadUiEvent : UiEvent {
-    data object ScrollToFirstReply : ThreadUiEvent
+    data class ScrollToFirstReply(val initial: Boolean) : ThreadUiEvent
 
     data object ScrollToLatestReply : ThreadUiEvent
 
-    data class LoadSuccess(
-        val page: Int
-    ) : ThreadUiEvent
+    data class LoadSuccess(val page: Int, val postId: Long) : ThreadUiEvent
 
     data class AddFavoriteSuccess(val floor: Int) : ThreadUiEvent
 

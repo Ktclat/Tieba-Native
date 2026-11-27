@@ -1,47 +1,35 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.user
 
-import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.NoAccounts
-import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -57,13 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.User
+import com.huanchengfly.tieba.post.api.models.protos.displayPortrait
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity.Companion.LocalWindowSizeClass
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
@@ -82,21 +74,20 @@ import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.models.database.Block
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowWidthSizeClass
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockedDestination
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.user.edit.EditProfileActivity
 import com.huanchengfly.tieba.post.ui.page.user.likeforum.UserLikeForumPage
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import androidx.compose.material3.Button
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoadHorizontalPager
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshLayout
-import androidx.compose.material3.PrimaryScrollableTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.Toolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
@@ -108,13 +99,12 @@ import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.absoluteValue
-import kotlin.math.max
-import kotlin.math.min
 
 @Destination
 @Composable
@@ -146,6 +136,11 @@ fun UserProfilePage(
         prop1 = UserProfileUiState::user,
         initial = null
     )
+    val rules = LocalContentBlockRules.current
+    if (user?.get { rules.blocksUser(name, nameShow) } == true) {
+        BlockedDestination(onBack = { navigator.navigateUp() }, message = stringResource(R.string.tip_blocked_user_profile))
+        return
+    }
     val disableButton by viewModel.uiState.collectPartialAsState(
         prop1 = UserProfileUiState::disableButton,
         initial = false
@@ -234,7 +229,7 @@ private fun UserProfileContent(
 }
 
 @Composable
-private fun UserProfileToolbar(
+internal fun UserProfileToolbar(
     user: ImmutableHolder<User>,
     isSelf: Boolean,
     showTitle: Boolean,
@@ -297,7 +292,7 @@ private fun UserProfileToolbar(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.NoAccounts,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_no_accounts),
                             contentDescription = stringResource(id = R.string.btn_block)
                         )
                     }
@@ -366,38 +361,17 @@ private fun UserProfileContentNormal(
         ) {
             val headerNestedScrollConnection = remember {
                 object : NestedScrollConnection {
-                    override fun onPreScroll(
-                        available: Offset,
-                        source: NestedScrollSource,
-                    ): Offset {
-                        if (available.y < 0) {
-                            val prevHeightOffset = heightOffset
-                            heightOffset = max(heightOffset + available.y, -headerHeight)
-                            if (prevHeightOffset != heightOffset) {
-                                return available.copy(x = 0f)
-                            }
-                        }
-
-                        return Offset.Zero
+                    fun moveHeader(delta: Float): Offset {
+                        val previous = heightOffset
+                        heightOffset = (previous + delta).coerceIn(-headerHeight, 0f)
+                        return Offset(0f, heightOffset - previous)
                     }
 
-                    override fun onPostScroll(
-                        consumed: Offset,
-                        available: Offset,
-                        source: NestedScrollSource,
-                    ): Offset {
-                        if (available.y > 0f) {
-                            // Adjust the height offset in case the consumed delta Y is less than what was
-                            // recorded as available delta Y in the pre-scroll.
-                            val prevHeightOffset = heightOffset
-                            heightOffset = min(heightOffset + available.y, 0f)
-                            if (prevHeightOffset != heightOffset) {
-                                return available.copy(x = 0f)
-                            }
-                        }
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                        moveHeader(available.y.coerceAtMost(0f))
 
-                        return Offset.Zero
-                    }
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+                        moveHeader(available.y.coerceAtLeast(0f))
                 }
             }
 
@@ -407,7 +381,7 @@ private fun UserProfileContentNormal(
                         .padding(paddingValues)
                         .nestedScroll(headerNestedScrollConnection)
                 ) {
-                    val pages = remember {
+                    val pages = remember(isSelf) {
                         listOfNotNull(
                             UserProfilePageData(
                                 id = "threads",
@@ -460,18 +434,17 @@ private fun UserProfileContentNormal(
                     }
                     val pagerState = rememberPagerState { pages.size }
 
-                    val containerHeight by remember {
-                        derivedStateOf {
-                            with(density) {
-                                (headerHeight + heightOffset).toDp()
-                            }
-                        }
-                    }
-
                     Box(
                         modifier = Modifier
-                            .height(containerHeight)
                             .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val header = measurable.measure(constraints.copy(minHeight = 0))
+                                val visible = (header.height + heightOffset).roundToInt()
+                                    .coerceIn(0, header.height).coerceIn(constraints.minHeight, constraints.maxHeight)
+                                layout(header.width, visible) {
+                                    header.placeRelative(0, visible - header.height)
+                                }
+                            }
                     ) {
                         Box(
                             modifier = Modifier
@@ -481,19 +454,17 @@ private fun UserProfileContentNormal(
                                 )
                                 .onSizeChanged {
                                     headerHeight = it.height.toFloat()
+                                    heightOffset = heightOffset.coerceIn(-headerHeight, 0f)
                                 }
                         ) {
                             UserProfileDetail(
                                 user = user,
                                 modifier = Modifier
-                                    .padding(16.dp)
-                                    .padding(top = 8.dp),
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
                                 showBtn = showActionBtn,
+                                actionEnabled = !disableButton,
                                 isSelf = isSelf,
                                 onBtnClick = {
-                                    if (disableButton || !showActionBtn) {
-                                        return@UserProfileDetail
-                                    }
                                     if (isSelf) {
                                         context.goToActivity<EditProfileActivity>()
                                     } else if (user.get { has_concerned } == 0) {
@@ -502,12 +473,7 @@ private fun UserProfileContentNormal(
                                         onUnfollow()
                                     }
                                 },
-                                onCopyIdClick = {
-                                    TiebaUtil.copyText(
-                                        context,
-                                        user.get { id }.toString()
-                                    )
-                                }
+                                onCopyIdClick = { TiebaUtil.copyText(context, it) }
                             )
                         }
                     }
@@ -568,7 +534,7 @@ private fun UserProfileContentExpanded(
                         .align(Alignment.TopCenter),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val pages = remember {
+                    val pages = remember(isSelf) {
                         listOfNotNull(
                             UserProfilePageData(
                                 id = "threads",
@@ -630,11 +596,9 @@ private fun UserProfileContentExpanded(
                             .weight(1f)
                             .align(Alignment.Top),
                         showBtn = showActionBtn,
+                        actionEnabled = !disableButton,
                         isSelf = isSelf,
                         onBtnClick = {
-                            if (disableButton || !showActionBtn) {
-                                return@UserProfileDetail
-                            }
                             if (isSelf) {
                                 context.goToActivity<EditProfileActivity>()
                             } else if (user.get { has_concerned } == 0) {
@@ -643,12 +607,7 @@ private fun UserProfileContentExpanded(
                                 onUnfollow()
                             }
                         },
-                        onCopyIdClick = {
-                            TiebaUtil.copyText(
-                                context,
-                                user.get { id }.toString()
-                            )
-                        }
+                        onCopyIdClick = { TiebaUtil.copyText(context, it) }
                     )
 
                     Column(
@@ -683,7 +642,7 @@ data class UserProfilePageData(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UserProfileTabRow(
+internal fun UserProfileTabRow(
     user: ImmutableHolder<User>,
     pages: ImmutableList<UserProfilePageData>,
     pagerState: PagerState,
@@ -743,226 +702,13 @@ private fun ToolbarUserTitle(
                 text = StringUtil.getUsernameAnnotatedString(
                     LocalContext.current,
                     user.get { name },
-                    user.get { nameShow },
-                    LocalContentColor.current
-                )
+                    user.get { nameShow.ifBlank { name } },
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun UserProfileDetail(
-    user: ImmutableHolder<User>,
-    modifier: Modifier = Modifier,
-    showBtn: Boolean = true,
-    isSelf: Boolean = false,
-    onBtnClick: () -> Unit = {},
-    onCopyIdClick: () -> Unit = {},
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Avatar(
-                data = StringUtil.getBigAvatarUrl(user.get { portraith.ifBlank { portrait } }),
-                size = 96.dp,
-                contentDescription = null,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (showBtn) {
-                Button(
-                    onClick = onBtnClick,
-                    colors = if (user.get { has_concerned } == 0 || isSelf) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.outlinedButtonColors()
-                    },
-                    border = if (user.get { has_concerned } == 0 || isSelf) {
-                        null
-                    } else {
-                        ButtonDefaults.outlinedButtonBorder(enabled = true)
-                    },
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (isSelf) {
-                            Icon(imageVector = Icons.Rounded.Edit, contentDescription = null)
-                            Text(text = stringResource(id = R.string.menu_edit_info))
-                        } else if (user.get { has_concerned } == 0) {
-                            Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
-                            Text(text = stringResource(id = R.string.button_follow))
-                        } else {
-                            Text(text = stringResource(id = R.string.button_unfollow))
-                        }
-                    }
-                }
-            }
-        }
-        Text(
-            text = StringUtil.getUsernameAnnotatedString(
-                LocalContext.current,
-                user.get { name },
-                user.get { nameShow },
-                LocalContentColor.current
-            ),
-            style = MaterialTheme.typography.titleLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.Bold
-        )
-        ProvideTextStyle(value = MaterialTheme.typography.bodyMedium) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(IntrinsicSize.Min)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_follow),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { concern_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.fillMaxHeight())
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_fans),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { fans_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.fillMaxHeight())
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.text_stat_agrees),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.get { total_agree_num }.getShortNumString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-        Text(
-            text = user.get { intro }.takeIf { it.isNotEmpty() }
-                ?: stringResource(id = R.string.tip_no_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        user.getNullableImmutable { bazhu_grade }?.let {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Verified,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = it.get { desc },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        } ?: user.getNullableImmutable { new_god_data }
-            ?.takeIf { it.get { status } != 0 }
-            ?.let {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Verified,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = stringResource(id = R.string.text_god_verify, it.get { field_name }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        val sexEmoji = when (user.get { sex }) {
-            1 -> "♂"
-            2 -> "♀"
-            else -> "?"
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Chip(text = sexEmoji, invertColor = true)
-            Chip(
-                text = stringResource(
-                    id = R.string.text_profile_user_id,
-                    user.get { tieba_uid }.toString()
-                ),
-                appendIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = null
-                    )
-                },
-                onClick = onCopyIdClick
-            )
-            if (user.get { ip_address }.isNotEmpty()) {
-                Chip(
-                    text = stringResource(
-                        id = R.string.text_profile_ip_location,
-                        user.get { ip_address }
-                    ),
-                )
-            }
-            Chip(
-                text = stringResource(
-                    id = R.string.text_profile_tb_age,
-                    user.get { tb_age }
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun HorizontalDivider(modifier: Modifier = Modifier) {
-    Box(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.outlineVariant)
-            .width(1.dp)
-            .then(modifier)
     )
 }

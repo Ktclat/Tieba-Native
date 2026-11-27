@@ -3,28 +3,26 @@
 package com.huanchengfly.tieba.post.ui.page.search.forum
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.SearchForumBean
@@ -32,8 +30,9 @@ import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
+import com.huanchengfly.tieba.post.ui.page.search.SearchResultHeading
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -52,13 +51,18 @@ fun SearchForumPage(
         viewModel.send(SearchForumUiIntent.Refresh(keyword))
     }
 
-    val exactMatchForum = state.exactMatchForum
-    val fuzzyMatchForumList = state.fuzzyMatchForumList
+    val rules = LocalContentBlockRules.current
+    fun blocked(forum: SearchForumBean.ForumInfoBean) =
+        rules.blocksForum(forum.forumName, forum.forumNameShow)
+    val exactMatchForum = state.exactMatchForum?.takeUnless(::blocked)
+    val fuzzyMatchForumList = remember(state.fuzzyMatchForumList, rules) {
+        if (rules.isEmpty) state.fuzzyMatchForumList else state.fuzzyMatchForumList.filterNot(::blocked)
+    }
     val pullRefreshState = rememberPullToRefreshState()
 
     StateScreen(
         modifier = Modifier.fillMaxSize(),
-        isEmpty = !matchesKeyword || (exactMatchForum == null && fuzzyMatchForumList.isEmpty()),
+        isEmpty = !matchesKeyword || (state.exactMatchForum == null && state.fuzzyMatchForumList.isEmpty()),
         isError = matchesKeyword && state.error != null,
         isLoading = !matchesKeyword || state.isRefreshing,
         onReload = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) },
@@ -75,48 +79,29 @@ fun SearchForumPage(
                 .pullToRefresh(isRefreshing = state.isRefreshing, state = pullRefreshState, onRefresh = { viewModel.send(SearchForumUiIntent.Refresh(keyword)) })
         ) {
             MyLazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (exactMatchForum == null && fuzzyMatchForumList.isEmpty()) item { FilteredPageNotice() }
                 if (exactMatchForum != null) {
                     stickyHeader(key = "ExactMatchHeader") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Chip(
-                                text = stringResource(id = R.string.title_exact_match),
-                                invertColor = true
-                            )
-                        }
+                        SearchResultHeading(stringResource(R.string.title_exact_match))
                     }
                     item(key = "ExactMatch") {
                         SearchForumItem(
                             item = exactMatchForum,
                             onClick = {
-                                navigator.navigate(ForumPageDestination(exactMatchForum.forumName.orEmpty()))
+                                navigator.navigate(ForumPageDestination(it))
                             }
                         )
                     }
                 }
                 if (fuzzyMatchForumList.isNotEmpty()) {
                     stickyHeader(key = "FuzzyMatchHeader") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Chip(
-                                text = stringResource(id = R.string.title_fuzzy_match),
-                                invertColor = false
-                            )
-                        }
+                        SearchResultHeading(stringResource(R.string.title_fuzzy_match))
                     }
                     items(fuzzyMatchForumList) {
                         SearchForumItem(
                             item = it,
                             onClick = {
-                                navigator.navigate(ForumPageDestination(it.forumName.orEmpty()))
+                                navigator.navigate(ForumPageDestination(it))
                             }
                         )
                     }
@@ -136,37 +121,16 @@ fun SearchForumPage(
 @Composable
 private fun SearchForumItem(
     item: SearchForumBean.ForumInfoBean,
-    onClick: () -> Unit,
+    onClick: (String) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Avatar(
-            data = item.avatar,
-            size = Sizes.Medium,
-            contentDescription = item.forumNameShow
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(id = R.string.title_forum, item.forumNameShow.orEmpty()),
-                style = MaterialTheme.typography.titleMedium
-            )
-            if (!item.intro.isNullOrEmpty()) {
-                Text(
-                    text = item.slogan.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-            }
-        }
-    }
+    val name = item.forumName?.takeIf { it.isNotBlank() } ?: item.forumNameShow?.takeIf { it.isNotBlank() }
+    val description = item.slogan?.takeIf { it.isNotBlank() } ?: item.intro
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = name != null) { name?.let(onClick) },
+        leadingContent = { Avatar(data = item.avatar, size = Sizes.Medium, contentDescription = null) },
+        headlineContent = { Text(stringResource(R.string.title_forum, item.forumNameShow?.takeIf { it.isNotBlank() } ?: name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = description?.takeIf { it.isNotBlank() }?.let {
+            { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
+    )
 }

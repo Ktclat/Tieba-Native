@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import android.util.Log
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
@@ -43,9 +44,7 @@ fun CheckBoxPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val checked = prefs?.get(selectionKey) ?: defaultChecked
+    val checked by datastore.collectPreferenceAsState(selectionKey, defaultChecked)
 
     fun edit(newState: Boolean) = run {
         scope.launch {

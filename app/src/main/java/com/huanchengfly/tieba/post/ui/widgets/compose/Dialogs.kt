@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +20,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.OutlinedTextField as M3OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +51,7 @@ fun DialogScope.DialogPositiveButton(
     text: String,
     onClick: () -> Unit = {}
 ) {
-    TextButton(onClick = {
+    TextButton(shapes = ButtonDefaults.shapes(), onClick = {
         onClick()
         dismiss()
     }) { Text(text) }
@@ -59,7 +62,7 @@ fun DialogScope.DialogNegativeButton(
     text: String,
     onClick: (() -> Unit)? = null
 ) {
-    TextButton(onClick = {
+    TextButton(shapes = ButtonDefaults.shapes(), onClick = {
         dismiss()
         onClick?.invoke()
     }) { Text(text) }

@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">贴吧 Native</string>
+    <string name="notification_guest_title">登录后查看消息</string>
+    <string name="notification_guest_summary">回复和提到你的消息会显示在这里。</string>
     <string name="title_notifications">消息</string>
     <string name="title_explore">动态</string>
     <string name="title_user">我</string>
@@ -21,8 +23,6 @@
     <string name="title_about">关于</string>
     <string name="my_info_settings">设置</string>
     <string name="title_settings">设置</string>
-    <string name="title_predictive_tab_back">预测性返回预览</string>
-    <string name="summary_predictive_tab_back">从其他主标签返回首页时，跟随侧滑手势预览并平滑返回</string>
     <string name="settings_section_account">账户与安全</string>
     <string name="settings_section_appearance">外观与阅读</string>
     <string name="settings_section_tools">功能与工具</string>
@@ -128,7 +128,9 @@
     <string name="name_multi_app">应用</string>
     <string name="settings_night_mode">夜间模式主题</string>
     <string name="settings_forum_single">吧列表单列显示</string>
-    <string name="title_hide_explore">隐藏首页「动态」入口</string>
+    <string name="title_visible_main_tabs">底部导航项目</string>
+    <string name="title_floating_navigation_bar">悬浮底部导航栏</string>
+    <string name="summary_floating_navigation_bar">在窄屏布局中使用居中的悬浮标签栏</string>
     <string name="settings_show_shortcut">在贴内显示快捷进吧入口</string>
     <string name="toast_clear_success">清除成功啦( •̀ ω •́ )✧</string>
     <string name="button_retry">重试</string>
@@ -174,6 +176,8 @@
     <string name="title_dialog_unfollow_forum">确定要取消关注%s吧吗？</string>
     <string name="menu_save_audio">保存语音</string>
     <string name="title_hot_message_list">话题榜</string>
+    <string name="toast_photo_share_failed">图片分享失败，请重试</string>
+    <string name="toast_photo_save_failed">图片保存失败，请重试</string>
     <string name="toast_photo_saved">图片保存在 %1$s</string>
     <string name="title_settings_default_sort_type">吧默认排序方式</string>
     <string name="toast_load_failed">加载失败</string>
@@ -195,7 +199,7 @@
     <string name="title_dialog_clip_board_tieba_url">是否要打开剪贴板中的链接</string>
     <string name="subtitle_quick_preview_thread">来自%1$s吧，共 %2$s 条回复</string>
     <string name="subtitle_link">网页链接</string>
-    <string name="toast_preparing_share_pic">下载图片中…</string>
+    <string name="toast_preparing_share_pic">正在准备分享图片…</string>
     <string name="title_select_pic">选择背景图片</string>
     <string name="title_translucent_theme_alpha">透明度</string>
     <string name="title_translucent_theme_blur">模糊度</string>
@@ -355,7 +359,21 @@
     <string name="summary_now_account">已登录账号 %s</string>
     <string name="summary_not_logged_in">未登录，点击登录</string>
     <string name="title_settings_more">更多</string>
-    <string name="summary_block_settings">眼不见心不烦</string>
+    <string name="summary_block_settings">管理吧名、用户和评论屏蔽规则</string>
+    <string name="block_rules_section">本地正则屏蔽</string>
+    <string name="block_management_section">屏蔽词与显示</string>
+    <string name="block_rules_forum">吧名规则</string>
+    <string name="block_rules_user">用户名规则</string>
+    <string name="block_rules_comment">评论正文规则</string>
+    <string name="block_rules_count">%1$d 条规则</string>
+    <string name="block_rules_field">正则表达式</string>
+    <string name="block_rules_instructions">每行一条，匹配任意一条即屏蔽。英文字母忽略大小写。</string>
+    <string name="block_rules_forum_example">例如 ^(摄影|数码)$ 只匹配摄影吧和数码吧。吧名也可以带「吧」字。</string>
+    <string name="block_rules_user_example">例如 ^推广号[0-9]+$ 匹配「推广号」后接数字的用户名。</string>
+    <string name="block_rules_comment_example">例如 加群|代练 匹配含有「加群」或「代练」的评论和楼中楼回复。</string>
+    <string name="block_rules_invalid">第 %1$d 行的正则有误：%2$s</string>
+    <string name="block_rules_save">保存规则</string>
+    <string name="block_rules_write_error">保存失败，请重试。</string>
     <string name="summary_settings_custom">个性你的 UI 界面</string>
     <string name="summary_settings_habit">万般功能不如自己顺手</string>
     <string name="summary_settings_oksign">一键签到功能设定</string>
@@ -454,6 +472,8 @@
     <string name="settings_block_video">不看视频贴</string>
     <string name="btn_full_screen">全屏</string>
     <string name="btn_play">播放</string>
+    <string name="btn_pause_video">暂停视频</string>
+    <string name="btn_replay_video">重新播放视频</string>
     <string name="title_sub_posts">%d 楼的回复</string>
     <string name="title_sub_posts_default">回复</string>
     <string name="title_sub_posts_header">%d 条回复</string>
@@ -484,6 +504,7 @@
     <string name="btn_open_origin_thread">查看原贴</string>
     <string name="tip_blocked_thread">由于你的屏蔽设置，该贴已被屏蔽</string>
     <string name="tip_blocked_content">由于你的屏蔽设置，该内容已被屏蔽</string>
+    <string name="tip_blocked_user_profile">该用户已被本机的用户名规则屏蔽</string>
     <string name="tip_blocked_message">由于你的屏蔽设置，该消息已被屏蔽</string>
     <string name="tip_thread_store_deleted">该贴已被删除</string>
     <string name="button_clear">清除</string>
@@ -549,4 +570,7 @@
     <string name="wallpaper_position">壁纸 %1$d</string>
     <string name="play_voice">播放语音</string>
     <string name="pause_voice">暂停语音</string>
+    <string name="tip_locally_blocked_forum">此吧已被你的本地吧名规则屏蔽</string>
+    <string name="local_rules_filtered_page">当前已加载的内容均已被本地规则屏蔽</string>
+    <string name="local_rules_continue_loading">继续加载</string>
 </resources>

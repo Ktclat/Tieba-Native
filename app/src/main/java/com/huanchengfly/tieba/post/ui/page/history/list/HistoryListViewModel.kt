@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.models.database.History
-import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.HistoryCursor
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,12 +51,10 @@ abstract class HistoryListViewModel(private val type: Int) : ViewModel() {
             operations.withLock {
                 try {
                     val page = withContext(Dispatchers.IO) { HistoryUtil.search(type, query, after) }
-                    val (today, before) = page.rows.partition { DateTimeUtils.isToday(it.timestamp) }
                     val old = state.value
                     next = page.next
                     state.value = old.copy(
-                        todayHistoryData = old.todayHistoryData + today,
-                        beforeHistoryData = old.beforeHistoryData + before,
+                        rows = old.rows + page.rows,
                         hasMore = next != null,
                         isRefreshing = false,
                         isLoadingMore = false,
@@ -78,11 +75,10 @@ abstract class HistoryListViewModel(private val type: Int) : ViewModel() {
                 try {
                     withContext(Dispatchers.IO) { HistoryUtil.delete(type, id) }
                     val old = state.value
-                    val today = old.todayHistoryData.filterNot { it.id == id }
-                    val before = old.beforeHistoryData.filterNot { it.id == id }
-                    state.value = old.copy(todayHistoryData = today, beforeHistoryData = before)
+                    val remaining = old.rows.filterNot { it.id == id }
+                    state.value = old.copy(rows = remaining)
                     deleteEvents.trySend(HistoryListUiEvent.Delete.Success)
-                    if (today.isEmpty() && before.isEmpty() && old.hasMore) loadMore()
+                    if (remaining.isEmpty() && old.hasMore) loadMore()
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Exception) {
@@ -104,8 +100,7 @@ data class HistoryListUiState(
     val isRefreshing: Boolean = true,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = false,
-    val todayHistoryData: List<History> = emptyList(),
-    val beforeHistoryData: List<History> = emptyList(),
+    val rows: List<History> = emptyList(),
     val error: Throwable? = null,
 )
 

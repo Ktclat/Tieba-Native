@@ -2,13 +2,11 @@
 
 package com.huanchengfly.tieba.post.ui.page.user.post
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,10 +14,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -30,15 +30,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.PostInfoList
 import com.huanchengfly.tieba.post.arch.GlobalEvent
@@ -46,26 +43,31 @@ import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.getOrNull
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
+import com.huanchengfly.tieba.post.ui.common.LocalContentBlockRules
+import com.huanchengfly.tieba.post.ui.models.blocksOrigin
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.ForumPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.SubPostsPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ThreadPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
-import androidx.compose.material3.Button
 import com.huanchengfly.tieba.post.ui.widgets.compose.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCardPlaceholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.FilteredPageNotice
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.StateIllustration
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
+import com.huanchengfly.tieba.post.utils.LocalBlockRules
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +109,10 @@ fun UserPostPage(
         prop1 = UserPostUiState::posts,
         initial = persistentListOf()
     )
+    val rules = LocalContentBlockRules.current
+    val visiblePosts = remember(posts, rules) {
+        if (rules.isEmpty) posts else posts.mapNotNull { rules.visibleProfilePost(it) }.toImmutableList()
+    }
     val hidePost by viewModel.uiState.collectPartialAsState(
         prop1 = UserPostUiState::hidePost,
         initial = false
@@ -157,43 +163,16 @@ fun UserPostPage(
                 if (hidePost) {
                     TipScreen(
                         title = { Text(text = stringResource(id = R.string.title_user_hide_post)) },
-                        image = {
-                            val composition by rememberLottieComposition(
-                                LottieCompositionSpec.RawRes(
-                                    R.raw.lottie_hide
-                                )
-                            )
-                            LottieAnimation(
-                                composition = composition,
-                                iterations = LottieConstants.IterateForever,
-                                modifier = Modifier
-                                    .padding(vertical = 16.dp)
-                                    .fillMaxWidth()
-                                    .aspectRatio(2.5f)
-                            )
-                        },
+                        image = { StateIllustration(ImageVector.vectorResource(R.drawable.ms_visibility_off)) },
                         scrollable = false,
                     )
                 } else {
                     TipScreen(
                         title = { Text(text = stringResource(id = R.string.title_empty)) },
-                        image = {
-                            val composition by rememberLottieComposition(
-                                LottieCompositionSpec.RawRes(
-                                    R.raw.lottie_empty_box
-                                )
-                            )
-                            LottieAnimation(
-                                composition = composition,
-                                iterations = LottieConstants.IterateForever,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(2f)
-                            )
-                        },
+                        image = { StateIllustration(ImageVector.vectorResource(R.drawable.ms_forum)) },
                         actions = {
                             if (canReload) {
-                                Button(onClick = { reload() }) {
+                                Button(onClick = { reload() }, shapes = ButtonDefaults.shapes()) {
                                     Text(text = stringResource(id = R.string.btn_refresh))
                                 }
                             }
@@ -204,6 +183,11 @@ fun UserPostPage(
             }
         },
     ) {
+        val loadMore = { viewModel.send(UserPostUiIntent.LoadMore(uid, isThread, currentPage)) }
+        if (visiblePosts.isEmpty()) {
+            FilteredPageNotice(if (hasMore && !isLoadingMore) loadMore else null)
+            return@StateScreen
+        }
         val pullRefreshState = rememberPullToRefreshState()
 
         val lazyListState = rememberLazyListState()
@@ -214,14 +198,12 @@ fun UserPostPage(
         Box(modifier = pullRefreshModifier) {
             LoadMoreLayout(
                 isLoading = isLoadingMore,
-                onLoadMore = {
-                    viewModel.send(UserPostUiIntent.LoadMore(uid, isThread, currentPage))
-                },
+                onLoadMore = loadMore,
                 loadEnd = !hasMore,
                 lazyListState = lazyListState
             ) {
                 UserPostList(
-                    data = posts,
+                    data = visiblePosts,
                     fluid = fluid,
                     lazyListState = lazyListState,
                     onClickItem = { threadId, postId, isSubPost ->
@@ -286,6 +268,21 @@ fun UserPostPage(
     }
 }
 
+internal fun LocalBlockRules.visibleProfilePost(item: PostListItemData): PostListItemData? {
+    val post = item.data.get()
+    if (blocksForum(post.forum_name) || blocksUser(post.user_name, post.name_show) ||
+        post.origin_thread_info?.let(::blocksOrigin) == true
+    ) return null
+    if (item.isThread || item.contents.isEmpty()) return item
+
+    val visibleReplies = item.contents.filterNot { blocksComment(it.contentText) }
+    return when (visibleReplies.size) {
+        0 -> null
+        item.contents.size -> item
+        else -> item.copy(contents = visibleReplies.toImmutableList())
+    }
+}
+
 @Composable
 private fun UserPostList(
     data: ImmutableList<PostListItemData>,
@@ -341,7 +338,7 @@ fun UserPostItem(
             onClickReply = onClickReply,
             onClickUser = onClickUser,
             onClickForum = onClickForum,
-            onClickOriginThread = { onClickOriginThread(it.tid.toLong()) },
+            onClickOriginThread = { threadId, _ -> onClickOriginThread(threadId) },
         )
     } else {
         Card(
@@ -390,19 +387,18 @@ fun UserPostItem(
                     }
                 }
 
-                Text(
-                    text = item.get { title },
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable {
-                            onClickOriginThread(item.get { thread_id })
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Surface(
+                    onClick = { onClickOriginThread(item.get { thread_id }) },
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                ) {
+                    Text(
+                        text = item.get { title },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             },
             modifier = modifier,
             contentPadding = PaddingValues(0.dp),

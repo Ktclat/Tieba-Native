@@ -7,16 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.Brightness2
-import androidx.compose.material.icons.outlined.BrightnessAuto
-import androidx.compose.material.icons.outlined.ColorLens
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.FontDownload
-import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.outlined.Upcoming
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -34,15 +24,22 @@ import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.common.PredictiveBackKey
 import com.huanchengfly.tieba.post.activities.AppFontSizeActivity
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.rememberPreferenceAsState
 import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.ListPref
+import com.huanchengfly.tieba.post.ui.common.prefs.widgets.MultiSelectListPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.SwitchPref
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
+import com.huanchengfly.tieba.post.ui.page.main.FloatingNavigationBarKey
+import com.huanchengfly.tieba.post.ui.page.main.MainNavigationPreferences
 import com.huanchengfly.tieba.post.ui.page.settings.LeadingIcon
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsGridLayout
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsLayoutKey
+import com.huanchengfly.tieba.post.ui.page.thread.tabs.ThreadTabsStackLayout
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -91,7 +88,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.FontDownload,
+                                icon = ImageVector.vectorResource(R.drawable.ms_font_download),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -101,6 +98,20 @@ fun CustomSettingsPage(
                         context.goToActivity<AppFontSizeActivity>()
                     }
                 )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                prefsItem {
+                    SwitchPref(
+                        key = PredictiveBackKey.name,
+                        title = stringResource(R.string.title_predictive_back),
+                        summary = stringResource(R.string.summary_predictive_back),
+                        leadingIcon = {
+                            LeadingIcon {
+                                AvatarIcon(resId = R.drawable.ms_arrow_back, size = Sizes.Small, contentDescription = null)
+                            }
+                        },
+                    )
+                }
             }
             prefsItem {
                 val darkThemeValues = stringArrayResource(id = R.array.dark_theme_values)
@@ -112,7 +123,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Brightness2,
+                                icon = ImageVector.vectorResource(R.drawable.ms_brightness_2),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -134,7 +145,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Apps,
+                                icon = ImageVector.vectorResource(R.drawable.ms_apps),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
@@ -209,7 +220,7 @@ fun CustomSettingsPage(
                         leadingIcon = {
                             LeadingIcon {
                                 AvatarIcon(
-                                    icon = Icons.Outlined.ColorLens,
+                                    icon = ImageVector.vectorResource(R.drawable.ms_color_lens),
                                     size = Sizes.Small,
                                     contentDescription = null,
                                 )
@@ -230,7 +241,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.BrightnessAuto,
+                            icon = ImageVector.vectorResource(R.drawable.ms_brightness_auto),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -246,7 +257,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = ImageVector.vectorResource(id = R.drawable.ic_beaker),
+                            icon = ImageVector.vectorResource(id = R.drawable.ms_science),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -261,13 +272,30 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.FormatColorFill,
+                                icon = ImageVector.vectorResource(R.drawable.ms_format_color_fill),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )
                         }
                     },
                     summary = stringResource(id = R.string.tip_toolbar_primary_color_summary),
+                )
+            }
+            prefsItem {
+                ListPref(
+                    key = ThreadTabsLayoutKey.name,
+                    title = stringResource(R.string.thread_tabs_layout_title),
+                    defaultValue = ThreadTabsGridLayout,
+                    entries = mapOf(
+                        ThreadTabsGridLayout to stringResource(R.string.thread_tabs_layout_grid),
+                        ThreadTabsStackLayout to stringResource(R.string.thread_tabs_layout_stack),
+                    ),
+                    useSelectedAsSummary = true,
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_apps, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
                 )
             }
             prefsItem {
@@ -278,7 +306,7 @@ fun CustomSettingsPage(
                 ) {
                     LeadingIcon {
                         AvatarIcon(
-                            icon = Icons.Outlined.ViewAgenda,
+                            icon = ImageVector.vectorResource(R.drawable.ms_view_agenda),
                             size = Sizes.Small,
                             contentDescription = null,
                         )
@@ -287,18 +315,33 @@ fun CustomSettingsPage(
             }
             prefsItem {
                 SwitchPref(
-                    key = "hideExplore",
-                    title = stringResource(id = R.string.title_hide_explore),
-                    defaultChecked = false,
-                ) {
-                    LeadingIcon {
-                        AvatarIcon(
-                            icon = Icons.Outlined.Explore,
-                            size = Sizes.Small,
-                            contentDescription = null,
-                        )
-                    }
-                }
+                    key = FloatingNavigationBarKey.name,
+                    title = stringResource(R.string.title_floating_navigation_bar),
+                    summary = stringResource(R.string.summary_floating_navigation_bar),
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_bottom_navigation, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
+                )
+            }
+            prefsItem {
+                val labels = MainNavigationPreferences.options.mapValues { stringResource(it.value) }
+                val userLabel = stringResource(R.string.title_user)
+                MultiSelectListPref(
+                    key = MainNavigationPreferences.key.name,
+                    title = stringResource(R.string.title_visible_main_tabs),
+                    defaultValue = MainNavigationPreferences.options.keys,
+                    entries = labels,
+                    selectedSummary = { enabled ->
+                        MainNavigationPreferences.visibleIds(enabled).joinToString("、") { labels[it] ?: userLabel }
+                    },
+                    leadingIcon = {
+                        LeadingIcon {
+                            AvatarIcon(resId = R.drawable.ms_bottom_navigation, size = Sizes.Small, contentDescription = null)
+                        }
+                    },
+                )
             }
             prefsItem {
                 SwitchPref(
@@ -308,7 +351,7 @@ fun CustomSettingsPage(
                     leadingIcon = {
                         LeadingIcon {
                             AvatarIcon(
-                                icon = Icons.Outlined.Upcoming,
+                                icon = ImageVector.vectorResource(R.drawable.ms_upcoming),
                                 size = Sizes.Small,
                                 contentDescription = null,
                             )

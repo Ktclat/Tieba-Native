@@ -1,23 +1,16 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose.video
 
-import android.annotation.SuppressLint
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,19 +19,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.util.getDurationString
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
-@SuppressLint("ComposableLambdaParameterPosition", "ComposableLambdaParameterNaming")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeekBar(
     progress: Long,
@@ -52,184 +42,74 @@ fun SeekBar(
     seekerPopup: @Composable () -> Unit = {},
     showSeekerDuration: Boolean = true,
     color: Color = MaterialTheme.colorScheme.primary,
-    secondaryColor: Color = Color.White.copy(alpha = 0.6f)
+    secondaryColor: Color = Color.White.copy(alpha = 0.6f),
 ) {
-    // if there is an ongoing drag, only dragging progress is evaluated.
-    // when dragging finishes, given [progress] continues to be used.
-    var onGoingDrag by remember { mutableStateOf(false) }
-    val indicatorSize = if (onGoingDrag) 24.dp else 16.dp
-    val animatedIndicatorSize by animateDpAsState(
-        targetValue = indicatorSize,
-        animationSpec = tween(durationMillis = 100),
-        label = "indicatorSize"
-    )
+    if (max <= 0L) return
+    var scrubbing by remember(max, enabled) { mutableStateOf<Float?>(null) }
+    val position = scrubbing ?: (progress.coerceIn(0L, max).toFloat() / max)
+    fun timeAt(fraction: Float) = (fraction.toDouble() * max).roundToLong().coerceIn(0L, max)
+    val buffered = secondaryProgress?.let { it.coerceIn(0L, max).toFloat() / max } ?: 0f
 
-    BoxWithConstraints {
-        if (progress >= max) return@BoxWithConstraints
-
-        val boxWidth = constraints.maxWidth.toFloat()
-
-        val percentage = remember(progress, max) {
-            progress.coerceAtMost(max).toFloat() / max.toFloat()
-        }
-
-        val indicatorOffsetByPercentage = remember(percentage) {
-            Offset(percentage * boxWidth, 0f)
-        }
-
-        // Indicator should be at "percentage" but dragging can change that.
-        // This state keeps track of current dragging position.
-        var indicatorOffsetByDragState by remember { mutableStateOf(Offset.Zero) }
-
-        val finalIndicatorOffset = remember(
-            indicatorOffsetByDragState,
-            indicatorOffsetByPercentage,
-            onGoingDrag
-        ) {
-            val finalIndicatorPosition = if (onGoingDrag) {
-                indicatorOffsetByDragState
-            } else {
-                indicatorOffsetByPercentage
-            }
-            finalIndicatorPosition.copy(
-                x = finalIndicatorPosition.x.coerceIn(0f, boxWidth)
-            )
-        }
-
-        Column {
-            // SEEK POPUP
-            if (onGoingDrag) {
-                var popupSize by remember { mutableStateOf(IntSize(0, 0)) }
-
-                // popup seeker must center the actual seeker position. Therefore, we offset
-                // it negatively to the left.
-                val popupSeekerOffsetXDp = with(LocalDensity.current) {
-                    (finalIndicatorOffset.x - popupSize.width / 2)
-                        .coerceIn(0f, (boxWidth - popupSize.width))
-                        .toDp()
-                }
-
+    Column(modifier) {
+        scrubbing?.let { fraction ->
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val width = constraints.maxWidth
+                var previewWidth by remember { mutableStateOf(0) }
                 Column(
+                    modifier = Modifier.offset {
+                        val x = (width * fraction).roundToInt() - previewWidth / 2
+                        IntOffset(x.coerceIn(0, (width - previewWidth).coerceAtLeast(0)), 0)
+                    }.onSizeChanged { previewWidth = it.width },
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .offset(x = popupSeekerOffsetXDp)
-                        .alpha(if (popupSize == IntSize.Zero) 0f else 1f)
-                        .onGloballyPositioned {
-                            if (popupSize != it.size) {
-                                popupSize = it.size
-                            }
-                        }
                 ) {
-                    val indicatorProgressDurationString = getDurationString(
-                        ((finalIndicatorOffset.x / boxWidth) * max).toLong(),
-                        false
+                    seekerPopup()
+                    if (showSeekerDuration) Text(
+                        getDurationString(timeAt(fraction), false),
+                        style = MaterialTheme.typography.labelMedium,
                     )
-
-                    Box(modifier = Modifier.shadow(4.dp)) {
-                        seekerPopup()
-                    }
-
-                    if (showSeekerDuration) {
-                        Text(
-                            text = indicatorProgressDurationString,
-                            style = TextStyle(
-                                shadow = Shadow(
-                                    blurRadius = 8f,
-                                    offset = Offset(2f, 2f)
-                                )
-                            )
-                        )
-                    }
                 }
             }
+        }
 
-            Box(
-                modifier = Modifier
-                    .height(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // SECONDARY PROGRESS
-                if (secondaryProgress != null) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center),
-                        progress = { secondaryProgress.coerceAtMost(max).toFloat() / max.coerceAtLeast(1L) },
-                        color = secondaryColor
-                    )
-                }
-
-                // SEEK INDICATOR
-                if (enabled) {
-                    val (offsetDpX, offsetDpY) = with(LocalDensity.current) {
-                        (finalIndicatorOffset.x).toDp() - indicatorSize / 2 to (finalIndicatorOffset.y).toDp()
-                    }
-
-                    val draggableState = rememberDraggableState(onDelta = { dx ->
-                        indicatorOffsetByDragState = Offset(
-                            x = (indicatorOffsetByDragState.x + dx),
-                            y = indicatorOffsetByDragState.y
-                        )
-
-                        val currentProgress =
-                            (indicatorOffsetByDragState.x / boxWidth) * max
-                        onSeek(currentProgress.toLong())
-                    })
-
-                    Row(modifier = Modifier
-                        .matchParentSize()
-                        .draggable(
-                            state = draggableState,
-                            orientation = Orientation.Horizontal,
-                            startDragImmediately = true,
-                            onDragStarted = { downPosition ->
-                                onGoingDrag = true
-                                indicatorOffsetByDragState =
-                                    indicatorOffsetByDragState.copy(x = downPosition.x)
-                                val newProgress =
-                                    (indicatorOffsetByDragState.x / boxWidth) * max
-                                onSeekStarted(newProgress.toLong())
-                            },
-                            onDragStopped = {
-                                val newProgress =
-                                    (indicatorOffsetByDragState.x / boxWidth) * max
-                                onSeekStopped(newProgress.toLong())
-                                indicatorOffsetByDragState = Offset.Zero
-                                onGoingDrag = false
-                            }
-                        )
-                    ) {
-
-                        Indicator(
-                            modifier = Modifier
-                                .size(animatedIndicatorSize)
-                                .offset(x = offsetDpX, y = offsetDpY)
-                                .align(Alignment.CenterVertically)
-                        )
-                    }
-                }
-
-                // MAIN PROGRESS
+        Box(contentAlignment = Alignment.Center) {
+            LinearProgressIndicator(
+                progress = { buffered },
+                modifier = Modifier.fillMaxWidth().height(4.dp).clearAndSetSemantics { },
+                color = secondaryColor,
+                trackColor = Color.White.copy(alpha = 0.24f),
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+            if (enabled) {
+                val colors = SliderDefaults.colors(thumbColor = color, activeTrackColor = color, inactiveTrackColor = Color.Transparent)
+                Slider(
+                    value = position,
+                    onValueChange = { fraction ->
+                        val time = timeAt(fraction)
+                        if (scrubbing == null) onSeekStarted(time)
+                        scrubbing = fraction
+                        onSeek(time)
+                    },
+                    onValueChangeFinished = {
+                        scrubbing?.let { onSeekStopped(timeAt(it)) }
+                        scrubbing = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = colors,
+                    track = { state ->
+                        SliderDefaults.Track(sliderState = state, modifier = Modifier.height(4.dp), colors = colors)
+                    },
+                )
+            } else {
                 LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.Center),
-                    progress = { percentage },
-                    color = color
+                    progress = { position },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = color,
+                    trackColor = Color.Transparent,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
                 )
             }
         }
-    }
-}
-
-@Composable
-fun Indicator(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-) {
-    Canvas(modifier = modifier) {
-        val radius = size.height / 2
-        drawCircle(color, radius)
     }
 }

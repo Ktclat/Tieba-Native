@@ -21,9 +21,11 @@ fun git(vararg args: String): String = providers.exec {
 }.standardOutput.asText.get().trim()
 
 val (shallow, sourceCommit) = git("rev-parse", "--is-shallow-repository", "HEAD").lines()
-check(shallow == "false") { "Computing Android versionCode requires the full history. Run git fetch --unshallow." }
-val applicationVersionName = "${property.versionName}+${sourceCommit.take(12)}"
-val applicationVersionCode = Math.addExact(property.versionCodeBase, git("rev-list", "--count", sourceCommit).toInt())
+check(shallow == "false") { "Computing Android versions requires the full history. Run git fetch --unshallow." }
+val commitCount = git("rev-list", "--count", sourceCommit).toInt()
+val patchVersion = 1 + (commitCount - property.versionPatchBaseCount).coerceAtLeast(0)
+val applicationVersionName = "0.0.${patchVersion}+${sourceCommit.take(12)}"
+val applicationVersionCode = Math.addExact(property.versionCodeBase, commitCount)
 
 wire {
     sourcePath { srcDir("src/main/protos") }
@@ -32,6 +34,11 @@ wire {
 
 android {
     compileSdk = 35
+    sourceSets {
+        getByName("test").java.srcDir("src/sharedTest/java")
+        getByName("androidTest").java.srcDir("src/sharedTest/java")
+        getByName("androidTest").assets.srcDir("src/test/resources/discussion")
+    }
     defaultConfig {
         applicationId = "com.huanchengfly.tieba.post"
         minSdk = 26
@@ -101,8 +108,6 @@ android {
 }
 
 dependencies {
-    implementation(airbnb.lottie)
-    implementation(airbnb.lottie.compose)
     implementation(kotlinx.serialization.json)
     implementation(kotlinx.collections.immutable)
     implementation(androidx.media3.exoplayer)
@@ -117,7 +122,6 @@ dependencies {
     kapt(androidx.hilt.compiler)
     implementation(accompanist.drawablepainter)
     implementation(accompanist.systemuicontroller)
-    implementation(accompanist.placeholder)
     implementation(sketch.core)
     implementation(sketch.compose)
     implementation(sketch.ext.compose)
@@ -130,8 +134,6 @@ dependencies {
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     implementation("androidx.compose.material3:material3:1.4.0-alpha18")
-    implementation(compose.material.icons.core)
-    implementation(compose.material.icons.extended)
     implementation(compose.ui.util)
     implementation(compose.ui.tooling.preview)
     androidTestImplementation(compose.ui.test.junit4)
@@ -179,6 +181,7 @@ dependencies {
     implementation(retrofit2.core)
     implementation(retrofit2.converter.wire)
     implementation(google.gson)
+    implementation(google.re2j)
     implementation(org.litepal.android.kotlin)
     implementation(github.matisse)
     implementation(xx.permissions)

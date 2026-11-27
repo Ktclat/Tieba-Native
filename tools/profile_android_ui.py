@@ -1,4 +1,4 @@
-"""Measure rendered frames while using two offline destinations on a disposable Android emulator."""
+"""Compare warm tab switches and scrolling on a Pixel 9-sized offline Android emulator."""
 
 import argparse
 import csv
@@ -8,11 +8,12 @@ import json
 import math
 from pathlib import Path
 import re
-import subprocess
+import sqlite3
+import tempfile
 import time
 from xml.etree import ElementTree
 
-from capture_android_ui import PACKAGE, adb, center, find_label, hierarchy, labelled_nodes
+from capture_android_ui import PACKAGE, PHONE_HEIGHT, PHONE_WIDTH, adb, configure_phone, find_label, hierarchy, save_diagnostic, tap
 
 
 def frame_rows(dump):
@@ -60,7 +61,7 @@ def summarize(rows):
 
 def launch():
     adb("shell", "am", "force-stop", PACKAGE)
-    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60)
+    return adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivityV2", timeout=60).decode()
 
 
 def press(point):
@@ -68,135 +69,131 @@ def press(point):
 
 
 def swipe(reverse):
-    # Coordinates are within the scrollable guest profile at 840 × 735 px.
-    start, end = (95, 475) if reverse else (475, 95)
-    adb("shell", "input", "swipe", "385", str(start), "385", str(end), "360")
-    time.sleep(0.32)
+    top, bottom = PHONE_HEIGHT // 3, PHONE_HEIGHT * 3 // 4
+    start, end = (top, bottom) if reverse else (bottom, top)
+    x = str(PHONE_WIDTH // 2)
+    adb("shell", "input", "swipe", x, str(start), x, str(end), "380")
+    time.sleep(0.36)
 
 
-PROFILE_ITEMS = ("浏览记录", "主题选择", "设置", "关于")
-TABS = ("首页", "动态", "消息", "我")
+def seed_history():
+    # Only called on a freshly installed app in a disposable, offline emulator. Keep both builds'
+    # production history list and pagination code on the same 180 local records and viewport.
+    adb("shell", "am", "force-stop", PACKAGE)
+    prefix = ["run-as", PACKAGE]
+    data = "databases/tblite.db"
+    names = adb("shell", *prefix, "ls", "databases").decode().split()
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "tblite.db"
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            if path.name + suffix in names:
+                Path(str(path) + suffix).write_bytes(adb("exec-out", *prefix, "cat", data + suffix))
+        with sqlite3.connect(path) as db:
+            now = int(time.time() * 1000)
+            db.executemany("INSERT INTO history(title,data,type,timestamp,count,username) VALUES(?,?,2,?,1,?)",
+                           [(f"滚动测试 {i:03}", str(900000 + i), now - 60_000 * i, "离线示例")
+                            for i in range(180)])
+            db.commit()
+            db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if db.execute("PRAGMA journal_mode=DELETE").fetchone()[0] != "delete":
+                raise RuntimeError("History fixture still depends on a separate write-ahead log")
+        db.close()
+        remote = "/data/local/tmp/tieba-profile-history.db"
+        private = "databases/benchmark-history.tmp"
+        original = path.read_bytes()
+        try:
+            adb("push", str(path), remote)
+            # The shell UID can read the pushed file. run-as owns the destination in app storage.
+            # Wait for the full write and verify it before swapping the stopped app's database.
+            adb("shell", f"cat {remote} | run-as {PACKAGE} sh -c 'cat > {private}'")
+            staged = adb("exec-out", *prefix, "cat", private)
+            if staged != original:
+                raise RuntimeError(f"Transferred history DB differs: {len(staged)} / {len(original)} bytes")
+            adb("shell", *prefix, "rm", "-f", data + "-wal", data + "-shm", data + "-journal")
+            adb("shell", *prefix, "mv", private, data)
+            check = Path(folder) / "installed.db"
+            check.write_bytes(adb("exec-out", *prefix, "cat", data))
+            with sqlite3.connect(check) as db:
+                count = db.execute("SELECT COUNT(*) FROM history WHERE type=2 AND title LIKE '滚动测试 %'").fetchone()[0]
+                integrity = db.execute("PRAGMA quick_check").fetchone()[0]
+            if check.read_bytes() != original or count != 180 or integrity != "ok":
+                raise RuntimeError(f"Installed history DB failed verification: count={count}, integrity={integrity}")
+            print(f"Verified all {count} rows in the installed app's DB", flush=True)
+        finally:
+            adb("shell", "rm", "-f", remote)
 
 
-def bounds(node):
-    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.get("bounds", ""))
-    return tuple(map(int, match.groups())) if match else None
 
-
-def nav_slot_spans(tree):
-    targets = actionable_bounds(tree)
-    spans = set()
-    for label in TABS:
-        node = next(labelled_nodes(tree, label), None)
-        if node is not None:
-            x, y = center(node)
-            covering = [rect for rect in targets if rect[0] <= x < rect[2] and rect[1] <= y < rect[3]]
-            if covering:
-                rect = min(covering, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
-                spans.add((rect[0], rect[2]))
-    if len(spans) != len(TABS):
-        raise RuntimeError("Could not identify four bottom tab touch targets")
-    return spans
-
-
-def actionable_bounds(tree):
-    # Android exposes the active tab as selected even when it omits its click action.
-    return [bounds(node) for node in tree.iter("node") if node.get("package") == PACKAGE and center(node)
-            and (node.get("clickable") == "true" or node.get("selected") == "true")]
-
-
-def verify_navigation(visible, output, slots):
+def visible_history(output):
     tree = hierarchy()
-    present = {rect[::2] for rect in actionable_bounds(tree)} & slots
+    rows = []
+    for node in tree.iter("node"):
+        if node.get("package") == PACKAGE:
+            # Clickable Compose rows may merge the headline with its author.
+            label = node.get("text", "") + "\n" + node.get("content-desc", "")
+            match = re.search(r"(?:^|[,，\n]\s*)滚动测试 (\d{3})(?:$|[,，\n])", label)
+            if match:
+                rows.append(int(match.group(1)))
+    if not rows:
+        raise RuntimeError("Could not find offline history rows")
     output.with_suffix(".xml").write_bytes(ElementTree.tostring(tree))
     output.with_suffix(".png").write_bytes(adb("exec-out", "screencap", "-p"))
-    if present != (slots if visible else set()):
-        raise RuntimeError(f"Unexpected bottom tab touch targets at {output.name}: {present}")
-    if visible and any(next(labelled_nodes(tree, label), None) is None for label in TABS):
-        raise RuntimeError(f"Expected all four tab labels at {output.name}")
-    positions = {}
-    for label in PROFILE_ITEMS:
-        row = next(labelled_nodes(tree, label), None)
-        if row is not None:
-            positions[label] = center(row)[1]
-    if not positions:
-        raise RuntimeError(f"No guest profile menu items at {output.name}")
-    return positions
+    return min(rows)
 
 
-def check_scroll(before, after, direction):
-    shared = before.keys() & after.keys()
-    if shared and any(direction * (after[label] - before[label]) > 12 for label in shared):
-        return
-    if not shared:
-        first_before = min(PROFILE_ITEMS.index(label) for label in before)
-        first_after = min(PROFILE_ITEMS.index(label) for label in after)
-        if direction * (first_before - first_after) > 0:
-            return
-    raise RuntimeError(f"Guest menu did not move in the expected direction: {before} -> {after}")
-
-
-def run_block(apk, directory):
+def run_block(apk, directory, readings):
     directory.mkdir(parents=True, exist_ok=True)
     if "package:" + PACKAGE in adb("shell", "pm", "list", "packages", PACKAGE).decode().splitlines():
         adb("uninstall", PACKAGE, timeout=60)
     adb("install", "-g", str(apk), timeout=120)
-    adb("shell", "wm", "size", "1080x2340")
-    launch()
+    launch_report = launch()
+    (directory / "cold-start.txt").write_text(launch_report)
     find_label("随便看看", recover_launcher=True)
     profile = find_label("我")
     press(profile)
     find_label("主题选择")
     home = find_label("首页")
-    if min(home[1], profile[1]) < 2340 * 0.75:
+    if min(home[1], profile[1]) < PHONE_HEIGHT * 0.75:
         raise RuntimeError("Expected both tab targets in the bottom navigation")
     press(home)
     find_label("随便看看")
 
     def switch_tabs():
         press(profile)
-        time.sleep(0.36)
+        time.sleep(0.15)
         press(home)
-        time.sleep(0.36)
+        time.sleep(0.32)
 
     for _ in range(3):
         switch_tabs()
-    readings = {"switch_tabs": [], "profile_scroll": []}
-    for repetition in range(1, 4):
+    # An immediate page switch draws only a handful of frames; repeat to sample its tail.
+    for repetition in range(1, 13):
         readings["switch_tabs"].append(measure(directory, "switch_tabs", repetition, switch_tabs))
     find_label("随便看看")
+    (directory / "switch-tabs.json").write_text(json.dumps([summarize(batch) for batch in readings["switch_tabs"]]))
 
-    # The read-only guest profile has only four menu rows. Use a short, compact
-    # window so these real rows can scroll far enough to hide the bottom bar.
-    adb("shell", "wm", "size", "840x735")
+    seed_history()
     launch()
-    press(find_label("我", recover_launcher=True))
-    find_label("浏览记录")
-    slots = nav_slot_spans(hierarchy())
-    start = verify_navigation(True, directory / "profile-before", slots)
+    tap("我")
+    tap("浏览记录")
+    find_label("滚动测试 000")
+    top = visible_history(directory / "history-top")
     swipe(False)
     swipe(False)
-    hidden = verify_navigation(False, directory / "profile-hidden", slots)
-    check_scroll(start, hidden, -1)
+    lower = visible_history(directory / "history-scrolled")
+    if lower <= top:
+        raise RuntimeError(f"History did not scroll: {top} -> {lower}")
     swipe(True)
     swipe(True)
-    restored = verify_navigation(True, directory / "profile-restored", slots)
-    check_scroll(hidden, restored, 1)
-
-    def scroll_profile(reverse):
-        swipe(reverse)
-        swipe(reverse)
-
+    if visible_history(directory / "history-restored") >= lower:
+        raise RuntimeError("History did not scroll back")
     for _ in range(2):
-        scroll_profile(False)
-        scroll_profile(True)
+        swipe(False)
+        swipe(True)
     for repetition in range(1, 4):
-        # Dump after each direction to keep each segment within HWUI's frame history.
-        up = measure(directory, "profile_scroll_up", repetition, lambda: scroll_profile(False))
-        down = measure(directory, "profile_scroll_down", repetition, lambda: scroll_profile(True))
-        readings["profile_scroll"].append(up + down)
-    verify_navigation(True, directory / "profile-end", slots)
-    return readings
+        up = measure(directory, "history_scroll_up", repetition, lambda: swipe(False))
+        down = measure(directory, "history_scroll_down", repetition, lambda: swipe(True))
+        readings["history_scroll"].append(up + down)
 
 
 def main():
@@ -219,52 +216,59 @@ def main():
     if baseline:
         apks["baseline"] = baseline[0]
     order = ["baseline", "candidate", "candidate", "baseline"] if baseline else ["candidate", "candidate"]
-    adb("shell", "wm", "density", "420")
-    adb("shell", "cmd", "uimode", "night", "no")
+    configure_phone()
     adb("shell", "cmd", "connectivity", "airplane-mode", "enable")
     adb("shell", "svc", "wifi", "disable")
-    for setting in ("animator_duration_scale", "transition_animation_scale", "window_animation_scale"):
-        adb("shell", "settings", "put", "global", setting, "1")
-    for setting in ("min_refresh_rate", "peak_refresh_rate"):
-        adb("shell", "settings", "put", "system", setting, "60.0")
     (args.output / "display.txt").write_bytes(adb("shell", "dumpsys", "display"))
     result = {
         "candidate_sha": args.candidate_sha,
         "baseline_sha": args.baseline_sha if baseline else None,
         "apk_sha256": {key: hashlib.sha256(apk.read_bytes()).hexdigest() for key, apk in apks.items()},
         "device": adb("shell", "getprop", "ro.build.fingerprint").decode().strip(),
+        "screen": {"size": adb("shell", "wm", "size").decode().strip(),
+                   "density": adb("shell", "wm", "density").decode().strip(),
+                   "font_scale": adb("shell", "settings", "get", "system", "font_scale").decode().strip()},
+        "history_source": "180 synthetic local visits with no remote media",
         "animation_scales": {key: adb("shell", "settings", "get", "global", key).decode().strip()
                              for key in ("animator_duration_scale", "transition_animation_scale", "window_animation_scale")},
         "order": order,
         "blocks": [],
     }
-    combined = {version: {"switch_tabs": [], "profile_scroll": []} for version in apks}
+    combined = {version: {"switch_tabs": [], "history_scroll": []} for version in apks}
+    errors = []
     for index, version in enumerate(order):
         directory = args.output / f"{index + 1}-{version}"
         print(f"Profiling {directory.name}", flush=True)
+        readings = {"switch_tabs": [], "history_scroll": []}
+        block = {"version": version}
         try:
-            readings = run_block(apks[version], directory)
-        except Exception:
+            run_block(apks[version], directory, readings)
+        except Exception as error:
+            block["error"] = str(error)
+            errors.append(f"{directory.name}: {error}")
+            print(f"Measurement failed: {errors[-1]}", flush=True)
             for filename, command in {
                 "failure.png": ["exec-out", "screencap", "-p"],
                 "last-window.xml": ["exec-out", "cat", "/sdcard/window.xml"],
                 "gfxinfo.txt": ["shell", "dumpsys", "gfxinfo", PACKAGE, "framestats"],
             }.items():
-                diagnostic = subprocess.run(["adb", *command], capture_output=True, timeout=30)
-                if diagnostic.returncode == 0:
-                    (directory / filename).write_bytes(diagnostic.stdout)
-            raise
-        block = {"version": version}
+                save_diagnostic(directory, filename, *command)
+        launch_file = directory / "cold-start.txt"
+        if launch_file.exists():
+            match = re.search(r"^TotalTime:\s*(\d+)", launch_file.read_text(), re.MULTILINE)
+            block["cold_start_to_initial_display_ms"] = int(match.group(1)) if match else None
         for scenario, batches in readings.items():
             block[scenario] = [summarize(batch) for batch in batches]
             for batch in batches:
                 combined[version][scenario].extend(batch)
         result["blocks"].append(block)
         (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
-    result["summary"] = {version: {scenario: summarize(rows) for scenario, rows in readings.items()}
+    result["summary"] = {version: {scenario: summarize(rows) for scenario, rows in readings.items() if rows}
                          for version, readings in combined.items()}
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result["summary"], indent=2), flush=True)
+    if errors:
+        raise RuntimeError(" | ".join(errors))
 
 
 if __name__ == "__main__":

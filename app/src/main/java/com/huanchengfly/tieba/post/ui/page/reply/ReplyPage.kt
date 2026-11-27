@@ -1,20 +1,19 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.reply
 
-import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
-import androidx.compose.ui.graphics.toArgb
-import android.os.Build
-import android.util.TypedValue
-import android.view.ContextThemeWrapper
-import android.content.res.ColorStateList
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,41 +42,31 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Button
-import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.key
-import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
-import com.huanchengfly.tieba.post.repository.ReplyRequest
-import com.huanchengfly.tieba.post.repository.ReplySubmissionState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBar
-import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.outlined.EmojiEmotions
-import androidx.compose.material.icons.outlined.InsertPhoto
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -86,19 +75,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.addTextChangedListener
 import com.github.panpf.sketch.compose.AsyncImage
 import com.google.android.material.textfield.TextInputLayout
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -106,12 +98,17 @@ import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.arch.pageViewModel
 import com.huanchengfly.tieba.post.pxToDpFloat
+import com.huanchengfly.tieba.post.repository.ReplyRequest
+import com.huanchengfly.tieba.post.repository.ReplySubmissionState
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalAppDarkTheme
+import com.huanchengfly.tieba.post.ui.page.destinations.LoginPageDestination
 import com.huanchengfly.tieba.post.ui.page.destinations.ReplyPageDestination
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.EMOJI
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.IMAGE
 import com.huanchengfly.tieba.post.ui.page.reply.ReplyPanelType.NONE
 import com.huanchengfly.tieba.post.ui.utils.imeNestedScroll
+import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogPositiveButton
@@ -128,13 +125,13 @@ import com.huanchengfly.tieba.post.utils.hideKeyboard
 import com.huanchengfly.tieba.post.utils.showKeyboard
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.util.UUID
+import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import java.util.UUID
-import kotlin.math.max
 
 data class ReplyArgs(
     val forumId: Long,
@@ -217,10 +214,12 @@ internal fun ReplyPageContent(
 
     fun insertEmoticon(text: String) {
         editTextView?.apply {
-            val start = selectionStart
-            this.text?.insert(start, text)
-            this.setText(StringUtil.getEmoticonContent(this, this.text))
-            setSelection(start + text.length)
+            val buffer = editableText
+            val start = selectionStart.coerceIn(0, buffer.length)
+            val end = selectionEnd.coerceIn(0, buffer.length)
+            val from = minOf(start, end)
+            buffer.replace(from, maxOf(start, end), StringUtil.getEmoticonContent(this, text))
+            setSelection(from + text.length)
         }
     }
 
@@ -458,9 +457,10 @@ internal fun ReplyPageContent(
             IconButton(
                 onClick = { switchToPanel(EMOJI) },
                 enabled = !isReplying,
+                shapes = IconButtonDefaults.shapes(),
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.EmojiEmotions,
+                    imageVector = ImageVector.vectorResource(R.drawable.ms_emoji_emotions),
                     contentDescription = stringResource(id = R.string.insert_emotions),
                     modifier = Modifier.size(24.dp)
                 )
@@ -469,6 +469,7 @@ internal fun ReplyPageContent(
                 IconButton(
                     onClick = { switchToPanel(IMAGE) },
                     enabled = !isReplying,
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     BadgedBox(
                         badge = {
@@ -486,39 +487,29 @@ internal fun ReplyPageContent(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.InsertPhoto,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_image),
                             contentDescription = stringResource(id = R.string.insert_photo),
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
-//            IconButton(
-//                onClick = { switchToPanel(VOICE) },
-//                modifier = Modifier.size(24.dp)
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Outlined.KeyboardVoice,
-//                    contentDescription = stringResource(id = R.string.insert_voice),
-//                    modifier = Modifier.size(24.dp)
-//                )
-//            }
             Spacer(modifier = Modifier.weight(1f))
             if (isReplying) {
-                CircularProgressIndicator(
+                LoadingIndicator(
                     modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
             } else if (failure != null) {
-                Button(onClick = ::submit, enabled = canSend) { Text(stringResource(R.string.reply_retry)) }
+                Button(onClick = ::submit, enabled = canSend, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.reply_retry)) }
             } else {
                 FilledIconButton(
                     onClick = ::submit,
                     enabled = canSend,
+                    shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                        imageVector = ImageVector.vectorResource(R.drawable.ms_send),
                         contentDescription = stringResource(R.string.send_reply),
                         modifier = Modifier.size(24.dp)
                     )
@@ -696,7 +687,7 @@ internal fun ReplyLoginPrompt(recipient: String?, onLogin: () -> Unit, onBack: (
                 navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
             )
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Button(onClick = onLogin) { Text(stringResource(R.string.login_to_reply)) }
+                Button(onClick = onLogin, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.login_to_reply)) }
             }
         }
     }
@@ -721,24 +712,15 @@ private fun EmoticonPanel(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         ) {
-            items(emoticons) { emoticon ->
-                Image(
-                    painter = rememberDrawablePainter(
-                        drawable = EmoticonManager.getEmoticonDrawable(
-                            LocalContext.current,
-                            emoticon.id
-                        )
-                    ),
-                    contentDescription = stringResource(
-                        id = R.string.emoticon,
-                        emoticon.name
-                    ),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .padding(8.dp)
-                        .clickable { onEmoticonClick(emoticon) },
-                )
+            items(emoticons, key = { it.id }) { emoticon ->
+                IconButton(onClick = { onEmoticonClick(emoticon) }, shapes = IconButtonDefaults.shapes()) {
+                    Image(
+                        painter = EmoticonManager.rememberEmoticonPainter(emoticon.id),
+                        contentDescription = stringResource(R.string.emoticon, emoticon.name),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
             }
         }
     }
@@ -787,10 +769,11 @@ private fun ImagePanel(
                     )
                     IconButton(
                         onClick = { onRemoveImage(index) },
-                        modifier = Modifier.align(Alignment.TopEnd)
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        shapes = IconButtonDefaults.shapes(),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Close,
+                            imageVector = ImageVector.vectorResource(R.drawable.ms_close),
                             contentDescription = stringResource(id = R.string.desc_remove_image)
                         )
                     }
@@ -798,27 +781,19 @@ private fun ImagePanel(
             }
             if (selectedImages.size < 9) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .aspectRatio(1f)
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .clickable {
-                                coroutineScope.emitGlobalEvent(
-                                    GlobalEvent.StartSelectImages(
-                                        id,
-                                        9 - selectedImages.size,
-                                        PickMediasRequest.ImageOnly
-                                    )
-                                )
-                            },
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        onClick = {
+                            coroutineScope.emitGlobalEvent(
+                                GlobalEvent.StartSelectImages(id, 9 - selectedImages.size, PickMediasRequest.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = stringResource(id = R.string.desc_add_image),
-                            modifier = Modifier.size(48.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(ImageVector.vectorResource(R.drawable.ms_add), stringResource(R.string.desc_add_image), Modifier.size(32.dp))
+                        }
                     }
                 }
             }

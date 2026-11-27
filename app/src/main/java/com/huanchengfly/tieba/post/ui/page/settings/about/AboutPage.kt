@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.settings.about
 
 import androidx.compose.foundation.Image
@@ -11,11 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,20 +91,14 @@ fun AboutPage(
                 modifier = Modifier.fillMaxWidth(0.5f)
             ) {
                 val context = LocalContext.current
-                TextButton(
-                    shape = RoundedCornerShape(100),
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface.copy(
-                            alpha = 0.1f
-                        ),
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
+                FilledTonalButton(
+                    shapes = ButtonDefaults.shapes(),
                     onClick = {
                         launchUrl(context, navigator, "https://github.com/HuanCheng65/TiebaLite")
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    androidx.compose.material3.Text(text = stringResource(id = R.string.source_code), modifier = Modifier.padding(vertical = 4.dp))
+                    Text(stringResource(R.string.source_code))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

@@ -23,7 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -58,19 +58,18 @@ fun LoadMoreLayout(
         DefaultIndicator(isLoading = loading, loadEnd = end, willLoad = willLoad)
     },
     lazyListState: LazyListState? = null,
-    isEmpty: Boolean = lazyListState?.layoutInfo?.totalItemsCount == 0,
+    isEmpty: Boolean = false,
     preloadCount: Int = 1,
     content: @Composable () -> Unit,
 ) {
     val enabled = LocalShouldLoad.current && enableLoadMore
     val threshold = with(LocalDensity.current) { LoadThreshold.toPx() }
-    val endInView by remember(lazyListState, preloadCount, isEmpty) {
+    val watchEnd = enabled && !loadEnd && !isEmpty && preloadCount > 0
+    val endInView by remember(lazyListState, watchEnd, preloadCount) {
         derivedStateOf {
-            val layout = lazyListState?.layoutInfo
+            val layout = if (watchEnd) lazyListState?.layoutInfo else null
             val last = layout?.visibleItemsInfo?.lastOrNull()?.index
-            if (!isEmpty && preloadCount > 0 && last != null && last >= layout.totalItemsCount - preloadCount) {
-                layout.totalItemsCount
-            } else -1
+            if (last != null && last >= layout.totalItemsCount - preloadCount) layout.totalItemsCount else -1
         }
     }
     var lastRequestedEnd by remember(lazyListState) { mutableIntStateOf(-1) }
@@ -103,28 +102,37 @@ fun LoadMoreLayout(
     ) {
         content()
         AnimatedVisibility(
-            visible = enabled && (isLoading || gesture.pulled > 0f),
+            visible = enabled && (isLoading || gesture.phase != PullPhase.Idle),
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut(),
         ) {
-            Box(Modifier.padding(8.dp)) { indicator(isLoading, loadEnd, gesture.pulled >= threshold) }
+            Box(Modifier.padding(8.dp)) { indicator(isLoading, loadEnd, gesture.phase == PullPhase.Ready) }
         }
     }
 }
+
+private enum class PullPhase { Idle, Pulling, Ready }
 
 /** Consumes only upward overscroll left by a child, and lets a downward drag retract the footer. */
 private class LoadMoreGesture(
     private val threshold: Float,
     private val onLoad: () -> Unit,
 ) : NestedScrollConnection {
-    var pulled by mutableFloatStateOf(0f)
+    private var pulled = 0f
+    var phase by mutableStateOf(PullPhase.Idle)
         private set
 
     private fun consume(delta: Float): Offset {
         val newPull = (pulled - delta).coerceIn(0f, threshold * 2f)
         val consumed = pulled - newPull
         pulled = newPull
+        // The footer only changes when it appears or crosses the release threshold.
+        phase = when {
+            newPull == 0f -> PullPhase.Idle
+            newPull >= threshold -> PullPhase.Ready
+            else -> PullPhase.Pulling
+        }
         return Offset(0f, consumed)
     }
 
@@ -144,6 +152,7 @@ private class LoadMoreGesture(
         if (pulled == 0f) return Velocity.Zero
         if (pulled >= threshold) onLoad()
         pulled = 0f
+        phase = PullPhase.Idle
         return Velocity(0f, available.y.coerceAtMost(0f))
     }
 }

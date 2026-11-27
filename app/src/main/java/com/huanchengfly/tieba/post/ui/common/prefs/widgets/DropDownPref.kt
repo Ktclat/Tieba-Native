@@ -1,5 +1,6 @@
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,9 +57,7 @@ fun DropDownPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val value = prefs?.get(selectionKey) ?: defaultValue
+    val value by datastore.collectPreferenceAsState(selectionKey, defaultValue)
 
     fun edit(item: Map.Entry<String, String>) = run {
         scope.launch {

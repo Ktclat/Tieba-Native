@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.common.prefs.widgets
 
+import com.huanchengfly.tieba.post.collectPreferenceAsState
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +59,9 @@ fun MultiSelectListPref(
     dialogBackgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
-    entries: Map<String, String> = mapOf() //TODO: Change to List?
+    entries: Map<String, String> = emptyMap(),
+    leadingIcon: @Composable (() -> Unit)? = null,
+    selectedSummary: (@Composable (Set<String>) -> String)? = null,
 ) {
 
     val entryList = remember(entries) { entries.toList() }
@@ -64,9 +70,7 @@ fun MultiSelectListPref(
     val scope = rememberCoroutineScope()
 
     val datastore = LocalPrefsDataStore.current
-    val prefs by datastore.data.collectAsState(initial = null)
-
-    val selected = prefs?.get(selectionKey) ?: defaultValue
+    val selected by datastore.collectPreferenceAsState(selectionKey, defaultValue)
 
     fun toggle(entryKey: String) {
         scope.launch {
@@ -86,7 +90,8 @@ fun MultiSelectListPref(
     TextPref(
         title = title,
         modifier = modifier,
-        summary = summary,
+        summary = selectedSummary?.invoke(selected) ?: summary,
+        leadingIcon = leadingIcon,
         textColor = textColor,
         enabled = enabled,
         onClick = { showDialog = true },
@@ -116,7 +121,7 @@ fun MultiSelectListPref(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { showDialog = false }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.button_sure_default))
                 }
             },

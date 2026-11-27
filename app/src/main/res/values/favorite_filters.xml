@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="favorite_search_hint">搜索标题、作者或吧名</string>
+    <string name="favorite_filter_all">全部</string>
+    <string name="favorite_filter_partial">读到一半</string>
+    <string name="favorite_filter_has_progress">有进度</string>
+    <string name="favorite_filter_no_progress">无进度</string>
+    <string name="favorite_read_floor">读到第 %1$d 楼</string>
+    <string name="favorite_search_empty">没有符合条件的收藏</string>
+    <string name="favorite_empty">还没有收藏帖子</string>
+    <string name="favorite_search_loading">正在查找收藏…</string>
+    <string name="favorite_first_page_error">加载收藏失败</string>
+    <string name="favorite_login_required">登录后查看收藏的帖子</string>
+</resources>

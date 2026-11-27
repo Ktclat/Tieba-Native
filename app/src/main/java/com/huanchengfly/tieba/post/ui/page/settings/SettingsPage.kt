@@ -6,10 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -23,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.dataStore
 import com.huanchengfly.tieba.post.models.database.Account
-import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.GroupHeader
+import com.huanchengfly.tieba.post.ui.common.prefs.PrefsScreen
 import com.huanchengfly.tieba.post.ui.common.prefs.widgets.TextPref
 import com.huanchengfly.tieba.post.ui.page.LocalNavigator
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
@@ -38,6 +35,7 @@ import com.huanchengfly.tieba.post.ui.page.destinations.OKSignSettingsPageDestin
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
@@ -89,7 +87,7 @@ fun NowAccountItem(account: Account?, modifier: Modifier = Modifier) {
             leadingIcon = {
                 LeadingIcon {
                     AvatarIcon(
-                        icon = Icons.Rounded.AccountCircle,
+                        icon = ImageVector.vectorResource(R.drawable.ms_account_circle),
                         size = Sizes.Small,
                         contentDescription = stringResource(id = R.string.title_new_account),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -139,7 +137,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                             leadingIcon = {
                                 LeadingIcon {
                                     AvatarIcon(
-                                        icon = ImageVector.vectorResource(R.drawable.ic_settings_block),
+                                        icon = ImageVector.vectorResource(R.drawable.ms_block),
                                         size = Sizes.Small,
                                         contentDescription = null,
                                     )
@@ -159,7 +157,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                             leadingIcon = {
                                 LeadingIcon {
                                     AvatarIcon(
-                                        icon = ImageVector.vectorResource(R.drawable.ic_brush_black_24dp),
+                                        icon = ImageVector.vectorResource(R.drawable.ms_brush),
                                         size = Sizes.Small,
                                         contentDescription = null,
                                     )
@@ -176,7 +174,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                             leadingIcon = {
                                 LeadingIcon {
                                     AvatarIcon(
-                                        icon = ImageVector.vectorResource(R.drawable.ic_dashboard_customize_black_24),
+                                        icon = ImageVector.vectorResource(R.drawable.ms_dashboard_customize),
                                         size = Sizes.Small,
                                         contentDescription = null,
                                     )
@@ -196,7 +194,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                             leadingIcon = {
                                 LeadingIcon {
                                     AvatarIcon(
-                                        icon = ImageVector.vectorResource(R.drawable.ic_rocket_launch_black_24),
+                                        icon = ImageVector.vectorResource(R.drawable.ms_rocket_launch),
                                         size = Sizes.Small,
                                         contentDescription = null,
                                     )
@@ -213,7 +211,7 @@ fun SettingsPage(navigator: DestinationsNavigator) {
                             leadingIcon = {
                                 LeadingIcon {
                                     AvatarIcon(
-                                        icon = ImageVector.vectorResource(R.drawable.ic_more_horiz_black_24),
+                                        icon = ImageVector.vectorResource(R.drawable.ms_more_horiz),
                                         size = Sizes.Small,
                                         contentDescription = null,
                                     )

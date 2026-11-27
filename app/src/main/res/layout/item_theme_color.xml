@@ -17,7 +17,7 @@
         android:backgroundTint="?attr/colorSurface"
         android:importantForAccessibility="no"
         android:padding="3dp"
-        android:src="@drawable/ic_round_check"
+        android:src="@drawable/ms_check"
         android:tint="?attr/colorOnSurface"
         android:visibility="gone" />
 </com.google.android.material.card.MaterialCardView>

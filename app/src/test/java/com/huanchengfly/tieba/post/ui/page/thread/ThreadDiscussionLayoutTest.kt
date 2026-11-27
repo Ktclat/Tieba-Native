@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -37,11 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavOptionsBuilder
 import com.huanchengfly.tieba.post.App
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.api.models.protos.Agree
-import com.huanchengfly.tieba.post.api.models.protos.PbContent
 import com.huanchengfly.tieba.post.api.models.protos.Post
-import com.huanchengfly.tieba.post.api.models.protos.SubPost
-import com.huanchengfly.tieba.post.api.models.protos.SubPostList
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.contentRenders
 import com.huanchengfly.tieba.post.api.models.protos.subPosts
@@ -58,6 +55,10 @@ import com.huanchengfly.tieba.post.ui.common.windowsizeclass.WindowSizeClass
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.destinations.UserProfilePageDestination
 import com.huanchengfly.tieba.post.ui.page.subposts.SubPostsHeading
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionSample.children
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionSample.topicTitle
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionSample.topic
+import com.huanchengfly.tieba.post.ui.page.thread.DiscussionSample.floor
 import com.huanchengfly.tieba.post.ui.page.subposts.SubPostItem as DetailReply
 import com.huanchengfly.tieba.post.ui.page.subposts.SubPostItemData as DetailData
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
@@ -88,39 +89,6 @@ class ThreadDiscussionLayoutTest {
     @get:Rule(order = 0) val context = AppContextRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    private val lin = User(id = 20, name = "林间月", nameShow = "林间月")
-    private val qing = User(id = 30, name = "青禾", nameShow = "青禾")
-    private fun reply(id: Long, sender: User, recipient: User?, body: String) = SubPostList(
-        id = id, author = sender, time = 1695374000 + id.toInt(), agree = Agree(diffAgreeNum = id - 200),
-        content = buildList {
-            if (recipient != null) {
-                add(PbContent(text = "回复 "))
-                add(PbContent(type = 4, uid = recipient.id, text = "@${recipient.name}"))
-                add(PbContent(text = "："))
-            }
-            add(PbContent(text = body))
-        },
-    )
-    private val children = listOf(
-        reply(201, lin, qing, "北岸线的爬升集中在哪一段？"),
-        reply(202, qing, lin, "石桥之后，缓坡一直到观景台。"),
-        reply(203, User(id = 40, name = "听风", nameShow = "听风"), null, "").copy(
-            content = listOf(PbContent(text = "我和 "), PbContent(type = 4, uid = 30, text = "@青禾"), PbContent(text = " 都走过这条路。")),
-        ),
-        reply(204, User(id = 50, name = "春山", nameShow = "春山"), null, "回复 岸上风 :雨天过桥小心。"),
-    )
-    private val topicTitle = "北岸步道周末路线"
-    private val topic = Post(
-        id = 1, floor = 1, time = 1695370100,
-        author = User(id = 10, name = "溪口", nameShow = "溪口"),
-        content = listOf(PbContent(text = "北岸步道的路线图，供周末出行参考。")),
-    )
-    private val floor = Post(
-        id = 12, floor = 12, time = 1695373200,
-        author = User(id = 12, name = "远舟", nameShow = "远舟", ip_address = "海南"),
-        content = listOf(PbContent(text = "放一张实测海拔剖面。")), agree = Agree(diffAgreeNum = 404),
-        sub_post_number = 4, sub_post_list = SubPost(sub_post_list = children),
-    )
     private var opened by mutableStateOf<Long?>(null)
     private var filter by mutableStateOf(false)
     private var menu by mutableStateOf(false)
@@ -160,7 +128,7 @@ class ThreadDiscussionLayoutTest {
             val host = LocalView.current
             SideEffect { view = host }
             val density = LocalDensity.current.density
-            CompositionLocalProvider(LocalWindowSizeClass provides WindowSizeClass.calculateFromSize(DpSize(width.dp,840.dp))) {
+            CompositionLocalProvider(LocalWindowSizeClass provides WindowSizeClass.calculateFromSize(DpSize(width.dp, LocalConfiguration.current.screenHeightDp.dp))) {
                 TiebaLiteTheme {
                     CompositionLocalProvider(LocalDensity provides Density(density, font)) {
                         ProvideNavigator(navigator) {
@@ -235,7 +203,8 @@ class ThreadDiscussionLayoutTest {
     private fun node(text: String) = compose.onNodeWithText(text, useUnmergedTree = true)
     private fun resource(id: Int) = App.INSTANCE.getString(id)
 
-    @Test fun readsFiltersAndOpensTheConversation() = review(360, 1f, "360")
+    @Test @Config(qualifiers = "zh-rCN-w411dp-h923dp-mdpi")
+    fun readsFiltersAndOpensTheConversation() = review(411, 1f, "pixel9")
 
     @Test @Config(qualifiers = "zh-rCN-w320dp-h840dp-mdpi")
     fun readsTheConversationInDarkThemeAtLargeFont() {
@@ -372,6 +341,19 @@ class ThreadDiscussionLayoutTest {
         val controls = compose.onNodeWithTag("reply-controls").fetchSemanticsNode().boundsInRoot
         val image = BitmapFactory.decodeFile(File("build/reports/ui-screenshots", name).absolutePath)
         try {
+            if (name == "discussion-topic-pixel9.png") {
+                val all = compose.onNode(hasClickAction() and hasText(resource(R.string.text_all)))
+                    .fetchSemanticsNode().boundsInRoot
+                val sampleX = all.center.x.roundToInt()
+                val surface = image.getPixel(2, controls.center.y.roundToInt())
+                val painted = (controls.top.toInt() until controls.bottom.toInt()).filter { y ->
+                    image.getPixel(sampleX, y) != surface
+                }
+                // These snapshots use mdpi. Keep the 32dp Expressive surface inside a 48dp touch row.
+                assertEquals(48f, controls.height, 1f)
+                assertTrue(painted.isNotEmpty())
+                assertTrue((painted.last() - painted.first() + 1) in 31..33)
+            }
             val gap = media.bottom.toInt() + 1 until controls.top.toInt()
             assertTrue("The media and reply controls need breathing room", gap.count() >= 4)
             val title = node(topicTitle).fetchSemanticsNode().boundsInRoot

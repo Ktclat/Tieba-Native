@@ -1,47 +1,50 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.huanchengfly.tieba.post.ui.page.photoview
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.CompositionLocalProvider
+import android.content.ClipData
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.view.MotionEvent
 import androidx.activity.viewModels
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.panpf.sketch.compose.rememberAsyncImageState
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.zoomimage.SketchZoomAsyncImage
@@ -50,10 +53,10 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.BaseComposeActivityWithParcelable
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.utils.ImageUtil
-import com.huanchengfly.tieba.post.utils.download
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 private fun ViewPhoto(
@@ -68,8 +71,10 @@ private fun ViewPhoto(
         val state = rememberAsyncImageState()
         val progress by remember {
             derivedStateOf {
-                (state.progress?.completedLength?.toFloat() ?: 0f) / (state.progress?.totalLength
-                    ?: 1)
+                state.progress?.let { transfer ->
+                    if (transfer.totalLength > 0) (transfer.completedLength.toFloat() / transfer.totalLength).coerceIn(0f, 1f)
+                    else null
+                }
             }
         }
         val showProgress by remember {
@@ -85,169 +90,170 @@ private fun ViewPhoto(
             imageState = state,
         )
         if (showProgress) {
-            Box(
-                contentAlignment = Alignment.Center
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                CircularProgressIndicator(
-                    progress = { progress },
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(48.dp)
-                )
+                Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                    val fraction = progress
+                    if (fraction == null) {
+                        LoadingIndicator()
+                    } else {
+                        CircularWavyProgressIndicator(progress = { fraction }, modifier = Modifier.size(56.dp))
+                        Text(text = "${(fraction * 100).roundToInt()}%", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PhotoActionBar(
+    item: PhotoViewItem,
+    total: Int,
+    shareEnabled: Boolean,
+    saveEnabled: Boolean,
+    onShare: (String) -> Unit,
+    onSave: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // A dark media overlay stays legible on both letterboxing and a full-bleed photo.
+    // Apply the insets outside the surface; they must never enlarge its painted background.
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = Color(0xD92A2A2C),
+        contentColor = Color.White,
+    ) {
+        Row(
+            modifier = Modifier.height(48.dp).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (total > 1) {
                 Text(
-                    text = "${(progress * 100).roundToInt()}%",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp
+                    text = "${item.overallIndex} / $total",
+                    modifier = Modifier.padding(start = 12.dp, end = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
                 )
+            }
+            IconButton(
+                onClick = { onShare(item.originUrl) },
+                modifier = Modifier.size(48.dp),
+                enabled = shareEnabled,
+                shapes = IconButtonDefaults.shapes(),
+            ) {
+                Icon(ImageVector.vectorResource(R.drawable.ms_share), stringResource(R.string.title_share_pic), Modifier.size(20.dp))
+            }
+            IconButton(
+                onClick = { onSave(item.originUrl) },
+                modifier = Modifier.size(48.dp),
+                enabled = saveEnabled,
+                shapes = IconButtonDefaults.shapes(),
+            ) {
+                Icon(ImageVector.vectorResource(R.drawable.ms_download), stringResource(R.string.desc_download_pic), Modifier.size(20.dp))
             }
         }
     }
 }
 
 class PhotoViewActivity : BaseComposeActivityWithParcelable<PhotoViewData>() {
-    private val viewModel: PhotoViewViewModel by viewModels()
+    private val viewModel: PhotoViewViewModel by viewModels {
+        viewModelFactory { initializer { PhotoViewViewModel(checkNotNull(data), createSavedStateHandle()) } }
+    }
 
     override val dataExtraKey: String = EXTRA_PHOTO_VIEW_DATA
 
-    @OptIn(ExperimentalFoundationApi::class)
     @Composable
     override fun Content(data: PhotoViewData) {
-        LazyLoad(loaded = viewModel.initialized) {
-            viewModel.send(PhotoViewUiIntent.Init(data))
-            viewModel.initialized = true
-        }
-        val uiState by viewModel.uiState.collectAsState()
-        val items by remember { derivedStateOf { uiState.data } }
-        val initialIndex by remember { derivedStateOf { uiState.initialIndex } }
-        val totalAmount by remember { derivedStateOf { uiState.totalAmount } }
-        val hasPrev by remember { derivedStateOf { uiState.hasPrev } }
-        val hasNext by remember { derivedStateOf { uiState.hasNext } }
-        val loadPicPageData by remember { derivedStateOf { uiState.loadPicPageData } }
-        val loaded by remember { derivedStateOf { uiState.data.isNotEmpty() } }
+        val state by viewModel.uiState.collectAsState()
+        val items = state.data
+        val scope = rememberCoroutineScope()
+        var sharing by remember { mutableStateOf(false) }
+        var saving by remember { mutableStateOf(false) }
 
-        Surface(color = Color.Black) {
-            if (loaded) {
-                val pageCount by remember { derivedStateOf { items.size } }
-
-                val pagerState = rememberPagerState(initialPage = initialIndex) { pageCount }
-
-                LaunchedEffect(initialIndex) {
-                    if (pagerState.currentPage != initialIndex) pagerState.scrollToPage(initialIndex)
+        Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
+            if (items.isEmpty()) return@Surface
+            val count by rememberUpdatedState(items.size)
+            val pager = remember(viewModel) {
+                PagerState(currentPage = viewModel.initialPage().coerceIn(items.indices)) { count }
+            }
+            val current by remember(pager, items) {
+                derivedStateOf {
+                    val page = pager.currentPage
+                    val atIndex = items.getOrNull(page)
+                    // A previous page may have arrived before the pager remeasures its anchor.
+                    val displayedKey = pager.layoutInfo.visiblePagesInfo.firstOrNull { it.index == page }?.key
+                    if (displayedKey == null || atIndex?.pageKey == displayedKey) atIndex
+                    else items.firstOrNull { it.pageKey == displayedKey }
                 }
-
-                LaunchedEffect(pagerState.currentPage, pageCount, loadPicPageData) {
-                    loadPicPageData?.let {
-                        val item = items[pagerState.currentPage]
-                        if (pagerState.currentPage == 0 && hasPrev) {
-                            viewModel.send(
-                                PhotoViewUiIntent.LoadPrev(
-                                    item.picId,
-                                    item.overallIndex,
-                                    it
-                                )
-                            )
-                        } else if (pagerState.currentPage == pageCount - 1 && hasNext) {
-                            viewModel.send(
-                                PhotoViewUiIntent.LoadMore(
-                                    item.picId,
-                                    item.overallIndex,
-                                    it
-                                )
-                            )
-                        }
-                    }
+            }
+            LaunchedEffect(current, items.size, state.loadPicPageData, pager.isScrollInProgress) {
+                if (!pager.isScrollInProgress) current?.let { page ->
+                    viewModel.onViewed(page)
+                    viewModel.loadAdjacent(page)
                 }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    HorizontalPager(
-                        state = pagerState,
-                        key = { "${items[it].picId}_${items[it].postId}" }
-                    ) {
-                        val item = items[it]
-                        ViewPhoto(
-                            imageUri = item.originUrl,
-                            modifier = Modifier.fillMaxSize(),
-                            onTap = {
-                                finish()
-                            },
-                        )
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides Color.White) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                Color.Black.copy(alpha = 0.0f),
-                                                Color.Black.copy(alpha = 0.5f)
-                                            )
-                                        )
-                                    )
-                                    .padding(horizontal = 16.dp)
-                                    .navigationBarsPadding(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val index = pagerState.currentPage
-                                if (totalAmount > 1) {
-                                    val picIndex = items[index].overallIndex
-                                    Text(
-                                        text = "$picIndex / $totalAmount",
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                                IconButton(onClick = {
-                                    toastShort(R.string.toast_preparing_share_pic)
-                                    ImageUtil.download(
-                                        this@PhotoViewActivity,
-                                        items[index].originUrl,
-                                        true
-                                    ) { uri: Uri ->
-                                        val chooser = Intent(Intent.ACTION_SEND).apply {
-                                            type = Intent.normalizeMimeType("image/jpeg")
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            } else {
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                            }
-                                        }.let {
-                                            Intent.createChooser(
-                                                it,
-                                                getString(R.string.title_share_pic)
-                                            )
+            }
+
+            Box(Modifier.fillMaxSize()) {
+                HorizontalPager(state = pager, key = { items[it].pageKey }) { index ->
+                    ViewPhoto(
+                        imageUri = items[index].originUrl,
+                        modifier = Modifier.fillMaxSize(),
+                        onTap = { finish() },
+                    )
+                }
+                current?.let { item ->
+                    PhotoActionBar(
+                        item = item,
+                        total = state.totalAmount,
+                        shareEnabled = !sharing && !pager.isScrollInProgress,
+                        saveEnabled = !saving && !pager.isScrollInProgress,
+                        onShare = { url ->
+                            if (!sharing) {
+                                sharing = true
+                                scope.launch {
+                                    try {
+                                        toastShort(R.string.toast_preparing_share_pic)
+                                        val uri = ImageUtil.preparePhotoShare(this@PhotoViewActivity, url)
+                                        val send = Intent(Intent.ACTION_SEND).apply {
+                                            type = contentResolver.getType(uri) ?: "image/*"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            clipData = ClipData.newRawUri(null, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        runCatching {
-                                            startActivity(chooser)
-                                        }
+                                        startActivity(Intent.createChooser(send, getString(R.string.title_share_pic)))
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        toastShort(R.string.toast_photo_share_failed)
+                                    } finally {
+                                        sharing = false
                                     }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Share,
-                                        contentDescription = stringResource(id = R.string.title_share_pic)
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    ImageUtil.download(
-                                        this@PhotoViewActivity,
-                                        items[index].originUrl
-                                    )
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Download,
-                                        contentDescription = stringResource(id = R.string.desc_download_pic)
-                                    )
                                 }
                             }
-                        }
-                    }
+                        },
+                        onSave = { url ->
+                            if (!saving) {
+                                saving = true
+                                scope.launch {
+                                    try {
+                                        ImageUtil.savePhoto(this@PhotoViewActivity, url)?.let { path ->
+                                            toastShort(R.string.toast_photo_saved, path)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        toastShort(R.string.toast_photo_save_failed)
+                                    } finally {
+                                        saving = false
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
+                    )
                 }
             }
         }

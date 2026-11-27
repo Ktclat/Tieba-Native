@@ -1,18 +1,14 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferences
 
@@ -20,19 +16,7 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.LocalDisplayPreferenc
 fun BlockTip(
     text: @Composable () -> Unit = { Text(text = stringResource(id = R.string.tip_blocked_content)) },
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
-            .padding(vertical = 8.dp, horizontal = 16.dp)
-    ) {
-        ProvideTextStyle(value = MaterialTheme.typography.bodySmall) {
-            ProvideContentColor(color = MaterialTheme.colorScheme.onSurfaceVariant) {
-                text()
-            }
-        }
-    }
+    SupportingMessage(content = text)
 }
 
 @Composable
@@ -48,6 +32,21 @@ fun BlockableContent(
     } else if (!hideBlockedContent) {
         Column(modifier = modifier) {
             blockedTip()
+        }
+    }
+}
+@Composable
+fun BlockedDestination(
+    onBack: () -> Unit,
+    message: String = stringResource(R.string.tip_blocked_content),
+) {
+    MyScaffold(
+        topBar = {
+            TitleCentredToolbar(title = {}, navigationIcon = { BackNavigationIcon(onBack) })
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            BlockTip { Text(message) }
         }
     }
 }
